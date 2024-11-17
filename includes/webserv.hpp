@@ -20,7 +20,6 @@ private:
     void handle_client(int client_socket);
 
 public:
-    // Server(int port);
     Server(int port, const std::string& root);
     ~Server();
     void run();
@@ -28,3 +27,4 @@ public:
 
 
 std::string read_file(const std::string& file_path);
+void send_custom_error_page(int client_socket, int status_code, const std::string& error_page);

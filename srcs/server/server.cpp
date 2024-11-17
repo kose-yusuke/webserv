@@ -5,12 +5,6 @@
 #include <sstream>
 #include <stdexcept>
 
-// Server::Server(int port) : port(port) {
-//     create_socket();
-//     bind_socket();
-//     listen_socket();
-// }
-
 Server::Server(int port, const std::string& root) : public_root(root), port(port) {
     create_socket();
     bind_socket();
@@ -73,21 +67,25 @@ void Server::handle_client(int client_socket) {
 
             // パスをローカルのファイルパスに変換
             std::string file_path = public_root + path;
-            std::cout << "Trying to open file: " << file_path << "\n";
             try {
                 std::string file_content = read_file(file_path);
+
+                // MIMEタイプを取得
+                // std::string mime_type = get_mime_type(file_path);
 
                 // HTTPレスポンスの生成
                 std::ostringstream response;
                 response << "HTTP/1.1 200 OK\r\n";
                 response << "Content-Length: " << file_content.size() << "\r\n";
                 response << "Content-Type: text/html\r\n\r\n";
+                // response << "Content-Type: " << mime_type << "\r\n\r\n";
                 response << file_content;
 
                 send(client_socket, response.str().c_str(), response.str().size(), 0);
             } catch (const std::exception& e) {
                 // ファイルが存在しない場合、404エラー
                 const char* not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNot Found";
+                send_custom_error_page(client_socket, 404, "404.html");
                 send(client_socket, not_found, strlen(not_found), 0);
             }
         } else {
