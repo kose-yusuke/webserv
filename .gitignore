@@ -1,0 +1,36 @@
+# IDE and editor settings
+.idea/
+.vscode/
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp.*
+
+# Sensitive configuration files
+config.ini
+secrets.txt
+
+# Compiled object files and executables
+*.o
+*.d
+*.class
+a.out
+mock
+test
+
+# Generated documentation
+docs/
+
+# System-specific files
+.DS_Store
+._.DS_Store
+
+# Miscellaneous and test files
+markdown/
+temporary/
+xv6-public/
+sandbox/
+test*
+file*
+tmp*
