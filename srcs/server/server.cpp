@@ -5,7 +5,13 @@
 #include <sstream>
 #include <stdexcept>
 
-Server::Server(int port) : port(port) {
+// Server::Server(int port) : port(port) {
+//     create_socket();
+//     bind_socket();
+//     listen_socket();
+// }
+
+Server::Server(int port, const std::string& root) : public_root(root), port(port) {
     create_socket();
     bind_socket();
     listen_socket();
@@ -59,12 +65,35 @@ void Server::handle_client(int client_socket) {
     if (request_stream >> method >> path >> version) {
         std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
 
-        if (method == "GET" && path == "/") {
-            const char* response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, world!";
-            send(client_socket, response, strlen(response), 0);
+        // 静的ファイル提供ロジック
+        if (method == "GET") {
+            if (path == "/") {
+                path = "/index.html";  // デフォルトファイル
+            }
+
+            // パスをローカルのファイルパスに変換
+            std::string file_path = public_root + path;
+            std::cout << "Trying to open file: " << file_path << "\n";
+            try {
+                std::string file_content = read_file(file_path);
+
+                // HTTPレスポンスの生成
+                std::ostringstream response;
+                response << "HTTP/1.1 200 OK\r\n";
+                response << "Content-Length: " << file_content.size() << "\r\n";
+                response << "Content-Type: text/html\r\n\r\n";
+                response << file_content;
+
+                send(client_socket, response.str().c_str(), response.str().size(), 0);
+            } catch (const std::exception& e) {
+                // ファイルが存在しない場合、404エラー
+                const char* not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNot Found";
+                send(client_socket, not_found, strlen(not_found), 0);
+            }
         } else {
-            const char* not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNot Found";
-            send(client_socket, not_found, strlen(not_found), 0);
+            // サポートされていないメソッド
+            const char* not_allowed = "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 18\r\n\r\nMethod Not Allowed";
+            send(client_socket, not_allowed, strlen(not_allowed), 0);
         }
     } else {
         const char* bad_request = "HTTP/1.1 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
