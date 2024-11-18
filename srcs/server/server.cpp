@@ -1,9 +1,17 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   server.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/11/18 15:47:08 by koseki.yusu       #+#    #+#             */
+/*   Updated: 2024/11/18 15:47:11 by koseki.yusu      ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+
 #include "../../includes/webserv.hpp"
-#include <iostream>
-#include <cstring>
-#include <unistd.h>
-#include <sstream>
-#include <stdexcept>
 
 Server::Server(const std::string& config_path)
 {
@@ -53,6 +61,102 @@ void Server::listen_socket() {
     std::cout << "Server is listening on port " << port << "\n";
 }
 
+void Server::send_custom_error_page(int client_socket, int status_code, const std::string& error_page) 
+{
+    try {
+        // エラーページのコンテンツを読み取る
+        std::string file_content = read_file("./srcs/public/" + error_page);
+
+        // HTTPレスポンスの生成
+        std::ostringstream response;
+        response << "HTTP/1.1 " << status_code << " ";
+        if (status_code == 404) {
+            response << "Not Found";
+        } else if (status_code == 405) {
+            response << "Method Not Allowed";
+        }
+        response << "\r\n";
+        response << "Content-Length: " << file_content.size() << "\r\n";
+        response << "Content-Type: text/html\r\n\r\n";
+        response << file_content;
+
+        send(client_socket, response.str().c_str(), response.str().size(), 0);
+    } catch (const std::exception& e) {
+        // エラーページが存在しない場合、簡易メッセージを返す
+        std::ostringstream fallback;
+        fallback << "HTTP/1.1 " << status_code << " ";
+        if (status_code == 404) {
+            fallback << "Not Found";
+        } else if (status_code == 405) {
+            fallback << "Method Not Allowed";
+        }
+        fallback << "\r\nContent-Length: 9\r\n\r\nNot Found";
+        send(client_socket, fallback.str().c_str(), fallback.str().size(), 0);
+    }
+}
+
+bool Server::parse_http_request(const std::string& request, std::string& method, std::string& path, std::string& version) {
+    std::istringstream request_stream(request);
+    if (!(request_stream >> method >> path >> version)) {
+        return false;
+    }
+    return true;
+}
+
+void Server::handle_get_request(int client_socket, std::string path) 
+{
+    if (path == "/") {
+        path = "/index.html";  // デフォルトファイル
+    }
+
+    std::string file_path = public_root + path;
+    try {
+        std::string file_content = read_file(file_path);
+        // std::string mime_type = get_mime_type(file_path);
+
+        std::ostringstream response;
+        response << "HTTP/1.1 200 OK\r\n";
+        response << "Content-Length: " << file_content.size() << "\r\n";
+        // response << "Content-Type: " << mime_type << "\r\n\r\n";
+        response << "Content-Type: text/html\r\n\r\n";
+        response << file_content;
+
+        send(client_socket, response.str().c_str(), response.str().size(), 0);
+    } catch (const std::exception& e) {
+        send_custom_error_page(client_socket, 404, error_404);
+    }
+}
+
+void Server::handle_post_request(int client_socket, const std::string& request) {
+    size_t body_start = request.find("\r\n\r\n");
+    if (body_start == std::string::npos) {
+        send_error_response(client_socket, 400, "Bad Request");
+        return;
+    }
+
+    std::string body = request.substr(body_start + 4);  // ボディ部分を抽出
+    std::cout << "Received POST body: " << body << "\n";
+
+    std::ostringstream response;
+    response << "HTTP/1.1 200 OK\r\n";
+    response << "Content-Length: " << body.size() << "\r\n";
+    response << "Content-Type: text/plain\r\n\r\n";
+    response << body;
+
+    send(client_socket, response.str().c_str(), response.str().size(), 0);
+}
+
+void Server::send_error_response(int client_socket, int status_code, const std::string& message) {
+    std::ostringstream response;
+    response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
+    response << "Content-Length: " << message.size() << "\r\n";
+    response << "Content-Type: text/plain\r\n\r\n";
+    response << message;
+
+    send(client_socket, response.str().c_str(), response.str().size(), 0);
+}
+
+
 void Server::handle_client(int client_socket) {
     char buffer[1024] = {0};
     int valread = read(client_socket, buffer, sizeof(buffer));
@@ -61,77 +165,23 @@ void Server::handle_client(int client_socket) {
         return;
     }
 
-    std::string request_line(buffer);
-    std::istringstream request_stream(request_line);
     std::string method, path, version;
-    if (request_stream >> method >> path >> version) 
-    {
-        std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
-
-        // 静的ファイル提供ロジック
-        if (method == "GET") {
-            if (path == "/") {
-                path = "/index.html";  // デフォルトファイル
-            }
-
-            // パスをローカルのファイルパスに変換
-            std::string file_path = public_root + path;
-            try {
-                std::string file_content = read_file(file_path);
-
-                // MIMEタイプを取得
-                // std::string mime_type = get_mime_type(file_path);
-
-                // HTTPレスポンスの生成
-                std::ostringstream response;
-                response << "HTTP/1.1 200 OK\r\n";
-                response << "Content-Length: " << file_content.size() << "\r\n";
-                response << "Content-Type: text/html\r\n\r\n";
-                // response << "Content-Type: " << mime_type << "\r\n\r\n";
-                response << file_content;
-
-                send(client_socket, response.str().c_str(), response.str().size(), 0);
-            } catch (const std::exception& e) {
-                // ファイルが存在しない場合、404エラー
-                const char* not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNot Found";
-                send_custom_error_page(client_socket, 404, public_root + "/" + error_404);
-                send(client_socket, not_found, strlen(not_found), 0);
-            }
-        }
-        else if (method == "POST") 
-        {
-            // リクエストボディの開始位置を探す
-            std::string request(buffer);
-            size_t body_start = request.find("\r\n\r\n");
-            if (body_start != std::string::npos) {
-                std::string body = request.substr(body_start + 4);  // ボディ部分を抽出
-
-                // ボディをログに表示
-                std::cout << "Received POST body: " << body << "\n";
-
-                // レスポンスを生成
-                std::ostringstream response;
-                response << "HTTP/1.1 200 OK\r\n";
-                response << "Content-Length: " << body.size() << "\r\n";
-                response << "Content-Type: text/plain\r\n\r\n";
-                response << body;  // ボディをそのままレスポンスとして返す
-
-                send(client_socket, response.str().c_str(), response.str().size(), 0);
-            }
-        }
-        else 
-        {
-            // サポートされていないメソッド
-            const char* not_allowed = "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 18\r\n\r\nMethod Not Allowed";
-            send(client_socket, not_allowed, strlen(not_allowed), 0);
-        }
+    if (!parse_http_request(buffer, method, path, version)) {
+        send_error_response(client_socket, 400, "Bad Request");
+        close(client_socket);
+        return;
     }
-    else 
-    {
-        // ボディが見つからない場合
-        const char* bad_request = "HTTP/1.1 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
-        send(client_socket, bad_request, strlen(bad_request), 0);
+
+    std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
+
+    if (method == "GET") {
+        handle_get_request(client_socket, path);
+    } else if (method == "POST") {
+        handle_post_request(client_socket, buffer);
+    } else {
+        send_error_response(client_socket, 405, "Method Not Allowed");
     }
+
     close(client_socket);
 }
 
