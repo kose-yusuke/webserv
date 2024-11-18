@@ -56,7 +56,8 @@ void Server::handle_client(int client_socket) {
     std::string request_line(buffer);
     std::istringstream request_stream(request_line);
     std::string method, path, version;
-    if (request_stream >> method >> path >> version) {
+    if (request_stream >> method >> path >> version) 
+    {
         std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
 
         // 静的ファイル提供ロジック
@@ -88,16 +89,41 @@ void Server::handle_client(int client_socket) {
                 send_custom_error_page(client_socket, 404, "404.html");
                 send(client_socket, not_found, strlen(not_found), 0);
             }
-        } else {
+        }
+        else if (method == "POST") 
+        {
+            // リクエストボディの開始位置を探す
+            std::string request(buffer);
+            size_t body_start = request.find("\r\n\r\n");
+            if (body_start != std::string::npos) {
+                std::string body = request.substr(body_start + 4);  // ボディ部分を抽出
+
+                // ボディをログに表示
+                std::cout << "Received POST body: " << body << "\n";
+
+                // レスポンスを生成
+                std::ostringstream response;
+                response << "HTTP/1.1 200 OK\r\n";
+                response << "Content-Length: " << body.size() << "\r\n";
+                response << "Content-Type: text/plain\r\n\r\n";
+                response << body;  // ボディをそのままレスポンスとして返す
+
+                send(client_socket, response.str().c_str(), response.str().size(), 0);
+            }
+        }
+        else 
+        {
             // サポートされていないメソッド
             const char* not_allowed = "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 18\r\n\r\nMethod Not Allowed";
             send(client_socket, not_allowed, strlen(not_allowed), 0);
         }
-    } else {
+    }
+    else 
+    {
+        // ボディが見つからない場合
         const char* bad_request = "HTTP/1.1 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
         send(client_socket, bad_request, strlen(bad_request), 0);
     }
-
     close(client_socket);
 }
 
