@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <map>
 
 class Server {
 private:
@@ -13,6 +14,7 @@ private:
     int server_fd;
     struct sockaddr_in address;
     int port;
+    std::string error_404;
 
     void create_socket();
     void bind_socket();
@@ -20,7 +22,7 @@ private:
     void handle_client(int client_socket);
 
 public:
-    Server(int port, const std::string& root);
+    Server(const std::string& config_path);
     ~Server();
     void run();
 };
@@ -28,3 +30,4 @@ public:
 
 std::string read_file(const std::string& file_path);
 void send_custom_error_page(int client_socket, int status_code, const std::string& error_page);
+std::map<std::string, std::string> parse_nginx_config(const std::string& config_path);

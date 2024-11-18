@@ -5,7 +5,15 @@
 #include <sstream>
 #include <stdexcept>
 
-Server::Server(int port, const std::string& root) : public_root(root), port(port) {
+Server::Server(const std::string& config_path)
+{
+    // 設定ファイルを読み取る
+    std::map<std::string, std::string> config = parse_nginx_config(config_path);
+
+    // 設定を取得
+    port = std::stoi(config["listen"]);
+    public_root = config["root"];
+    error_404 = config["error_page 404"];
     create_socket();
     bind_socket();
     listen_socket();
@@ -86,7 +94,7 @@ void Server::handle_client(int client_socket) {
             } catch (const std::exception& e) {
                 // ファイルが存在しない場合、404エラー
                 const char* not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNot Found";
-                send_custom_error_page(client_socket, 404, "404.html");
+                send_custom_error_page(client_socket, 404, public_root + "/" + error_404);
                 send(client_socket, not_found, strlen(not_found), 0);
             }
         }
