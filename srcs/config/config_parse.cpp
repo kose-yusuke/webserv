@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:45:57 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2024/11/25 01:02:10 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/15 19:16:32 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ std::map<std::string, std::string> parse_nginx_config(const std::string& config_
     std::map<std::string, std::string> config;
     std::string line;
     bool in_server_block = false;
+    bool in_location_block = false;
 
     while (std::getline(config_file, line)) 
     {
@@ -49,11 +50,21 @@ std::map<std::string, std::string> parse_nginx_config(const std::string& config_
         if (line == "server {") {
             in_server_block = true;
             continue;
-        } else if (line == "}" && in_server_block) {
+        } else if (line == "}" && in_server_block && !in_location_block) {
+            in_server_block = false;
             break;
         }
 
-        if (in_server_block) {
+        if (in_server_block) 
+        {    
+            if (line == "location / {") {
+                in_location_block = true;
+                continue;
+            } else if (line == "}" && in_location_block) {
+                in_location_block = false;
+                break;
+            }
+
             // セミコロンで終わる行を処理
             size_t semicolon_pos = line.find(';');
             if (semicolon_pos == std::string::npos) {
