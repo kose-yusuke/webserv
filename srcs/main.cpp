@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2024/11/18 15:47:16 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2024/11/24 22:51:13 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,8 @@
 
 int main(int argc, char  **argv) 
 {
-    (void)argc;
+    if (argc != 2)
+        return (print_error_message("need conf filename"));
     try {
         Server server(argv[1]);
         server.run();

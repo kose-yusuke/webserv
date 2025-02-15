@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:45:57 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2024/11/18 15:46:08 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2024/11/25 01:02:10 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 // Nginx形式の設定ファイルを読み取る関数
 // トリム関数
-std::string trim(const std::string& str) {
+std::string space_outer_trim(const std::string& str) {
     size_t first = str.find_first_not_of(" \t");
     if (first == std::string::npos) return "";
     size_t last = str.find_last_not_of(" \t");
@@ -22,7 +22,8 @@ std::string trim(const std::string& str) {
 }
 
 // Nginx形式の設定ファイルを読み取る関数
-std::map<std::string, std::string> parse_nginx_config(const std::string& config_path) {
+std::map<std::string, std::string> parse_nginx_config(const std::string& config_path) 
+{
     std::ifstream config_file(config_path);
     if (!config_file.is_open()) {
         throw std::runtime_error("Failed to open config file: " + config_path);
@@ -32,18 +33,19 @@ std::map<std::string, std::string> parse_nginx_config(const std::string& config_
     std::string line;
     bool in_server_block = false;
 
-    while (std::getline(config_file, line)) {
-        // コメントと空行をスキップ
+    while (std::getline(config_file, line)) 
+    {
         size_t comment_pos = line.find('#');
-        if (comment_pos != std::string::npos) {
+        if (comment_pos != std::string::npos) 
+        {
+            // #(コメントアウト)以降をNULLに置き換える
             line = line.substr(0, comment_pos);
         }
-        line = trim(line);  // 行全体をトリム
+        line = space_outer_trim(line);
         if (line.empty()) {
             continue;
         }
 
-        // ブロックの開始/終了を検出
         if (line == "server {") {
             in_server_block = true;
             continue;
@@ -59,9 +61,9 @@ std::map<std::string, std::string> parse_nginx_config(const std::string& config_
             }
 
             std::string key_value = line.substr(0, semicolon_pos);
-            key_value = trim(key_value);
+            key_value = space_outer_trim(key_value);
 
-            // key と value を空白で分離
+            // keyとvalueを空白で分離
             size_t space_pos = key_value.find(' ');
             if (space_pos == std::string::npos) {
                 throw std::runtime_error("Invalid config line: " + line);
@@ -71,8 +73,8 @@ std::map<std::string, std::string> parse_nginx_config(const std::string& config_
             std::string value = key_value.substr(space_pos + 1);
 
             // トリムを適用
-            key = trim(key);
-            value = trim(value);
+            key = space_outer_trim(key);
+            value = space_outer_trim(value);
 
             // マップに追加
             config[key] = value;

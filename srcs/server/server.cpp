@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2024/11/18 15:47:11 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/15 18:07:32 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,10 +15,8 @@
 
 Server::Server(const std::string& config_path)
 {
-    // 設定ファイルを読み取る
     std::map<std::string, std::string> config = parse_nginx_config(config_path);
 
-    // 設定を取得
     port = std::stoi(config["listen"]);
     public_root = config["root"];
     error_404 = config["error_page 404"];
@@ -64,10 +62,8 @@ void Server::listen_socket() {
 void Server::send_custom_error_page(int client_socket, int status_code, const std::string& error_page) 
 {
     try {
-        // エラーページのコンテンツを読み取る
         std::string file_content = read_file("./srcs/public/" + error_page);
 
-        // HTTPレスポンスの生成
         std::ostringstream response;
         response << "HTTP/1.1 " << status_code << " ";
         if (status_code == 404) {
@@ -82,7 +78,6 @@ void Server::send_custom_error_page(int client_socket, int status_code, const st
 
         send(client_socket, response.str().c_str(), response.str().size(), 0);
     } catch (const std::exception& e) {
-        // エラーページが存在しない場合、簡易メッセージを返す
         std::ostringstream fallback;
         fallback << "HTTP/1.1 " << status_code << " ";
         if (status_code == 404) {
@@ -95,7 +90,8 @@ void Server::send_custom_error_page(int client_socket, int status_code, const st
     }
 }
 
-bool Server::parse_http_request(const std::string& request, std::string& method, std::string& path, std::string& version) {
+bool Server::parse_http_request(const std::string& request, std::string& method, std::string& path, std::string& version) 
+{
     std::istringstream request_stream(request);
     if (!(request_stream >> method >> path >> version)) {
         return false;
@@ -106,11 +102,12 @@ bool Server::parse_http_request(const std::string& request, std::string& method,
 void Server::handle_get_request(int client_socket, std::string path) 
 {
     if (path == "/") {
-        path = "/index.html";  // デフォルトファイル
+        path = "/index.html";
     }
 
     std::string file_path = public_root + path;
     try {
+        std::cout << file_path << std::endl;
         std::string file_content = read_file(file_path);
         // std::string mime_type = get_mime_type(file_path);
 
@@ -122,6 +119,7 @@ void Server::handle_get_request(int client_socket, std::string path)
         response << file_content;
 
         send(client_socket, response.str().c_str(), response.str().size(), 0);
+
     } catch (const std::exception& e) {
         send_custom_error_page(client_socket, 404, error_404);
     }
@@ -185,8 +183,10 @@ void Server::handle_client(int client_socket) {
     close(client_socket);
 }
 
-void Server::run() {
-    while (true) {
+void Server::run() 
+{
+    while (true) 
+    {
         int addrlen = sizeof(address);
         int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
         if (client_socket < 0) {
