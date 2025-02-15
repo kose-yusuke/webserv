@@ -1,0 +1,27 @@
+name: Build Exercises on Ubuntu
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install g++-9 for C++98 support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-9
+          export CXX=g++-9
+
+      - name: Build with Makefile
+        run: |
+          make || exit 1
+          done
