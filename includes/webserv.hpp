@@ -26,18 +26,21 @@ private:
 
     void handle_get_request(int client_socket, std::string path);
     void handle_post_request(int client_socket, const std::string& request);
+    void handle_delete_request();
 
     bool parse_http_request(const std::string& request, std::string& method, std::string& path, std::string& version);
     void send_error_response(int client_socket, int status_code, const std::string& message);
     void send_custom_error_page(int client_socket, int status_code, const std::string& file_path);
 
 public:
-    Server(const std::string& config_path);
+    Server();
+    Server(std::string config_path);
     ~Server();
+    Server(const Server &src);
+    Server& operator=(const Server &src);
 
     void run();
 };
 
 std::string read_file(const std::string& file_path);
-std::map<std::string, std::string> parse_nginx_config(const std::string& config_path);
 int print_error_message(const std::string& message);

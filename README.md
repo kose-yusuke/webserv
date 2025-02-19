@@ -138,6 +138,7 @@ Everything in C++ 98.
 
 ### 通信
 - [Socket()とかBind()とかを理解する](https://qiita.com/Michinosuke/items/0778a5344bdf81488114)
+- [Beej](https://beej.us/guide/bgnet/html/split/)
 
 ### nginx
 - [nginx Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html)

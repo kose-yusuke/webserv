@@ -6,11 +6,12 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2024/11/24 22:51:13 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/19 20:22:24 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/webserv.hpp"
+#include "config/config_parse.hpp"
 
 int main(int argc, char  **argv) 
 {

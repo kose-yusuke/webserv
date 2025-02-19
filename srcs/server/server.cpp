@@ -6,20 +6,24 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/15 18:07:32 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/19 20:21:39 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 
 #include "../../includes/webserv.hpp"
+#include "../config/config_parse.hpp"
 
-Server::Server(const std::string& config_path)
+Server::Server(){}
+
+Server::Server(std::string config_path)
 {
-    std::map<std::string, std::string> config = parse_nginx_config(config_path);
-
-    port = std::stoi(config["listen"]);
-    public_root = config["root"];
-    error_404 = config["error_page 404"];
+    Parse parser(config_path);
+    parser.parse_nginx_config();
+    
+    port = std::stoi(parser.config["listen"]);
+    public_root = parser.config["root"];
+    error_404 = parser.config["error_page 404"];
     create_socket();
     bind_socket();
     listen_socket();
@@ -29,7 +33,30 @@ Server::~Server() {
     close(server_fd);
 }
 
-void Server::create_socket() {
+Server::Server(const Server &src)
+{
+    port = src.port;
+    public_root = src.public_root;
+    error_404 = src.error_404;
+    server_fd = src.server_fd;
+    address = src.address;
+}
+
+Server& Server::operator=(const Server &src)
+{
+    if (this != &src)
+    {
+        port = src.port;
+        public_root = src.public_root;
+        error_404 = src.error_404;
+        server_fd = src.server_fd;
+        address = src.address;
+    }
+    return (*this);
+}
+
+void Server::create_socket() 
+{
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == 0) {
         throw std::runtime_error("Socket creation failed");
@@ -41,7 +68,8 @@ void Server::create_socket() {
     std::cout << "Socket created and options set successfully\n";
 }
 
-void Server::bind_socket() {
+void Server::bind_socket() 
+{
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(port);
@@ -52,7 +80,8 @@ void Server::bind_socket() {
     std::cout << "Socket bound to port " << port << "\n";
 }
 
-void Server::listen_socket() {
+void Server::listen_socket() 
+{
     if (listen(server_fd, 3) < 0) {
         throw std::runtime_error("Failed to listen on socket");
     }
@@ -62,7 +91,7 @@ void Server::listen_socket() {
 void Server::send_custom_error_page(int client_socket, int status_code, const std::string& error_page) 
 {
     try {
-        std::string file_content = read_file("./srcs/public/" + error_page);
+        std::string file_content = read_file("./public/" + error_page);
 
         std::ostringstream response;
         response << "HTTP/1.1 " << status_code << " ";
@@ -89,6 +118,8 @@ void Server::send_custom_error_page(int client_socket, int status_code, const st
         send(client_socket, fallback.str().c_str(), fallback.str().size(), 0);
     }
 }
+
+// Request/Responseは分離する
 
 bool Server::parse_http_request(const std::string& request, std::string& method, std::string& path, std::string& version) 
 {
@@ -125,6 +156,7 @@ void Server::handle_get_request(int client_socket, std::string path)
     }
 }
 
+// ファイルを保存する
 void Server::handle_post_request(int client_socket, const std::string& request) {
     size_t body_start = request.find("\r\n\r\n");
     if (body_start == std::string::npos) {
@@ -143,6 +175,10 @@ void Server::handle_post_request(int client_socket, const std::string& request) 
 
     send(client_socket, response.str().c_str(), response.str().size(), 0);
 }
+
+// ファイルを削除する
+void Server::handle_delete_request() {}
+
 
 void Server::send_error_response(int client_socket, int status_code, const std::string& message) {
     std::ostringstream response;
@@ -176,6 +212,8 @@ void Server::handle_client(int client_socket) {
         handle_get_request(client_socket, path);
     } else if (method == "POST") {
         handle_post_request(client_socket, buffer);
+    } else if (method == "DELETE") {
+        handle_delete_request();
     } else {
         send_error_response(client_socket, 405, "Method Not Allowed");
     }
