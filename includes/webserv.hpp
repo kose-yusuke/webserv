@@ -7,6 +7,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <map>
+#include <vector>
+#include <thread>
 #include <cstring>
 #include <unistd.h>
 
@@ -34,7 +36,7 @@ private:
 
 public:
     Server();
-    Server(std::string config_path);
+    Server(const std::map<std::string, std::string>& config);
     ~Server();
     Server(const Server &src);
     Server& operator=(const Server &src);

@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/19 20:21:39 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/20 01:09:37 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,29 +16,49 @@
 
 Server::Server(){}
 
-Server::Server(std::string config_path)
-{
-    Parse parser(config_path);
-    parser.parse_nginx_config();
-    
-    port = std::stoi(parser.config["listen"]);
-    public_root = parser.config["root"];
-    error_404 = parser.config["error_page 404"];
-    create_socket();
-    bind_socket();
-    listen_socket();
+Server::Server(const std::map<std::string, std::string>& config)
+{    
+    try {
+        std::stringstream ss(config.find("listen")->second);
+        if (!(ss >> port)) {  
+            throw std::runtime_error("Invalid port number: " + config.find("listen")->second);
+        }
+        public_root = config.find("root")->second;
+        std::map<std::string, std::string>::const_iterator it = config.find("error_page 404");
+        error_404 = (it != config.end()) ? it->second : "404.html";
+
+        create_socket();
+        bind_socket();
+        listen_socket();
+    } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("Error initializing server: ") + e.what());
+    }
 }
 
+// Server::~Server() {
+//     close(server_fd);
+// }
+
+// Server::~Server() {
+//     std::cout << "Closing server_fd: " << server_fd << " (port: " << port << ")\n";
+//     close(server_fd);
+// }
+
 Server::~Server() {
-    close(server_fd);
+    if (server_fd >= 0) {  // ✅ 無効な `server_fd` は閉じない
+        std::cout << "Closing server_fd: " << server_fd << " (port: " << port << ")\n";
+        close(server_fd);
+    }
 }
+
+
 
 Server::Server(const Server &src)
 {
     port = src.port;
     public_root = src.public_root;
     error_404 = src.error_404;
-    server_fd = src.server_fd;
+    server_fd = -1;
     address = src.address;
 }
 
@@ -49,7 +69,7 @@ Server& Server::operator=(const Server &src)
         port = src.port;
         public_root = src.public_root;
         error_404 = src.error_404;
-        server_fd = src.server_fd;
+        server_fd = -1;
         address = src.address;
     }
     return (*this);
@@ -58,9 +78,11 @@ Server& Server::operator=(const Server &src)
 void Server::create_socket() 
 {
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == 0) {
+    if (server_fd < 0) {
+        perror("Socket creation failed");
         throw std::runtime_error("Socket creation failed");
     }
+    
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) != 0) {
         throw std::runtime_error("Failed to set socket options");
@@ -82,10 +104,12 @@ void Server::bind_socket()
 
 void Server::listen_socket() 
 {
-    if (listen(server_fd, 3) < 0) {
+    if (listen(server_fd, SOMAXCONN) < 0) {
+        perror("Listen failed");
+        close(server_fd);
         throw std::runtime_error("Failed to listen on socket");
     }
-    std::cout << "Server is listening on port " << port << "\n";
+    std::cout << "Server is listening on port " << port << " (server_fd: " << server_fd << ")\n";
 }
 
 void Server::send_custom_error_page(int client_socket, int status_code, const std::string& error_page) 
@@ -221,16 +245,53 @@ void Server::handle_client(int client_socket) {
     close(client_socket);
 }
 
+// void Server::run() 
+// {
+//     std::cout << "Server FD at run start: " << server_fd << " (port: " << port << ")\n";
+    
+//     if (server_fd < 0) {
+//         std::cerr << "Error: Server socket is invalid (Bad file descriptor)\n";
+//         return;
+//     }
+    // while (true) 
+    // {
+    //     int addrlen = sizeof(address);
+    //     int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+    //     if (client_socket < 0) {
+    //         std::cerr << "Failed to accept connection\n";
+    //         perror("accept failed");
+    //         continue;
+    //     }
+    //     handle_client(client_socket);
+    // }
+// }
+
 void Server::run() 
 {
-    while (true) 
+    int n = 1;
+    std::cout << "Server FD at run start: " << server_fd << " (port: " << port << ")\n";
+    
+    if (server_fd < 0) {
+        std::cerr << "Error: Server socket is invalid (Bad file descriptor)\n";
+        return;
+    }
+
+    while (n > 0) 
     {
         int addrlen = sizeof(address);
+        
+        std::cout << "Before accept: server_fd = " << server_fd << " (port: " << port << ")\n";
+        
         int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+
         if (client_socket < 0) {
-            std::cerr << "Failed to accept connection\n";
+            perror("accept failed");
+            std::cerr << "accept() error on port " << port << ": " << strerror(errno) << std::endl;
             continue;
         }
+
+        std::cout << "Accepted connection on port " << port << " (server_fd: " << server_fd << ")\n";
         handle_client(client_socket);
+        n--;
     }
 }
