@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:45:57 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/20 18:24:06 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/20 19:27:47 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ Parse& Parse::operator=(const Parse &src)
 
 /* Validateに関するコード*/
 const char* Parse::valid_keys[] = {
-    "listen", "root", "error_page", "autoindex", "server_name"
+    "listen", "root", "index", "error_page", "autoindex", "server_name", "allow_methods", "client_max_body_size", "return", "cgi_extension", "upload_path", "alias"
 };
 
 const char* Parse::required_keys[] = {
@@ -227,6 +227,7 @@ std::vector<std::map<std::string, std::string> > Parse::parse_nginx_config()
         if (in_server_block)
             found_server_block = true;
         if (!in_server_block && !current_config.empty()) {
+            
             validate_config(current_config);
             server_configs.push_back(current_config);
             reset_server_config(current_config, location_configs, server_root_seen);
@@ -306,9 +307,11 @@ void Parse::handle_server_block(const std::string& line, std::map<std::string, s
     } else {
         if (key == "root" && server_root_seen)
             throw std::runtime_error("Duplicate root directive found in server block.");
-        server_root_seen = true;
+        else if (key == "root")
+            server_root_seen = true;
         current_config[key] = value;
     }
+    std::cout << "Parsed config: key='" << key << "', value='" << value << "'\n";
 }
 
 /* parser utils */
