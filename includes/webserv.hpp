@@ -14,15 +14,16 @@
 
 class Server {
 private:
+    std::map<std::string, std::vector<std::string> > config;
+    std::vector<int> listen_ports;
     std::string public_root;
-    int server_fd;
-    struct sockaddr_in address;
-    int port;
     std::string error_404;
+    std::vector<int> server_fds;
+    std::vector<sockaddr_in> addresses;
 
-    void create_socket();
-    void bind_socket();
-    void listen_socket();
+    void create_sockets();
+    void bind_socket(int sockfd, int port);
+    void listen_socket(int sockfd, int port);
 
     void handle_client(int client_socket);
 
@@ -36,11 +37,10 @@ private:
 
 public:
     Server();
-    Server(const std::map<std::string, std::string>& config);
+    Server(const std::map<std::string, std::vector<std::string> >& config);
     ~Server();
-    Server(const Server &src);
-    Server& operator=(const Server &src);
-
+    // Server(const Server &src);
+    // Server& operator=(const Server &src);
     void run();
 };
 
