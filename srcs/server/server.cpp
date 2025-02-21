@@ -6,63 +6,229 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/15 18:07:32 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/21 11:21:41 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 
 #include "../../includes/webserv.hpp"
+#include "../config/config_parse.hpp"
 
-Server::Server(const std::string& config_path)
-{
-    std::map<std::string, std::string> config = parse_nginx_config(config_path);
+Server::Server(){}
 
-    port = std::stoi(config["listen"]);
-    public_root = config["root"];
-    error_404 = config["error_page 404"];
-    create_socket();
-    bind_socket();
-    listen_socket();
+Server::Server(const std::map<std::string, std::vector<std::string> >& config)
+    : config(config)
+{    
+    try {
+        // listen
+        std::map<std::string, std::vector<std::string> >::const_iterator listen_it = config.find("listen");
+        if (listen_it == config.end() || listen_it->second.empty())
+            throw std::runtime_error("Missing required key: listen");
+
+        for (size_t i = 0; i < listen_it->second.size(); i++) {
+            int port;
+            std::stringstream ss(listen_it->second[i]);
+            if (!(ss >> port))
+                throw std::runtime_error("Invalid port number: " + listen_it->second[i]);
+            listen_ports.push_back(port);
+        }
+
+        // root
+        std::map<std::string, std::vector<std::string> >::const_iterator root_it = config.find("root");
+        if (root_it == config.end() || root_it->second.empty()) {
+            throw std::runtime_error("Missing required key: root");
+        }
+        // この辺実はいらなそう
+        public_root = root_it->second[0];
+        
+        std::map<std::string, std::vector<std::string> >::const_iterator error_it = config.find("error_page 404");
+        error_404 = (error_it != config.end() && !error_it->second.empty()) ? error_it->second[0] : "404.html";
+
+        create_sockets();
+    } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("Error initializing server: ") + e.what());
+    }
 }
 
-Server::~Server() {
-    close(server_fd);
+void Server::create_sockets() {
+    std::vector<int> temp_fds;
+
+    try {
+        for (size_t i = 0; i < listen_ports.size(); i++) {
+            int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+            if (sockfd == -1) {
+                throw std::runtime_error("Socket creation failed for port: " + std::to_string(listen_ports[i]));
+            }
+
+            int opt = 1;
+            if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) != 0) {
+                close(sockfd);
+                throw std::runtime_error("Failed to set socket options for port: " + std::to_string(listen_ports[i]));
+            }
+
+            bind_socket(sockfd, listen_ports[i]);
+            listen_socket(sockfd, listen_ports[i]);
+
+            temp_fds.push_back(sockfd);
+        }
+
+        server_fds = temp_fds;
+        std::cout << "Socket created and options set successfully\n";
+
+    } catch (...) {
+        for (size_t i = 0; i < temp_fds.size(); i++) {
+            close(temp_fds[i]);
+        }
+        throw;
+    }
 }
 
-void Server::create_socket() {
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == 0) {
-        throw std::runtime_error("Socket creation failed");
-    }
-    int opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) != 0) {
-        throw std::runtime_error("Failed to set socket options");
-    }
-    std::cout << "Socket created and options set successfully\n";
-}
 
-void Server::bind_socket() {
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(port);
+void Server::bind_socket(int sockfd, int port) {
+    sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(port);
 
-    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
-        throw std::runtime_error("Failed to bind socket");
-    }
+    if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+        throw std::runtime_error("Failed to bind socket to port: " + std::to_string(port));
+    addresses.push_back(addr);
     std::cout << "Socket bound to port " << port << "\n";
 }
 
-void Server::listen_socket() {
-    if (listen(server_fd, 3) < 0) {
-        throw std::runtime_error("Failed to listen on socket");
+void Server::listen_socket(int sockfd, int port) {
+    if (listen(sockfd, SOMAXCONN) < 0) {
+        close(sockfd);
+        throw std::runtime_error("Failed to listen on port: " + std::to_string(port));
     }
-    std::cout << "Server is listening on port " << port << "\n";
+    std::cout << "Server is listening on port " << port << " (fd: " << sockfd << ")\n";
 }
 
+Server::~Server() {
+    for (size_t i = 0; i < server_fds.size(); i++) {
+        close(server_fds[i]);
+        std::cout << "Closed server_fd: " << server_fds[i] << std::endl;
+        server_fds[i] = -1;
+    }
+}
+
+
+void Server::run() 
+{   
+    while (true) 
+    {
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        // server_fdsを read_fds に登録。
+        int max_fd = -1;
+        for (size_t i = 0; i < server_fds.size(); i++) {
+            FD_SET(server_fds[i], &read_fds);
+            if (server_fds[i] > max_fd) {
+                max_fd = server_fds[i];
+            }
+        }
+
+        std::cout << "Waiting for connections...\n";
+        // server_fd に接続があるかどうかチェック
+        int activity = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
+        if (activity < 0 && errno != EINTR) {
+            std::cerr << "Error: select() failed with errno " << errno << " (" << strerror(errno) << ")\n";
+            continue;
+        }
+
+        // どのポートに接続があったかをFD_ISSET()でチェック
+        for (size_t i = 0; i < server_fds.size(); i++) {
+            if (FD_ISSET(server_fds[i], &read_fds)) {
+                int addrlen = sizeof(addresses[i]);
+                int client_socket = accept(server_fds[i], (struct sockaddr*)&addresses[i], (socklen_t*)&addrlen);
+
+                if (client_socket < 0) {
+                    perror("accept failed");
+                    std::cerr << "accept() error on port " << listen_ports[i] << ": " << strerror(errno) << std::endl;
+                    continue;
+                }
+
+                std::cout << "Accepted connection on port " << listen_ports[i] << " (server_fd: " << server_fds[i] << ")\n";
+                handle_client(client_socket);
+            }
+        }
+    }
+}
+
+
+void Server::handle_client(int client_socket) {
+    char buffer[1024] = {0};
+    int valread = read(client_socket, buffer, sizeof(buffer));
+    if (valread <= 0) {
+        close(client_socket);
+        return;
+    }
+
+    std::string method, path, version;
+    if (!parse_http_request(buffer, method, path, version)) {
+        send_error_response(client_socket, 400, "Bad Request");
+        close(client_socket);
+        return;
+    }
+
+    std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
+
+    if (method == "GET") {
+        handle_get_request(client_socket, path);
+    } else if (method == "POST") {
+        handle_post_request(client_socket, buffer);
+    } else if (method == "DELETE") {
+        handle_delete_request();
+    } else {
+        send_error_response(client_socket, 405, "Method Not Allowed");
+    }
+
+    close(client_socket);
+}
+
+
+
+
+// Server::Server(const Server &src)
+//     : config(src.config), listen_ports(src.listen_ports), public_root(src.public_root),
+//       error_404(src.error_404), server_fds()
+// {
+//     try {
+//         create_sockets();  // コピー時に新しくソケットを作る
+//     } catch (const std::exception& e) {
+//         throw std::runtime_error("Error copying server: " + std::string(e.what()));
+//     }
+// }
+
+// Server& Server::operator=(const Server &src)
+// {
+//     if (this != &src)
+//     {
+//         config = src.config;
+//         listen_ports = src.listen_ports;
+//         public_root = src.public_root;
+//         error_404 = src.error_404;
+
+//         for (size_t i = 0; i < server_fds.size(); i++) {
+//             close(server_fds[i]);
+//         }
+//         server_fds.clear();
+
+//         try {
+//             create_sockets();
+//         } catch (const std::exception& e) {
+//             throw std::runtime_error("Error copying server: " + std::string(e.what()));
+//         }
+//     }
+//     return *this;
+// }
+
+
+// error page用のclassとファイル
 void Server::send_custom_error_page(int client_socket, int status_code, const std::string& error_page) 
 {
     try {
-        std::string file_content = read_file("./srcs/public/" + error_page);
+        std::string file_content = read_file("./public/" + error_page);
 
         std::ostringstream response;
         response << "HTTP/1.1 " << status_code << " ";
@@ -90,6 +256,7 @@ void Server::send_custom_error_page(int client_socket, int status_code, const st
     }
 }
 
+// request handler class
 bool Server::parse_http_request(const std::string& request, std::string& method, std::string& path, std::string& version) 
 {
     std::istringstream request_stream(request);
@@ -125,6 +292,7 @@ void Server::handle_get_request(int client_socket, std::string path)
     }
 }
 
+// ファイルを保存する
 void Server::handle_post_request(int client_socket, const std::string& request) {
     size_t body_start = request.find("\r\n\r\n");
     if (body_start == std::string::npos) {
@@ -144,6 +312,10 @@ void Server::handle_post_request(int client_socket, const std::string& request) 
     send(client_socket, response.str().c_str(), response.str().size(), 0);
 }
 
+// ファイルを削除する
+void Server::handle_delete_request() {}
+
+
 void Server::send_error_response(int client_socket, int status_code, const std::string& message) {
     std::ostringstream response;
     response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
@@ -152,47 +324,4 @@ void Server::send_error_response(int client_socket, int status_code, const std::
     response << message;
 
     send(client_socket, response.str().c_str(), response.str().size(), 0);
-}
-
-
-void Server::handle_client(int client_socket) {
-    char buffer[1024] = {0};
-    int valread = read(client_socket, buffer, sizeof(buffer));
-    if (valread <= 0) {
-        close(client_socket);
-        return;
-    }
-
-    std::string method, path, version;
-    if (!parse_http_request(buffer, method, path, version)) {
-        send_error_response(client_socket, 400, "Bad Request");
-        close(client_socket);
-        return;
-    }
-
-    std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
-
-    if (method == "GET") {
-        handle_get_request(client_socket, path);
-    } else if (method == "POST") {
-        handle_post_request(client_socket, buffer);
-    } else {
-        send_error_response(client_socket, 405, "Method Not Allowed");
-    }
-
-    close(client_socket);
-}
-
-void Server::run() 
-{
-    while (true) 
-    {
-        int addrlen = sizeof(address);
-        int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-        if (client_socket < 0) {
-            std::cerr << "Failed to accept connection\n";
-            continue;
-        }
-        handle_client(client_socket);
-    }
 }
