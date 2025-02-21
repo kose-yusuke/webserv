@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:45:57 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/20 20:40:36 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/21 11:09:43 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,8 @@ const char* Parse::valid_keys[] = {
     "listen", "root", "index", "error_page", "autoindex", "server_name", "allow_methods", "client_max_body_size", "return", "cgi_extension", "upload_path", "alias"
 };
 
+
+// rootはlocationにあればよさそう
 const char* Parse::required_keys[] = {
     "listen", "root"
 };
