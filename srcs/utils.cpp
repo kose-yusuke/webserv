@@ -6,12 +6,20 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2024/11/18 15:47:55 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2024/11/24 22:50:14 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 
 #include "../includes/webserv.hpp"
+
+int print_error_message(const std::string& message)
+{
+    std::cerr << "Error: " << message << std::endl;
+    return (1);
+}
+
+
 
 // ファイルの内容を読み取るヘルパー関数
 std::string read_file(const std::string& file_path) 

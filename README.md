@@ -41,7 +41,7 @@ GET/POST/DELETE method, CGI, I/O Multiplexingなど
     - ルートに受け入れられるHTTP メソッドのリストを定義する
     - HTTPリダイレクトの定義をする
     - ファイルが検索されるべきディレクトリまたはファイルを定義する（例えば, url /kapouetが/tmp/wwwにルートされている場合, url /kapouet/pouic/toto/pouetは/tmp/www/pouic/toto/pouet）
-    - ディレクトリ一覧の表示/非表示を切り替える
+    - ディレクトリ一覧の表示/非表示を切り替える (autoindexのこと？)
     - リクエストがディレクトリの場合, デフォルトのレスポンスファイルを設定する
     - 特定のファイル拡張子(例えば.php)に基づいてCGIを実行する
     - POSTメソッドとGETメソッドで動作するようにする
@@ -138,9 +138,11 @@ Everything in C++ 98.
 
 ### 通信
 - [Socket()とかBind()とかを理解する](https://qiita.com/Michinosuke/items/0778a5344bdf81488114)
+- [Beej](https://beej.us/guide/bgnet/html/split/)
 
 ### nginx
 - [nginx Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html)
+- [nginx.confの解説、書き方](https://qiita.com/ponponnsan/items/23e1aa6f7dd4eadde5df)
 ### 42 推奨資料
 - [RFC](https://triple-underscore.github.io/http1-ja.html)
 
