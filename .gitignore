@@ -34,3 +34,7 @@ sandbox/
 test*
 file*
 tmp*
+
+# Others
+objs/*
+webserv
