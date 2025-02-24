@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2024/11/24 22:50:14 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/25 02:43:31 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,9 +22,9 @@ int print_error_message(const std::string& message)
 
 
 // ファイルの内容を読み取るヘルパー関数
-std::string read_file(const std::string& file_path) 
+std::string read_file(const std::string& file_path)
 {
-    std::ifstream file(file_path, std::ios::in);
+    std::ifstream file(file_path.c_str(), std::ios::in);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open file: " + file_path);
     }
