@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Multiplexer.hpp"
+#include <sys/select.h>
 
 /**
  * select を用いたI/O多重化
