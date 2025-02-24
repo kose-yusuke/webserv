@@ -104,7 +104,8 @@ void SelectMultiplexer::handleClient(fd_set &fdSet, int &maxFd, int clientFd) {
 
 SelectMultiplexer::SelectMultiplexer() {}
 
-SelectMultiplexer::SelectMultiplexer(const SelectMultiplexer &other) {
+SelectMultiplexer::SelectMultiplexer(const SelectMultiplexer &other)
+    : Multiplexer(other) {
   (void)other;
 }
 

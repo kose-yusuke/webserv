@@ -9,7 +9,8 @@ void KqueueMultiplexer::run() {
 
 KqueueMultiplexer::KqueueMultiplexer() {}
 
-KqueueMultiplexer::KqueueMultiplexer(const KqueueMultiplexer &other) {
+KqueueMultiplexer::KqueueMultiplexer(const KqueueMultiplexer &other)
+    : Multiplexer(other) {
   (void)other;
 }
 

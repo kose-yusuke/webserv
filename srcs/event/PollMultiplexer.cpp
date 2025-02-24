@@ -113,7 +113,10 @@ void PollMultiplexer::handleClient(std::vector<struct pollfd> &pfds,
 
 PollMultiplexer::PollMultiplexer() {}
 
-PollMultiplexer::PollMultiplexer(const PollMultiplexer &other) { (void)other; }
+PollMultiplexer::PollMultiplexer(const PollMultiplexer &other)
+    : Multiplexer(other) {
+  (void)other;
+}
 
 PollMultiplexer::~PollMultiplexer() {}
 

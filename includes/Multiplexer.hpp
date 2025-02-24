@@ -29,9 +29,9 @@ protected:
   static Server *getServerFromClientServerMap(int clientFd);
 
   Multiplexer();
-  virtual ~Multiplexer();
+  Multiplexer(const Multiplexer &other);
+  ~Multiplexer();
 
 private:
-  Multiplexer(const Multiplexer &other);
   Multiplexer &operator=(const Multiplexer &other);
 };
