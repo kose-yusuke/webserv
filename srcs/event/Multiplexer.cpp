@@ -4,6 +4,7 @@
 #include "PollMultiplexer.hpp"
 #include "SelectMultiplexer.hpp"
 #include <iostream>
+#include <sstream>
 #include <unistd.h>
 
 void Multiplexer::run() {
@@ -49,11 +50,15 @@ bool Multiplexer::isInServerFdMap(int serverFd) {
 }
 
 Server *Multiplexer::getServerFromServerFdMap(int serverFd) {
-  if (serverFdMap_.find(serverFd) == serverFdMap_.end()) {
-    throw std::runtime_error("Server not found for fd: " +
-                             std::to_string(serverFd));
+  std::map<int, Server *>::iterator it = serverFdMap_.find(serverFd);
+  if (it == serverFdMap_.end()) {
+
+    std::stringstream ss;
+    ss << "Server not found for fd: ";
+    ss << serverFd;
+    throw std::runtime_error(ss.str());
   }
-  return serverFdMap_[serverFd];
+  return it->second;
 }
 
 void Multiplexer::addClientFd(int clientFd, Server *server) {
@@ -69,11 +74,14 @@ bool Multiplexer::isInClientServerMap(int clientFd) {
 }
 
 Server *Multiplexer::getServerFromClientServerMap(int clientFd) {
-  if (clientServerMap_.find(clientFd) == clientServerMap_.end()) {
-    throw std::runtime_error("Server not found for fd: " +
-                             std::to_string(clientFd));
+  std::map<int, Server *>::iterator it = clientServerMap_.find(clientFd);
+  if (it == clientServerMap_.end()) {
+    std::stringstream ss;
+    ss << "Server not found for fd: ";
+    ss << clientFd;
+    throw std::runtime_error(ss.str());
   }
-  return clientServerMap_[clientFd];
+  return it->second;
 }
 
 Multiplexer::Multiplexer() {}

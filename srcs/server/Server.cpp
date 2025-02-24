@@ -3,6 +3,7 @@
 #include "config_parse.hpp"
 #include <cstring>
 #include <netdb.h>
+#include <sstream>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -67,7 +68,9 @@ void Server::createSockets() {
 int Server::createListenSocket(int port) {
   int sockfd = -1, status, opt = 1;
   struct addrinfo hints, *ai, *p;
-  std::string port_str = std::to_string(port);
+  std::stringstream ss;
+  ss << port;
+  std::string port_str = ss.str();
 
   std::memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6 両方対応
