@@ -13,7 +13,7 @@ void Multiplexer::run() {
     throw std::runtime_error("No listening sockets available");
   }
 #if defined(__linux__)
-  Epoller::run();
+  EpollMultiplexer::run();
 #elif defined(__APPLE__) || defined(__MACH__)
   KqueueMultiplexer::run();
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
