@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/25 01:13:06 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/02/25 02:08:46 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include "Server.hpp"
 #include "config_parse.hpp"
 #include "webserv.hpp"
+#include <cstdlib>
 
 int main(int argc, char **argv) {
   if (argc != 2)
