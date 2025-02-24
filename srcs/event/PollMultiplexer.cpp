@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 void PollMultiplexer::run() {
+  std::cout << "PollMultiplexer::run() called\n";
   std::vector<struct pollfd> pfds;
 
   pfds.reserve(serverFdMap_.size());
@@ -62,7 +63,8 @@ void PollMultiplexer::addAllServerFdsToPfds(std::vector<struct pollfd> &pfds) {
   }
 }
 
-void PollMultiplexer::acceptClient(std::vector<struct pollfd> &pfds, int serverFd) {
+void PollMultiplexer::acceptClient(std::vector<struct pollfd> &pfds,
+                                   int serverFd) {
   struct sockaddr_storage clientAddr;
   socklen_t addrlen = sizeof(clientAddr);
 
@@ -72,15 +74,17 @@ void PollMultiplexer::acceptClient(std::vector<struct pollfd> &pfds, int serverF
     return;
   }
   std::cout << "New connection on client fd: " << clientFd << "\n";
-  addPfd(pfds, clientFd);
-  Server *server = getServerFromServerFdMap(serverFd);
-  if (!server) {
-    throw std::runtime_error("Failed to map a server for a client");
+  try {
+    addClientFd(clientFd, getServerFromServerFdMap(serverFd));
+    addPfd(pfds, clientFd);
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    close(clientFd);
   }
-  addClientFd(clientFd, server);
 }
 
-void PollMultiplexer::handleClient(std::vector<struct pollfd> &pfds, int clientFd) {
+void PollMultiplexer::handleClient(std::vector<struct pollfd> &pfds,
+                                   int clientFd) {
   char buffer[1024] = {0};
 
   int nbytes = recv(clientFd, buffer, sizeof(buffer), 0);
@@ -98,19 +102,22 @@ void PollMultiplexer::handleClient(std::vector<struct pollfd> &pfds, int clientF
     removeClientFd(clientFd);
     return;
   }
-  Server *server = getServerFromClientServerMap(clientFd);
-  if (!server) {
-    // XXX: sendErrorResponse(clientFd, 500, "Internal Server Error");
+  try {
+    Server *server = getServerFromClientServerMap(clientFd);
+    server->handleHttpRequest(clientFd, buffer, nbytes);
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << "\n";
     close(clientFd);
-    return;
   }
-  server->handleHttpRequest(clientFd, buffer, nbytes);
 }
 
 PollMultiplexer::PollMultiplexer() {}
 
-PollMultiplexer::PollMultiplexer(const PollMultiplexer &other) {}
+PollMultiplexer::PollMultiplexer(const PollMultiplexer &other) { (void)other; }
 
 PollMultiplexer::~PollMultiplexer() {}
 
-PollMultiplexer &PollMultiplexer::operator=(const PollMultiplexer &other) {}
+PollMultiplexer &PollMultiplexer::operator=(const PollMultiplexer &other) {
+  (void)other;
+  return *this;
+}

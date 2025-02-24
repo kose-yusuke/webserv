@@ -4,6 +4,9 @@
 #include <poll.h>
 #include <vector>
 
+/**
+ * poll を用いたI/O多重化
+ */
 class PollMultiplexer : public Multiplexer {
 public:
   static void run();
