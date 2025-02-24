@@ -3,7 +3,12 @@ CXX      := c++
 CXXFLAGS := -Wall -Wextra -Werror -std=c++98 -MMD -MP
 SRCDIR   := srcs
 OBJDIR   := objs
-SRCS     := $(SRCDIR)/main.cpp $(SRCDIR)/server/server.cpp $(SRCDIR)/utils.cpp $(SRCDIR)/config/config_parse.cpp
+SRCS     := $(SRCDIR)/main.cpp $(SRCDIR)/server/Server.cpp $(SRCDIR)/utils.cpp $(SRCDIR)/config/config_parse.cpp \
+            $(SRCDIR)/event/EpollMultiplexer.cpp \
+			$(SRCDIR)/event/Multiplexer.cpp \
+			$(SRCDIR)/event/SelectMultiplexer.cpp \
+			$(SRCDIR)/event/KqueueMultiplexer.cpp \
+			$(SRCDIR)/event/PollMultiplexer.cpp
 OBJS     := $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 DEPS     := $(OBJS:.o=.d)
 
