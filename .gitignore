@@ -38,3 +38,5 @@ tmp*
 # Others
 objs/*
 webserv
+*.pdf
+ReadingList.md
