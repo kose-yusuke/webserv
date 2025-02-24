@@ -8,7 +8,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <thread>
 #include <unistd.h>
 #include <vector>
 
