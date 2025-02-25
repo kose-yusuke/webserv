@@ -11,7 +11,9 @@ void SelectMultiplexer::run() {
   std::cout << "SelectMultiplexer::run() called\n";
   fd_set mainFds;
   int maxFd = -1;
+  FD_ZERO(&mainFds);
   addAllServerFdsToFdSet(mainFds, maxFd);
+
   while (true) {
     fd_set readFds = mainFds;
     int activity = select(maxFd + 1, &readFds, NULL, NULL, NULL);
