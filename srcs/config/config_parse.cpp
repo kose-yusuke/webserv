@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   config_parse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:45:57 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/21 11:09:43 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/02/25 02:47:28 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ Parse::Parse(std::string config_path)
 
 Parse::~Parse(){}
 
-Parse::Parse(const Parse &src) 
+Parse::Parse(const Parse &src)
 {
     this->_config_path = src._config_path;
 }
@@ -57,7 +57,7 @@ void Parse::validate_config(const std::map<std::string, std::vector<std::string>
     validate_location_path(config);
 }
 
-void Parse::validate_config_keys(const std::map<std::string, std::vector<std::string> >& config) 
+void Parse::validate_config_keys(const std::map<std::string, std::vector<std::string> >& config)
 {
     for (size_t i = 0; i < sizeof(required_keys) / sizeof(required_keys[0]); i++) {
         if (config.find(required_keys[i]) == config.end()) {
@@ -120,11 +120,11 @@ bool is_valid_ip(const std::string& ip)
     for (size_t i = 0; i < ip.length(); i++) {
         if (std::isdigit(ip[i])) {
             num = num * 10 + (ip[i] - '0');
-            if (num > 255) 
+            if (num > 255)
                 return false;
             has_digit = true;
         } else if (ip[i] == '.') {
-            if (!has_digit) 
+            if (!has_digit)
                 return false;
             dots++;
             num = 0;
@@ -137,10 +137,10 @@ bool is_valid_ip(const std::string& ip)
 }
 
 void Parse::validate_listen_ip(const std::map<std::string, std::vector<std::string> >& config)
-{   
+{
     std::map<std::string, std::vector<std::string> >::const_iterator it = config.find("listen");
     if (it != config.end()) {
-        for (size_t j = 0; j < it->second.size(); j++) { 
+        for (size_t j = 0; j < it->second.size(); j++) {
             std::string listen_value = space_outer_trim(it->second[j]);
             size_t colon_pos = listen_value.find(':');
             size_t dot_pos = listen_value.find('.');
@@ -207,10 +207,10 @@ void Parse::check_duplicate_key(const std::string& key, const std::map<std::stri
 /* Parser */
 std::vector<std::map<std::string, std::vector<std::string> > > Parse::parse_nginx_config()
 {
-    std::ifstream _config_file(_config_path);
+    std::ifstream _config_file(_config_path.c_str());
     if (!_config_file.is_open())
         throw std::runtime_error("Failed to open config file: " + _config_path);
-    
+
     std::string line;
     bool in_server_block = false;
     bool in_location_block = false;
@@ -223,7 +223,7 @@ std::vector<std::map<std::string, std::vector<std::string> > > Parse::parse_ngin
     std::map<std::string, std::map<std::string, std::string> > location_configs;
 
 
-    while (std::getline(_config_file, line)) 
+    while (std::getline(_config_file, line))
     {
         process_line(line, current_config, location_configs, in_server_block, in_location_block, current_location_path, server_root_seen);
         if (in_server_block)
@@ -234,7 +234,7 @@ std::vector<std::map<std::string, std::vector<std::string> > > Parse::parse_ngin
             reset_server_config(current_config, location_configs, server_root_seen);
         }
     }
-    
+
     if (!found_server_block) {
         throw std::runtime_error("No server block found in config file.");
     }
@@ -244,7 +244,7 @@ std::vector<std::map<std::string, std::vector<std::string> > > Parse::parse_ngin
 void Parse::process_line(std::string& line, std::map<std::string, std::vector<std::string> >& current_config, std::map<std::string, std::map<std::string, std::string> >& location_configs, bool& in_server_block, bool& in_location_block,std::string& current_location_path, bool& server_root_seen)
 {
     size_t comment_pos = line.find('#');
-    if (comment_pos != std::string::npos) 
+    if (comment_pos != std::string::npos)
         line = line.substr(0, comment_pos);
     line = space_outer_trim(line);
     if (line.empty()) {
@@ -259,9 +259,9 @@ void Parse::process_line(std::string& line, std::map<std::string, std::vector<st
     } else if (is_server_end(line, in_server_block, in_location_block)) {
         in_server_block = false;
         return;
-    } 
-        
-    if (in_server_block) 
+    }
+
+    if (in_server_block)
         handle_server_block(line, current_config, location_configs, in_location_block, current_location_path, server_root_seen);
     else
         throw std::runtime_error("Invalid config structure: No active server block.");
@@ -284,7 +284,7 @@ void Parse::handle_server_block(const std::string& line, std::map<std::string, s
         current_location_path = location_path;
         location_configs[current_location_path] = std::map<std::string, std::string>();
         return;
-    } 
+    }
     else if (is_location_end(line, in_location_block)) {
         in_location_block = false;
         current_location_path = "";
@@ -301,7 +301,7 @@ void Parse::handle_server_block(const std::string& line, std::map<std::string, s
 
     key = space_outer_trim(key);
     value = space_outer_trim(value);
-    
+
     if (in_location_block) {
         check_duplicate_key(key, location_configs[current_location_path]);
         location_configs[current_location_path][key] = value;
@@ -339,10 +339,10 @@ void Parse::reset_server_config(std::map<std::string, std::vector<std::string> >
     server_root_seen = false;
 }
 
-std::string Parse::space_outer_trim(const std::string& str) 
+std::string Parse::space_outer_trim(const std::string& str)
 {
     size_t first = str.find_first_not_of(" \t");
-    if (first == std::string::npos) 
+    if (first == std::string::npos)
         return "";
     size_t last = str.find_last_not_of(" \t");
     return str.substr(first, last - first + 1);

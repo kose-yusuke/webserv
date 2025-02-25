@@ -1,0 +1,31 @@
+name: Build Exercises on Ubuntu
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install g++-9 for C++98 support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-9
+
+      - name: Debug file structure
+        run: |
+          ls -R
+          echo "CXX is set to: $CXX"
+
+      - name: Clean build artifacts
+        run: |
+          make fclean || exit 1
+
+      - name: Build with Makefile
+        run: |
+          make CXX=g++-9 || exit 1
