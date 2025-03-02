@@ -104,7 +104,7 @@ void PollMultiplexer::handleClient(std::vector<struct pollfd> &pfds,
   }
   try {
     Server *server = getServerFromClientServerMap(clientFd);
-    server->handleHttpRequest(clientFd, buffer, nbytes);
+    server->handleHttp(clientFd, buffer, nbytes);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
     close(clientFd);

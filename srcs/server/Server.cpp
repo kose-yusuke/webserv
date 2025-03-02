@@ -116,130 +116,6 @@ void Server::listenSocket(int sockfd, std::string portStr) {
             << ")\n";
 }
 
-void Server::handleHttpRequest(int clientFd, const char *buffer, int nbytes) {
-
-  (void)nbytes;
-  std::string method, path, version;
-  if (!parse_http_request(buffer, method, path, version)) {
-    send_error_response(clientFd, 400, "Bad Request");
-    return;
-  }
-
-  std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
-
-  if (method == "GET") {
-    handle_get_request(clientFd, path);
-  } else if (method == "POST") {
-    handle_post_request(clientFd, buffer);
-  } else if (method == "DELETE") {
-    handle_delete_request();
-  } else {
-    send_error_response(clientFd, 405, "Method Not Allowed");
-  }
-}
-
-// error page用のclassとファイル
-void Server::send_custom_error_page(int client_socket, int status_code,
-                                    const std::string &error_page) {
-  try {
-    std::string file_content = read_file("./public/" + error_page);
-
-    std::ostringstream response;
-    response << "HTTP/1.1 " << status_code << " ";
-    if (status_code == 404) {
-      response << "Not Found";
-    } else if (status_code == 405) {
-      response << "Method Not Allowed";
-    }
-    response << "\r\n";
-    response << "Content-Length: " << file_content.size() << "\r\n";
-    response << "Content-Type: text/html\r\n\r\n";
-    response << file_content;
-
-    send(client_socket, response.str().c_str(), response.str().size(), 0);
-  } catch (const std::exception &e) {
-    std::ostringstream fallback;
-    fallback << "HTTP/1.1 " << status_code << " ";
-    if (status_code == 404) {
-      fallback << "Not Found";
-    } else if (status_code == 405) {
-      fallback << "Method Not Allowed";
-    }
-    fallback << "\r\nContent-Length: 9\r\n\r\nNot Found";
-    send(client_socket, fallback.str().c_str(), fallback.str().size(), 0);
-  }
-}
-
-// request handler class
-bool Server::parse_http_request(const std::string &request, std::string &method,
-                                std::string &path, std::string &version) {
-  std::istringstream request_stream(request);
-  if (!(request_stream >> method >> path >> version)) {
-    return false;
-  }
-  return true;
-}
-
-void Server::handle_get_request(int client_socket, std::string path) {
-  if (path == "/") {
-    path = "/index.html";
-  }
-
-  std::string file_path = public_root + path;
-  try {
-    std::cout << file_path << std::endl;
-    std::string file_content = read_file(file_path);
-    // std::string mime_type = get_mime_type(file_path);
-
-    std::ostringstream response;
-    response << "HTTP/1.1 200 OK\r\n";
-    response << "Content-Length: " << file_content.size() << "\r\n";
-    // response << "Content-Type: " << mime_type << "\r\n\r\n";
-    response << "Content-Type: text/html\r\n\r\n";
-    response << file_content;
-
-    send(client_socket, response.str().c_str(), response.str().size(), 0);
-
-  } catch (const std::exception &e) {
-    send_custom_error_page(client_socket, 404, error_404);
-  }
-}
-
-// ファイルを保存する
-void Server::handle_post_request(int client_socket,
-                                 const std::string &request) {
-  size_t body_start = request.find("\r\n\r\n");
-  if (body_start == std::string::npos) {
-    send_error_response(client_socket, 400, "Bad Request");
-    return;
-  }
-
-  std::string body = request.substr(body_start + 4); // ボディ部分を抽出
-  std::cout << "Received POST body: " << body << "\n";
-
-  std::ostringstream response;
-  response << "HTTP/1.1 200 OK\r\n";
-  response << "Content-Length: " << body.size() << "\r\n";
-  response << "Content-Type: text/plain\r\n\r\n";
-  response << body;
-
-  send(client_socket, response.str().c_str(), response.str().size(), 0);
-}
-
-// ファイルを削除する
-void Server::handle_delete_request() {}
-
-void Server::send_error_response(int client_socket, int status_code,
-                                 const std::string &message) {
-  std::ostringstream response;
-  response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
-  response << "Content-Length: " << message.size() << "\r\n";
-  response << "Content-Type: text/plain\r\n\r\n";
-  response << message;
-
-  send(client_socket, response.str().c_str(), response.str().size(), 0);
-}
-
 Server::Server() {}
 
 Server::Server(const Server &src) { (void)src; }
@@ -247,6 +123,10 @@ Server::Server(const Server &src) { (void)src; }
 Server &Server::operator=(const Server &src) {
   (void)src;
   return *this;
+}
+
+void Server::handleHttp(int clientFd, const char *buffer, int nbytes) {
+    httpRequest.handleHttpRequest(clientFd, buffer, nbytes);
 }
 
 // Server::Server(const Server &src)
