@@ -143,6 +143,9 @@ Everything in C++ 98.
 ### nginx
 - [nginx Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html)
 - [nginx.confの解説、書き方](https://qiita.com/ponponnsan/items/23e1aa6f7dd4eadde5df)
+
 ### 42 推奨資料
 - [RFC](https://triple-underscore.github.io/http1-ja.html)
 
+### CGI
+- [PythonでCGIを用いたWebアプリケーションを作る](https://qiita.com/TSKY/items/b041de0572e6586c889c)

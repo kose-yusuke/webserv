@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/25 02:43:31 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/02 16:30:41 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,18 +20,6 @@ int print_error_message(const std::string& message)
 }
 
 
-
-// ファイルの内容を読み取るヘルパー関数
-std::string read_file(const std::string& file_path)
-{
-    std::ifstream file(file_path.c_str(), std::ios::in);
-    if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + file_path);
-    }
-    std::ostringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
 
 // 拡張子に基づいてMIMEタイプを返す関数
 // std::string get_mime_type(const std::string& file_path) {

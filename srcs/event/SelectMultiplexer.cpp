@@ -95,7 +95,7 @@ void SelectMultiplexer::handleClient(fd_set &fdSet, int &maxFd, int clientFd) {
   }
   try {
     Server *server = getServerFromClientServerMap(clientFd);
-    server->handleHttpRequest(clientFd, buffer, nbytes);
+    server->handleHttp(clientFd, buffer, nbytes);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
     close(clientFd);
