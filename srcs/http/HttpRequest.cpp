@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/05 18:45:02 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/05 21:05:52 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,9 +17,16 @@ HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string> >&
     // デフォルトは autoindex OFF
     is_autoindex_enabled = false;
 
-    std::map<std::string, std::vector<std::string> >::const_iterator it = config.find("autoindex");
-    if (it != config.end() && !it->second.empty() && it->second[0] == "on") {
+    std::map<std::string, std::vector<std::string> >::const_iterator auto_it = config.find("autoindex");
+    if (auto_it != config.end() && !auto_it->second.empty() && auto_it->second[0] == "on") {
         is_autoindex_enabled = true;
+    }
+
+    // cgi_extensions
+    // std::vector<std::string> cgi_extensions = {".cgi", ".php", ".py", ".pl"};
+    std::map<std::string, std::vector<std::string> >::const_iterator cgi_it = config.find("cgi_extensions");
+    if (cgi_it != config.end()) {
+        cgi_extensions = cgi_it->second;
     }
 
 }
@@ -68,8 +75,12 @@ void HttpRequest::handle_get_request(int client_socket, std::string path) {
     if (type == Directory) {
         handle_directory_request(client_socket, path);
     } else if (type == File) {
-        handle_file_request(client_socket, file_path);
-    } else {
+        if (is_cgi_request(file_path))
+            handle_cgi_request(client_socket, file_path);
+        else
+            handle_file_request(client_socket, file_path);
+    }
+    else {
         HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
     }
 }
@@ -127,6 +138,27 @@ void HttpRequest::handle_directory_request(int client_socket, std::string path) 
             HttpResponse::send_custom_error_page(client_socket, 403, "403.html");
         }
     }
+}
+
+bool HttpRequest::is_cgi_request(const std::string& path) {
+    std::string::size_type dot_pos = path.find_last_of('.');
+    if (dot_pos == std::string::npos) {
+        return false;
+    }
+
+    std::string extension = path.substr(dot_pos);
+    for (size_t i = 0; i < cgi_extensions.size(); ++i) {
+        if (cgi_extensions[i] == extension) {
+            return true;
+        }
+    }
+    return false;
+    // return (extension == ".cgi" || extension == ".php" || extension == ".py" || extension == ".pl");
+}
+
+void HttpRequest::handle_cgi_request(int client_socket, const std::string& cgi_path) {
+    std::cout << client_socket << std::endl;
+    std::cout << cgi_path << std::endl;
 }
 
 bool ends_with(const std::string &str, const std::string &suffix) {

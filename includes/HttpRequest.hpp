@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/05 18:45:43 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/05 21:00:36 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,7 @@ public:
     std::string body;
     std::map<std::string, std::string> headers; 
     bool is_autoindex_enabled;
+    std::vector<std::string> cgi_extensions;
 
     HttpRequest() {};
     HttpRequest(const std::map<std::string, std::vector<std::string> >& config);
@@ -45,6 +46,8 @@ public:
     // GET, POST, DELETE の処理
     void handle_get_request(int client_socket, std::string path);
     void handle_directory_request(int client_socket, std::string path);
+    bool is_cgi_request(const std::string& path);
+    void handle_cgi_request(int client_socket, const std::string& cgi_path);
     void handle_post_request(int client_socket, const std::string &request);
     void handle_delete_request();
     // std::string read_file(const std::string &file_path);
