@@ -1,19 +1,19 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   config_parse.cpp                                   :+:      :+:    :+:   */
+/*   ConfigParse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:45:57 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/04 23:24:16 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/05 21:15:15 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 // #include "../../includes/webserv.hpp"
-#include "config_parse.hpp"
+#include "Utils.hpp"
+#include "ConfigParse.hpp"
 
-/* orthodox なんとかform*/
 Parse::Parse(){}
 
 Parse::Parse(std::string config_path)

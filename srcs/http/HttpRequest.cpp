@@ -6,12 +6,13 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/05 21:05:52 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/05 21:19:01 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include "Utils.hpp"
 
 HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string> >& config) {
     // デフォルトは autoindex OFF
@@ -60,7 +61,7 @@ bool HttpRequest::parse_http_request(const std::string &request, std::string &me
     return true;
 }
 
-// flow図における get_requested_resource() ?
+/*GETリクエストの中枢処理*/
 void HttpRequest::handle_get_request(int client_socket, std::string path) {
 
     std::string file_path = get_requested_resource(path);
@@ -104,6 +105,8 @@ ResourceType HttpRequest::get_resource_type(const std::string& path) {
     return NotFound;
 }
 
+/*Requestがディレクトリかファイルかの分岐処理*/
+
 void HttpRequest::handle_file_request(int client_socket, const std::string& file_path) {
     std::ifstream file(file_path.c_str(), std::ios::in);
     if (!file.is_open()) {
@@ -140,6 +143,8 @@ void HttpRequest::handle_directory_request(int client_socket, std::string path) 
     }
 }
 
+/*Cgi関連の処理*/
+
 bool HttpRequest::is_cgi_request(const std::string& path) {
     std::string::size_type dot_pos = path.find_last_of('.');
     if (dot_pos == std::string::npos) {
@@ -153,7 +158,7 @@ bool HttpRequest::is_cgi_request(const std::string& path) {
         }
     }
     return false;
-    // return (extension == ".cgi" || extension == ".php" || extension == ".py" || extension == ".pl");
+    // return (extension == ".cgi" || extension == ".php" || extension == ".py" || extension == ".pl"); → confファイルで指示あり？
 }
 
 void HttpRequest::handle_cgi_request(int client_socket, const std::string& cgi_path) {
@@ -161,27 +166,7 @@ void HttpRequest::handle_cgi_request(int client_socket, const std::string& cgi_p
     std::cout << cgi_path << std::endl;
 }
 
-bool ends_with(const std::string &str, const std::string &suffix) {
-    if (str.length() < suffix.length()) return false;
-    return (str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0);
-}
 
-bool file_exists(const std::string &path) {
-    return (access(path.c_str(), F_OK) == 0);
-}
-
-bool has_index_file(const std::string &dir_path) {
-    std::string index_file = dir_path + "/index.html";
-    return file_exists(index_file);
-}
-
-bool is_directory(const std::string &path) {
-    struct stat buffer;
-    if (stat(path.c_str(), &buffer) != 0) {
-        return false;
-    }
-    return S_ISDIR(buffer.st_mode);
-}
 
 
 void HttpRequest::handle_post_request(int client_socket, const std::string &request) {

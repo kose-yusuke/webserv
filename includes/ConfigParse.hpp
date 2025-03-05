@@ -1,18 +1,18 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   config_parse.hpp                                   :+:      :+:    :+:   */
+/*   ConfigParse.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/19 19:24:27 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/25 01:27:53 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/05 21:17:21 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "webserv.hpp"
+#include "Utils.hpp"
 
 class Parse{
     private:

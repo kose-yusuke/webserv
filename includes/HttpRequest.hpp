@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/05 21:00:36 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/05 21:13:21 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,24 +42,18 @@ public:
     void handleHttpRequest(int clientFd, const char *buffer, int nbytes);
     // リクエストの解析
     bool parse_http_request(const std::string &request, std::string &method, std::string &path, std::string &version);
+    // GETの処理
     ResourceType get_resource_type(const std::string &path);
-    // GET, POST, DELETE の処理
     void handle_get_request(int client_socket, std::string path);
     void handle_directory_request(int client_socket, std::string path);
     bool is_cgi_request(const std::string& path);
     void handle_cgi_request(int client_socket, const std::string& cgi_path);
+    // POSTの処理
     void handle_post_request(int client_socket, const std::string &request);
+    // DELETEの処理
     void handle_delete_request();
-    // std::string read_file(const std::string &file_path);
 
     private:
         std::string get_requested_resource(const std::string &path);
         void handle_file_request(int client_socket, const std::string &file_path);
 };
-
-
-// utils
-bool file_exists(const std::string &path);
-bool ends_with(const std::string &str, const std::string &suffix);
-bool has_index_file(const std::string &dir_path);
-bool is_directory(const std::string &path);
