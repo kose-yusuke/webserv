@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   config_parse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:45:57 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/25 02:47:28 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/04 23:24:16 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ const char* Parse::valid_keys[] = {
 
 // rootはlocationにあればよさそう
 const char* Parse::required_keys[] = {
-    "listen", "root"
+    "listen"
 };
 
 void Parse::validate_config(const std::map<std::string, std::vector<std::string> >& config)

@@ -8,7 +8,7 @@
 #include <sys/types.h>
 
 Server::Server(const std::map<std::string, std::vector<std::string> > &config)
-    : config(config) {
+    : config(config) , httpRequest(config){
   try {
     // listen
     std::map<std::string, std::vector<std::string> >::const_iterator listen_it =
@@ -39,7 +39,7 @@ Server::Server(const std::map<std::string, std::vector<std::string> > &config)
     error_404 = (error_it != config.end() && !error_it->second.empty())
                     ? error_it->second[0]
                     : "404.html";
-
+                    
   } catch (const std::exception &e) {
     throw std::runtime_error(std::string("Error initializing server: ") +
                              e.what());
