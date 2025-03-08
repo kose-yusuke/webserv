@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/09 00:45:42 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/09 00:49:25 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ public:
   MethodType methodType_;
 
   // TODO: 未作成の関数群
-  HttpRequest() {};
+  HttpRequest();
   size_t get_content_length() { return 0; };
   bool is_header_received() { return true; };
   void parse_header(const std::string &request) { (void)request; };
