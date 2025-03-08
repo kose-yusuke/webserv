@@ -3,38 +3,53 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/02 17:31:08 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/08 23:29:11 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
-#include <fstream>
-#include <map>
+
+enum MethodType { GET, POST, DELETE };
 
 class HttpRequest {
 public:
-    // メンバ変数（仮）
-    std::string method;
-    std::string path;
-    std::string version;
-    std::string body;
-    std::map<std::string, std::string> headers; 
+  // メンバ変数（仮）
+  std::string method;
+  std::string path;
+  std::string version;
+  std::string body;
+  std::map<std::string, std::string> headers;
 
-    void handleHttpRequest(int clientFd, const char *buffer, int nbytes);
-    
-    // リクエストの解析
-    bool parse_http_request(const std::string &request, std::string &method, std::string &path, std::string &version);
-    
-    // GET, POST, DELETE の処理
-    void handle_get_request(int client_socket, std::string path);
-    void handle_post_request(int client_socket, const std::string &request);
-    void handle_delete_request();
-    std::string read_file(const std::string &file_path);
+  MethodType methodType_;
+
+  // TODO: 未作成の関数群
+  HttpRequest() {};
+  HttpRequest(const std::string &header);
+  size_t get_content_length() { return 0; };
+  bool is_header_received() { return true; };
+  void parse_header(const std::string &request) { (void)request; };
+  void parse_body(const std::string &request) { (void)request; };
+  void clear() {};
+  // ここまで未完成
+
+  void handleHttpRequest(int clientFd, const char *buffer, int nbytes);
+
+  // リクエストの解析
+  bool parse_http_request(const std::string &request, std::string &method,
+                          std::string &path, std::string &version);
+
+  // GET, POST, DELETE の処理
+  void handle_get_request(int client_socket, std::string path);
+  void handle_post_request(int client_socket, const std::string &request);
+  void handle_delete_request();
+  std::string read_file(const std::string &file_path);
 };
