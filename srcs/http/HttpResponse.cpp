@@ -3,15 +3,22 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/02 16:51:25 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/08 23:31:20 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpResponse.hpp"
 #include "HttpRequest.hpp"
+
+std::string HttpResponse::generate(const HttpRequest &request){
+    (void)request;
+    std::string response;
+    // TODO: 未完成
+    return response;
+}
 
 void HttpResponse::send_custom_error_page(int client_socket, int status_code, const std::string &error_page) {
     try {
