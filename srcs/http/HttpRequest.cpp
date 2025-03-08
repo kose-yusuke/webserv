@@ -6,15 +6,14 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/07 01:12:26 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/09 00:45:59 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 
-// 未実装 - Clientクラスから呼びたいコンストラクタ
-HttpRequest::HttpRequest(const std::string &header) { (void)header; }
+HttpRequest::HttpRequest() {}
 
 void HttpRequest::handleHttpRequest(int clientFd, const char *buffer,
                                     int nbytes) {
