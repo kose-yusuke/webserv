@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/09 14:17:43 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/09 15:46:12 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,7 +57,7 @@ void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes
         } else if (method == "POST") {
             handle_post_request(clientFd, buffer, path);
         } else if (method == "DELETE") {
-            handle_delete_request();
+            handle_delete_request(clientFd,path);
         }
     } else {
         HttpResponse::send_error_response(clientFd, 405, "Method Not Allowed");
@@ -245,8 +245,51 @@ void HttpRequest::handle_post_request(int client_socket, const std::string &requ
     }
 }
 
-void HttpRequest::handle_delete_request() {
-    // DELETE メソッドの処理（未実装）
+void HttpRequest::handle_delete_request(int client_socket, std::string path) {
+    std::string file_path = get_requested_resource(path);
+    
+    if (file_path.empty()) {
+        HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+        return;
+    }
+    
+    ResourceType type = get_resource_type(file_path);
+
+    // 書き込み権限
+    if (access(file_path.c_str(), W_OK) != 0) {
+        HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+        return;
+    }
+
+    int status = -1;
+    if (type == Directory) {
+        delete_directory(file_path);
+    } else if (type == File) {
+        if (is_cgi_request(file_path))
+            handle_cgi_request(client_socket, file_path);
+        else
+            handle_file_delete(file_path);
+    }
+    else {
+        HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    }
+
+    if (status == 0) {
+        HttpResponse::send_response(client_socket, 204, "", "text/plain"); // 成功
+    } else {
+        HttpResponse::send_error_response(client_socket, 500, "Internal Server Error"); // 失敗
+    }
+}
+
+int HttpRequest::handle_file_delete(const std::string& file_path)
+{
+    std::string html = file_path;
+    return 0;
+}
+
+int HttpRequest::delete_directory(const std::string& dir_path) {
+    std::string html = dir_path;
+    return 0;
 }
 
 // autoindex_未実装

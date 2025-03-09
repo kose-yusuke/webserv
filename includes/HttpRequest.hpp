@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/09 13:45:47 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/09 15:46:24 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,7 +54,9 @@ public:
     // POSTの処理
     void handle_post_request(int client_socket, const std::string &request, std::string path);
     // DELETEの処理
-    void handle_delete_request();
+    void handle_delete_request(int client_socket,std::string path);
+    int handle_file_delete(const std::string& file_path);
+    int delete_directory(const std::string& dir_path);
 
     private:
         std::string get_requested_resource(const std::string &path);

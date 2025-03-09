@@ -31,3 +31,16 @@ HTTP/1.1 201 Created
 リソースがあるがPOSTを許可していない	405 Method Not Allowed（POSTは禁止）
 アクセス自体が禁止されている	403 Forbidden
 
+
+## DELETEの挙動
+```
+DELETE /public/file.txt HTTP/1.1
+```
+- ファイルが存在 → 削除成功 → 204 No Content
+- ファイルが存在しない → 404 Not Found
+- 削除失敗 → 500 Internal Server Error
+
+## 分かっていないこと
+- ファイルをどう削除する？(unlinkとか使えそうな関数がsubject.pdfにない)
+- file操作関連の関数をなんかクラスとかにまとめた方が読みやすい？
+  - 関数名で何してるか明示的であればその方が可読性は高そう.
