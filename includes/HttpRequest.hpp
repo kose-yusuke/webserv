@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/05 21:13:21 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/09 13:45:47 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,8 @@
 #include <map>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 
 enum ResourceType {
     File,
@@ -36,6 +38,7 @@ public:
     std::map<std::string, std::string> headers; 
     bool is_autoindex_enabled;
     std::vector<std::string> cgi_extensions;
+    std::vector<std::string> allow_methods;
 
     HttpRequest() {};
     HttpRequest(const std::map<std::string, std::vector<std::string> >& config);
@@ -49,7 +52,7 @@ public:
     bool is_cgi_request(const std::string& path);
     void handle_cgi_request(int client_socket, const std::string& cgi_path);
     // POSTの処理
-    void handle_post_request(int client_socket, const std::string &request);
+    void handle_post_request(int client_socket, const std::string &request, std::string path);
     // DELETEの処理
     void handle_delete_request();
 

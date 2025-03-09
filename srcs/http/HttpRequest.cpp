@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/05 21:19:01 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/09 14:17:43 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 #include "Utils.hpp"
 
 HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string> >& config) {
-    // デフォルトは autoindex OFF
+    // autoindex初期化
     is_autoindex_enabled = false;
 
     std::map<std::string, std::vector<std::string> >::const_iterator auto_it = config.find("autoindex");
@@ -23,13 +23,22 @@ HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string> >&
         is_autoindex_enabled = true;
     }
 
-    // cgi_extensions
+    // cgi_extensions初期化
     // std::vector<std::string> cgi_extensions = {".cgi", ".php", ".py", ".pl"};
     std::map<std::string, std::vector<std::string> >::const_iterator cgi_it = config.find("cgi_extensions");
     if (cgi_it != config.end()) {
         cgi_extensions = cgi_it->second;
     }
 
+    // allow_methods初期化
+    std::map<std::string, std::vector<std::string> >::const_iterator it = config.find("allow_methods");
+    if (it != config.end()) {
+        allow_methods = it->second;
+    } else {
+        allow_methods.push_back("GET");
+        allow_methods.push_back("POST");
+        allow_methods.push_back("DELETE");
+    }
 }
 
 void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes) {
@@ -42,12 +51,14 @@ void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes
 
     std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
 
-    if (method == "GET") {
-        handle_get_request(clientFd, path);
-    } else if (method == "POST") {
-        handle_post_request(clientFd, buffer);
-    } else if (method == "DELETE") {
-        handle_delete_request();
+    if (std::find(allow_methods.begin(), allow_methods.end(), method) != allow_methods.end()) {
+        if (method == "GET") {
+            handle_get_request(clientFd, path);
+        } else if (method == "POST") {
+            handle_post_request(clientFd, buffer, path);
+        } else if (method == "DELETE") {
+            handle_delete_request();
+        }
     } else {
         HttpResponse::send_error_response(clientFd, 405, "Method Not Allowed");
     }
@@ -61,7 +72,7 @@ bool HttpRequest::parse_http_request(const std::string &request, std::string &me
     return true;
 }
 
-/*GETリクエストの中枢処理*/
+/*GET Request*/
 void HttpRequest::handle_get_request(int client_socket, std::string path) {
 
     std::string file_path = get_requested_resource(path);
@@ -162,32 +173,85 @@ bool HttpRequest::is_cgi_request(const std::string& path) {
 }
 
 void HttpRequest::handle_cgi_request(int client_socket, const std::string& cgi_path) {
-    std::cout << client_socket << std::endl;
-    std::cout << cgi_path << std::endl;
-}
-
-
-
-
-void HttpRequest::handle_post_request(int client_socket, const std::string &request) {
-    size_t body_start = request.find("\r\n\r\n");
-    if (body_start == std::string::npos) {
-        HttpResponse::send_error_response(client_socket, 400, "Bad Request");
-        return;
+    int pipefd[2];
+    if (pipe(pipefd) == -1)
+    {
+        std::cerr << "pipe failed" << std::endl;
+        exit(1);
     }
 
-    std::string body = request.substr(body_start + 4);
-    std::cout << "Received POST body: " << body << "\n";
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        std::cerr << "pipe failed" << std::endl;
+        exit(1);
+    }
 
-    HttpResponse::send_response(client_socket, 200, body, "text/plain");
+    if (pid == 0)
+    {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+
+        char* argv[2];
+        argv[0] = const_cast<char*>(cgi_path.c_str());
+        argv[1] = NULL; 
+        char* envp[] = {NULL};
+        execve(cgi_path.c_str(), argv, envp);
+        exit(1);
+    }
+
+    close(pipefd[1]);
+    char buffer[1024];
+    std::string cgi_output;
+    ssize_t bytes_read;
+    
+    while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0)
+    {
+        buffer[bytes_read] = '\0';
+        cgi_output += buffer;
+    }
+
+    close(pipefd[0]);
+    waitpid(pid, NULL, 0);
+
+    HttpResponse::send_response(client_socket, 200, cgi_output, "text/html");
+}
+
+// 何を書くべきかわからず未実装
+bool is_location_upload_file()
+{
+    return true;
+}
+
+void HttpRequest::handle_post_request(int client_socket, const std::string &request, std::string path) {
+    if (is_location_upload_file())
+    {
+        size_t body_start = request.find("\r\n\r\n");
+        if (body_start == std::string::npos) {
+            HttpResponse::send_error_response(client_socket, 400, "Bad Request");
+            return;
+        }
+
+        std::string body = request.substr(body_start + 4);
+        std::cout << "Received POST body: " << body << "\n";
+
+        HttpResponse::send_response(client_socket, 201, body, "text/plain");   
+    }
+    else
+    {
+        // アップロードできない場合は通常のresource取得になるらしい (GETと同様処理)
+        handle_get_request(client_socket,path);
+    }
 }
 
 void HttpRequest::handle_delete_request() {
     // DELETE メソッドの処理（未実装）
 }
 
-// autoindex
+// autoindex_未実装
 
-// std::string generate_directory_listing(const std::string &dir_path) {
-    
-// }
+std::string generate_directory_listing(const std::string &dir_path) {
+    std::string html = dir_path;
+    return html;   
+}

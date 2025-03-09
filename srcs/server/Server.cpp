@@ -1,6 +1,6 @@
 #include "Server.hpp"
 #include "Multiplexer.hpp"
-#include "config_parse.hpp"
+#include "ConfigParse.hpp"
 #include <cstring>
 #include <netdb.h>
 #include <sstream>
@@ -39,7 +39,7 @@ Server::Server(const std::map<std::string, std::vector<std::string> > &config)
     error_404 = (error_it != config.end() && !error_it->second.empty())
                     ? error_it->second[0]
                     : "404.html";
-                    
+
   } catch (const std::exception &e) {
     throw std::runtime_error(std::string("Error initializing server: ") +
                              e.what());

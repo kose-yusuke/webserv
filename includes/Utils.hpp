@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <vector>
 #include <sys/stat.h>
+#include <cstdlib>
 
 // kosekiさんから引き継いだ時点でのServer classのheader（一旦コメントアウト）
 // class Server {

@@ -3,18 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/25 02:08:46 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/05 23:01:42 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Multiplexer.hpp"
 #include "Server.hpp"
-#include "config_parse.hpp"
-#include "webserv.hpp"
-#include <cstdlib>
+#include "ConfigParse.hpp"
+#include "Utils.hpp"
 
 int main(int argc, char **argv) {
   if (argc != 2)

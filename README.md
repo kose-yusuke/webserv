@@ -149,3 +149,4 @@ Everything in C++ 98.
 
 ### CGI
 - [PythonでCGIを用いたWebアプリケーションを作る](https://qiita.com/TSKY/items/b041de0572e6586c889c)
+- [CGIの仕様](https://www.tohoho-web.com/wwwcgi3.htm)
