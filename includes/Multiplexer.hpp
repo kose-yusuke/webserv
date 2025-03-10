@@ -11,28 +11,35 @@ class Client;
  */
 class Multiplexer {
 public:
-  static void run();
+  virtual void run() = 0; // TODO: 確認 run時のmap.empty()チェック
 
-  static void add_server_fd(int fd, Server *server);
-  static void close_all_fds();
+  void add_server_fd(int fd, Server *server); // 新規serverを追加
 
 protected:
-  static std::map<int, Server *> server_map; // map: serverfd -> Server*
-  static std::map<int, Client *> client_map; // map: clientfd -> Client*
+  typedef std::map<int, Server *>::iterator ServerIt;
+  typedef std::map<int, Client *>::iterator ClientIt;
 
-  static void remove_server_fd(int fd);
-  static bool is_in_server_map(int fd);
-  static Server *get_server_from_map(int fd);
+  std::map<int, Server *> server_map; // map: serverfd -> Server*
+  std::map<int, Client *> client_map; // map: clientfd -> Client*
 
-  static void add_client_fd(int fd, Client *client);
-  static void remove_client_fd(int fd);
-  static bool is_in_client_map(int fd);
-  static Client *get_client_from_map(int fd);
+  void remove_server_fd(int fd);
+  bool is_in_server_map(int fd);
+  Server *get_server_from_map(int fd);
+
+  void add_client_fd(int fd, Client *client);
+  void remove_client_fd(int fd);
+  bool is_in_client_map(int fd);
+  Client *get_client_from_map(int fd);
+
+  void free_all_fds();
 
   Multiplexer();
   Multiplexer(const Multiplexer &other);
-  ~Multiplexer();
+  virtual ~Multiplexer();
 
 private:
   Multiplexer &operator=(const Multiplexer &other);
 };
+
+// TODO: 派生クラスの
+// Multiplexer &init_multiplexer();
