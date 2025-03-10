@@ -2,6 +2,7 @@
 
 #include <string>
 
+class Server;
 class HttpRequest;
 class HttpResponse;
 
@@ -13,7 +14,7 @@ enum IOStatus {
 
 class Client {
 public:
-  Client(int clientFD);
+  Client(int clientfd, int serverfd);
   ~Client();
 
   IOStatus on_read();
@@ -21,12 +22,13 @@ public:
   bool on_parse();
 
 private:
-  int fd;
-  HttpRequest request;         // header情報, body, contentLengthなどの管理
+  int fd;              // client fd
+  int server_fd;       // このclientが接続しているserver fd
+  HttpRequest request; // header情報, body, contentLengthなどの管理
+
   std::string request_buffer;  // recv用の受信buffer
   std::string response_buffer; // send用の送信buffer
-  ssize_t response_sent;        // send済みのbytes
-
+  ssize_t response_sent;       // send済みのbytes数
 
   Client();
   Client(const Client &other);

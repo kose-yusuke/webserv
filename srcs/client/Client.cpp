@@ -5,7 +5,8 @@
 #include <stdexcept>
 #include <sys/socket.h>
 
-Client::Client(int client_fd) : fd(client_fd), request(), response_sent(0) {}
+Client::Client(int clientfd, int serverfd)
+    : fd(clientfd), server_fd(serverfd), request(), response_sent(0) {}
 
 Client::~Client() {}
 
