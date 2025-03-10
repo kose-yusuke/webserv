@@ -9,9 +9,11 @@
 
 void Multiplexer::run() {
   std::cout << "Multiplexer::run called\n";
-  if (serverFdMap_.empty()) {
+  if (server_map.empty()) {
     throw std::runtime_error("No listening sockets available");
   }
+  SelectMultiplexer::run();
+  return;
 #if defined(__linux__)
   EpollMultiplexer::run();
 #elif defined(__APPLE__) || defined(__MACH__)
@@ -25,60 +27,58 @@ void Multiplexer::run() {
 #endif
 }
 
-void Multiplexer::addServerFd(int serverFd, Server *server) {
-  serverFdMap_[serverFd] = server;
+void Multiplexer::add_server_fd(int fd, Server *server) {
+  server_map[fd] = server;
 }
 
-void Multiplexer::closeAllFds() {
-  for (std::map<int, Server *>::iterator it = serverFdMap_.begin();
-       it != serverFdMap_.end(); ++it) {
+void Multiplexer::close_all_fds() {
+  for (std::map<int, Server *>::iterator it = server_map.begin();
+       it != server_map.end(); ++it) {
     close(it->first);
   }
-  for (std::map<int, Server *>::iterator it = clientServerMap_.begin();
-       it != clientServerMap_.end(); ++it) {
+  for (std::map<int, Client *>::iterator it = client_map.begin();
+       it != client_map.end(); ++it) {
     close(it->first);
   }
 }
 
-std::map<int, Server *> Multiplexer::serverFdMap_;
-std::map<int, Server *> Multiplexer::clientServerMap_;
+std::map<int, Server *> Multiplexer::server_map;
+std::map<int, Client *> Multiplexer::client_map;
 
-void Multiplexer::removeServerFd(int serverFd) { serverFdMap_.erase(serverFd); }
+void Multiplexer::remove_server_fd(int fd) { server_map.erase(fd); }
 
-bool Multiplexer::isInServerFdMap(int serverFd) {
-  return serverFdMap_.find(serverFd) != serverFdMap_.end();
+bool Multiplexer::is_in_server_map(int fd) {
+  return server_map.find(fd) != server_map.end();
 }
 
-Server *Multiplexer::getServerFromServerFdMap(int serverFd) {
-  std::map<int, Server *>::iterator it = serverFdMap_.find(serverFd);
-  if (it == serverFdMap_.end()) {
+Server *Multiplexer::get_server_from_map(int fd) {
+  std::map<int, Server *>::iterator it = server_map.find(fd);
+  if (it == server_map.end()) {
 
     std::stringstream ss;
     ss << "Server not found for fd: ";
-    ss << serverFd;
+    ss << fd;
     throw std::runtime_error(ss.str());
   }
   return it->second;
 }
 
-void Multiplexer::addClientFd(int clientFd, Server *server) {
-  clientServerMap_[clientFd] = server;
+void Multiplexer::add_client_fd(int fd, Client *client) {
+  client_map[fd] = client;
 }
 
-void Multiplexer::removeClientFd(int clientFd) {
-  clientServerMap_.erase(clientFd);
+void Multiplexer::remove_client_fd(int fd) { client_map.erase(fd); }
+
+bool Multiplexer::is_in_client_map(int fd) {
+  return client_map.find(fd) != client_map.end();
 }
 
-bool Multiplexer::isInClientServerMap(int clientFd) {
-  return clientServerMap_.find(clientFd) != clientServerMap_.end();
-}
-
-Server *Multiplexer::getServerFromClientServerMap(int clientFd) {
-  std::map<int, Server *>::iterator it = clientServerMap_.find(clientFd);
-  if (it == clientServerMap_.end()) {
+Client *Multiplexer::get_client_from_map(int fd) {
+  std::map<int, Client *>::iterator it = client_map.find(fd);
+  if (it == client_map.end()) {
     std::stringstream ss;
-    ss << "Server not found for fd: ";
-    ss << clientFd;
+    ss << "Client not found for fd: ";
+    ss << fd;
     throw std::runtime_error(ss.str());
   }
   return it->second;
@@ -86,9 +86,9 @@ Server *Multiplexer::getServerFromClientServerMap(int clientFd) {
 
 Multiplexer::Multiplexer() {}
 
-Multiplexer::~Multiplexer() {}
-
 Multiplexer::Multiplexer(const Multiplexer &other) { (void)other; }
+
+Multiplexer::~Multiplexer() {}
 
 Multiplexer &Multiplexer::operator=(const Multiplexer &other) {
   (void)other;
