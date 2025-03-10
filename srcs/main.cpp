@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/02/25 02:08:46 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/10 19:28:16 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,12 +31,12 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < servers.size(); i++)
       servers[i]->createSockets();
     Multiplexer::run();         // OSに合わせたpollを開始する
-    Multiplexer::closeAllFds(); // fdのclose()
+    Multiplexer::close_all_fds(); // fdのclose()
     for (size_t i = 0; i < servers.size(); i++)
       delete servers[i];
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
-    Multiplexer::closeAllFds(); // fdのclose()
+    Multiplexer::close_all_fds(); // fdのclose()
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;

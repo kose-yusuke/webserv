@@ -22,7 +22,7 @@ void SelectMultiplexer::run() {
     }
     for (int eventFd = 0; eventFd <= maxFd; ++eventFd) {
       if (FD_ISSET(eventFd, &readFds)) {
-        if (isInServerFdMap(eventFd)) {
+        if (is_in_server_map(eventFd)) {
           acceptClient(mainFds, maxFd, eventFd);
         } else {
           handleClient(mainFds, maxFd, eventFd);
@@ -52,8 +52,8 @@ void SelectMultiplexer::removeFd(fd_set &fdSet, int &maxFd, int fd) {
 }
 
 void SelectMultiplexer::addAllServerFdsToFdSet(fd_set &fdSet, int &maxFd) {
-  for (std::map<int, Server *>::iterator it = serverFdMap_.begin();
-       it != serverFdMap_.end(); ++it) {
+  for (std::map<int, Server *>::iterator it = server_map.begin();
+       it != server_map.end(); ++it) {
     addFd(fdSet, maxFd, it->first);
   }
 }
@@ -68,7 +68,8 @@ void SelectMultiplexer::acceptClient(fd_set &fdSet, int &maxFd, int serverFd) {
   }
   std::cout << "New connection on client fd: " << clientFd << "\n";
   try {
-    addClientFd(clientFd, getServerFromServerFdMap(serverFd));
+    // TODO: 設計変更のため一旦コメントアウト
+    // addClientFd(clientFd, getServerFromServerFdMap(serverFd));
     addFd(fdSet, maxFd, clientFd);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
@@ -89,13 +90,14 @@ void SelectMultiplexer::handleClient(fd_set &fdSet, int &maxFd, int clientFd) {
       std::cerr << "handleClient: recv failed: " << clientFd << "\n";
     }
     close(clientFd);
-    removeClientFd(clientFd);
+    remove_client_fd(clientFd);
     removeFd(fdSet, maxFd, clientFd);
     return;
   }
   try {
-    Server *server = getServerFromClientServerMap(clientFd);
-    server->handleHttp(clientFd, buffer, nbytes);
+    // TODO: 設計変更のため一旦コメントアウト
+    // Server *server = getServerFromClientServerMap(clientFd);
+    // server->handleHttp(clientFd, buffer, nbytes);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
     close(clientFd);

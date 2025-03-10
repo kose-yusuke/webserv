@@ -54,7 +54,7 @@ void Server::createSockets() {
     for (size_t i = 0; i < listenPorts_.size(); i++) {
       int serverFd = createListenSocket(listenPorts_[i]);
       tempFds.push_back(serverFd);
-      Multiplexer::addServerFd(serverFd, this);
+      Multiplexer::add_server_fd(serverFd, this);
     }
     std::cout << "Socket created and options set successfully\n";
   } catch (...) {

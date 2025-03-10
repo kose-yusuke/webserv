@@ -8,7 +8,7 @@ void PollMultiplexer::run() {
   std::cout << "PollMultiplexer::run() called\n";
   std::vector<struct pollfd> pfds;
 
-  pfds.reserve(serverFdMap_.size());
+  pfds.reserve(server_map.size());
   addAllServerFdsToPfds(pfds);
   if (pfds.empty()) {
     throw std::runtime_error("pollfd empty");
@@ -20,7 +20,7 @@ void PollMultiplexer::run() {
     }
     for (size_t i = 0; i < pfds.size(); ++i) {
       if (pfds[i].revents & (POLLIN | POLLHUP)) {
-        if (isInServerFdMap(pfds[i].fd)) {
+        if (is_in_server_map(pfds[i].fd)) {
           acceptClient(pfds, pfds[i].fd);
         } else {
           handleClient(pfds, pfds[i].fd);
@@ -57,8 +57,8 @@ bool PollMultiplexer::isInPfds(const std::vector<struct pollfd> &pfds, int fd) {
 }
 
 void PollMultiplexer::addAllServerFdsToPfds(std::vector<struct pollfd> &pfds) {
-  for (std::map<int, Server *>::iterator it = serverFdMap_.begin();
-       it != serverFdMap_.end(); ++it) {
+  for (std::map<int, Server *>::iterator it = server_map.begin();
+       it != server_map.end(); ++it) {
     addPfd(pfds, it->first);
   }
 }
@@ -75,7 +75,8 @@ void PollMultiplexer::acceptClient(std::vector<struct pollfd> &pfds,
   }
   std::cout << "New connection on client fd: " << clientFd << "\n";
   try {
-    addClientFd(clientFd, getServerFromServerFdMap(serverFd));
+    // TODO: 設計変更のため一旦コメントアウト
+    // addClientFd(clientFd, getServerFromServerFdMap(serverFd));
     addPfd(pfds, clientFd);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
@@ -99,12 +100,13 @@ void PollMultiplexer::handleClient(std::vector<struct pollfd> &pfds,
     }
     close(clientFd);
     removePfd(pfds, clientFd);
-    removeClientFd(clientFd);
+    remove_client_fd(clientFd);
     return;
   }
   try {
-    Server *server = getServerFromClientServerMap(clientFd);
-    server->handleHttp(clientFd, buffer, nbytes);
+    // TODO: 設計変更のため、一旦コメントアウト
+    // Server *server = getServerFromClientServerMap(clientFd);
+    // server->handleHttp(clientFd, buffer, nbytes);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
     close(clientFd);
