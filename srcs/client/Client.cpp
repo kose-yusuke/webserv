@@ -5,74 +5,71 @@
 #include <stdexcept>
 #include <sys/socket.h>
 
-Client::Client(int clientFD) : fd_(clientFD), request_(), responseSent_(0) {}
+Client::Client(int client_fd) : fd(client_fd), request(), response_sent(0) {}
 
 Client::~Client() {}
 
-bool Client::on_read() {
-  const int bufSize = 1024;
-  char buffer[bufSize];
-  ssize_t bytesRead = recv(fd_, buffer, sizeof(bufSize), 0);
-  if (bytesRead == 0) {
-    std::cout << "Client disconnected: " << fd_ << std::endl;
-    return false; // 正常終了
+IOStatus Client::on_read() {
+  const int buf_size = 1024;
+  char buffer[buf_size];
+  ssize_t bytes_read = recv(fd, buffer, sizeof(buf_size), 0);
+  if (bytes_read == 0) {
+    std::cout << "Client disconnected: " << fd << std::endl;
+    return IO_FAILED; // client切断
   }
-  if (bytesRead == -1) {
-    throw std::runtime_error("recv failed"); // 異常終了
+  if (bytes_read == -1) {
+    std::cerr << "Error: recv failed: " << fd << std::endl;
+    return IO_FAILED; // 異常終了
   }
-  requestBuffer_.append(buffer, bytesRead);
-  return on_parse(); // 受信後に解析
+  request_buffer.append(buffer, bytes_read);
+  return on_parse() ? IO_SUCCESS : IO_CONTINUE;
+}
+
+IOStatus Client::on_write() {
+  if (!on_parse()) {
+    return IO_SUCCESS; // 送信可能なresponseがないため, write側監視のみ終了
+  }
+  ssize_t bytes_sent = send(fd, response_buffer.c_str() + response_sent,
+                            response_buffer.size() - response_sent, 0);
+  if (bytes_sent == 0 || bytes_sent == -1) {
+    std::cerr << "Error: send failed: " << fd << " (" << bytes_sent << ")\n";
+    return IO_FAILED; // 異常終了
+  }
+  response_sent += bytes_sent;
+  if (response_sent >= response_buffer.size()) {
+    response_buffer.clear();
+    response_sent = 0;
+    // 次に送信可能なbufがあれば継続し、なければwrite側監視のみ終了
+    return on_parse() ? IO_CONTINUE : IO_SUCCESS;
+  }
+  return IO_CONTINUE; // 未送信部分があるため、再度sendが必要
 }
 
 bool Client::on_parse() {
-  if (!responseBuffer_.empty()) {
-    // responseが未送信の時はparseしない
-    return false;
+  if (!response_buffer.empty()) {
+    return true; // 送信可能なresponseがbufferにすでに待機
   }
-  if (!request_.is_header_received()) {
-    size_t end = requestBuffer_.find("\r\n\r\n");
+  if (!request.is_header_received()) {
+    size_t end = request_buffer.find("\r\n\r\n");
     if (end == std::string::npos) {
       return false; // header未受信
     }
-    request_.parse_header(requestBuffer_.substr(0, end + 4));
-    requestBuffer_.erase(0, end + 4);
+    request.parse_header(request_buffer.substr(0, end + 4));
+    request_buffer.erase(0, end + 4);
   }
-  if (request_.methodType_ == POST) {
-    size_t bodySize = request_.get_content_length();
-    if (bodySize > 0 && requestBuffer_.size() < bodySize) {
+  if (request.methodType_ == POST) {
+    size_t bodySize = request.get_content_length();
+    if (bodySize > 0 && request_buffer.size() < bodySize) {
       return false; // body未受信
     }
-    request_.parse_body(requestBuffer_.substr(0, bodySize));
-    requestBuffer_.erase(0, bodySize);
+    request.parse_body(request_buffer.substr(0, bodySize));
+    request_buffer.erase(0, bodySize);
   }
-  // 受信完了
-  responseBuffer_ = HttpResponse::generate(request_);
-  responseSent_ = 0;
-  request_.clear();
-  return true;
+  response_buffer = HttpResponse::generate(request);
+  response_sent = 0;
+  request.clear();
+  return true; // 解析完了
 }
-
-bool Client::on_write() {
-  if (responseBuffer_.empty() && !on_parse()) {
-    // 送信するresponseがない
-    return false;
-  }
-  ssize_t bytesSent = send(fd_, responseBuffer_.c_str() + responseSent_,
-                           responseBuffer_.size() - responseSent_, 0);
-  if (bytesSent == 0 || bytesSent == -1) {
-    throw std::runtime_error("send failed"); // 異常終了
-  }
-  responseSent_ += bytesSent;
-  if (responseSent_ >= responseBuffer_.size()) {
-    responseBuffer_.clear();
-    responseSent_ = 0;
-    return true; // 正常終了
-  }
-  return false; // 未送信部分があるため、再度sendが必要
-}
-
-// TODO: 未完了　
-bool Client::on_error() { return true; }
 
 Client::Client() {}
 
