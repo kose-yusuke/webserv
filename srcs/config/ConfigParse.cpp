@@ -38,7 +38,7 @@ Parse& Parse::operator=(const Parse &src)
 
 /* Validateに関するコード*/
 const char* Parse::valid_keys[] = {
-    "listen", "root", "index", "error_page", "autoindex", "server_name", "allow_methods", "client_max_body_size", "return", "cgi_extension", "upload_path", "alias"
+    "listen", "root", "index", "error_page", "autoindex", "server_name", "allow_methods", "client_max_body_size", "return", "cgi_extensions", "upload_path", "alias"
 };
 
 
@@ -198,7 +198,7 @@ bool Parse::is_location_end(const std::string& line, bool in_location_block) {
     return line == "}" && in_location_block;
 }
 
-void Parse::check_duplicate_key(const std::string& key, const std::map<std::string, std::string>& config) {
+void Parse::check_duplicate_key(const std::string& key, const std::map<std::string, std::vector<std::string> >& config) {
     if (config.find(key) != config.end())
         throw std::runtime_error("Duplicate key found: " + key);
 }
@@ -219,7 +219,7 @@ std::vector<std::map<std::string, std::vector<std::string> > > Parse::parse_ngin
 
     std::vector<std::map<std::string, std::vector<std::string> > > server_configs;
     std::map<std::string, std::vector<std::string> > current_config;
-    std::map<std::string, std::map<std::string, std::string> > location_configs;
+    std::map<std::string, std::map<std::string, std::vector<std::string> > > location_configs;
 
 
     while (std::getline(_config_file, line))
@@ -240,7 +240,7 @@ std::vector<std::map<std::string, std::vector<std::string> > > Parse::parse_ngin
     return server_configs;
 }
 
-void Parse::process_line(std::string& line, std::map<std::string, std::vector<std::string> >& current_config, std::map<std::string, std::map<std::string, std::string> >& location_configs, bool& in_server_block, bool& in_location_block,std::string& current_location_path, bool& server_root_seen)
+void Parse::process_line(std::string& line, std::map<std::string, std::vector<std::string> >& current_config, std::map<std::string, std::map<std::string, std::vector<std::string> > >& location_configs, bool& in_server_block, bool& in_location_block,std::string& current_location_path, bool& server_root_seen)
 {
     size_t comment_pos = line.find('#');
     if (comment_pos != std::string::npos)
@@ -266,7 +266,7 @@ void Parse::process_line(std::string& line, std::map<std::string, std::vector<st
         throw std::runtime_error("Invalid config structure: No active server block.");
 }
 
-void Parse::handle_server_block(const std::string& line, std::map<std::string, std::vector<std::string> >& current_config, std::map<std::string, std::map<std::string, std::string> >& location_configs, bool& in_location_block, std::string& current_location_path, bool& server_root_seen)
+void Parse::handle_server_block(const std::string& line, std::map<std::string, std::vector<std::string> >& current_config, std::map<std::string, std::map<std::string, std::vector<std::string> > >& location_configs, bool& in_location_block, std::string& current_location_path, bool& server_root_seen)
 {
     if (is_location_start(line)) {
         size_t pos = line.find('{');
@@ -281,7 +281,7 @@ void Parse::handle_server_block(const std::string& line, std::map<std::string, s
 
         in_location_block = true;
         current_location_path = location_path;
-        location_configs[current_location_path] = std::map<std::string, std::string>();
+        location_configs[current_location_path] = std::map<std::string, std::vector<std::string> >();
         return;
     }
     else if (is_location_end(line, in_location_block)) {
@@ -295,28 +295,34 @@ void Parse::handle_server_block(const std::string& line, std::map<std::string, s
         throw std::runtime_error("Invalid config line: " + line);
     }
 
-    std::string key, value;
-    parse_key_value(line, key, value);
+    std::string key;
+    std::vector<std::string> values;
+    parse_key_value(line, key, values);
 
     key = space_outer_trim(key);
-    value = space_outer_trim(value);
+    // values = space_outer_trim(value);
 
     if (in_location_block) {
         check_duplicate_key(key, location_configs[current_location_path]);
-        location_configs[current_location_path][key] = value;
+        location_configs[current_location_path][key] = values;
     } else {
         if (key == "root" && server_root_seen)
             throw std::runtime_error("Duplicate root directive found in server block.");
         else if (key == "root")
             server_root_seen = true;
-        current_config[key].push_back(value);
+        current_config[key] = values;
     }
-    std::cout << "Parsed config: key='" << key << "', value='" << value << "'\n";
+    std::cout << "Parsed config: key='" << key << "', values=[";
+    for (size_t i = 0; i < values.size(); ++i) {
+        std::cout << values[i];
+        if (i < values.size() - 1) std::cout << ", ";
+    }
+    std::cout << "]\n";
 }
 
 /* parser utils */
 
-void Parse::parse_key_value(const std::string& line, std::string& key, std::string& value) {
+void Parse::parse_key_value(const std::string& line, std::string& key, std::vector<std::string>& values) {
     size_t semicolon_pos = line.find(';');
     if (semicolon_pos == std::string::npos)
         throw std::runtime_error("Invalid config line: " + line);
@@ -327,11 +333,18 @@ void Parse::parse_key_value(const std::string& line, std::string& key, std::stri
         throw std::runtime_error("Invalid config line: " + line);
 
     key = space_outer_trim(key_value.substr(0, space_pos));
-    value = space_outer_trim(key_value.substr(space_pos + 1));
+    // value = space_outer_trim(key_value.substr(space_pos + 1));
+    std::string value_part = space_outer_trim(key_value.substr(space_pos + 1));
+
+    std::istringstream iss(value_part);
+    std::string word;
+    while (iss >> word) {
+        values.push_back(word);
+    }
 }
 
 void Parse::reset_server_config(std::map<std::string, std::vector<std::string> >& current_config,
-                                std::map<std::string, std::map<std::string, std::string> >& location_configs,
+                                std::map<std::string, std::map<std::string, std::vector<std::string> > >& location_configs,
                                 bool& server_root_seen) {
     current_config.clear();
     location_configs.clear();
