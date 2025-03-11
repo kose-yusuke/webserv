@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/05 21:14:35 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 14:44:34 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,3 +81,4 @@ std::string read_file(const std::string& file_path) {
 //     // デフォルトのMIMEタイプ
 //     return "application/octet-stream";
 // }
+
