@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 14:37:35 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 14:48:28 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -303,7 +303,7 @@ std::string HttpRequest::generate_directory_listing(const std::string &dir_path)
     html << "<ul>";
 
     struct dirent *entry;
-    while ((entry = readdir(dir)) != nullptr) {
+    while ((entry = readdir(dir)) != NULL) {
         std::string name = entry->d_name;
         if (name == "." || name == "..") {
             continue;

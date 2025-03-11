@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 14:29:29 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 14:48:48 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <string>
 #include <fstream>
 #include <map>
+#include <vector>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
