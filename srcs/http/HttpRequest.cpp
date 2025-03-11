@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/09 15:46:12 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 14:37:35 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -138,14 +138,13 @@ void HttpRequest::handle_directory_request(int client_socket, std::string path) 
         return;
     }
 
-    // `index.html` が存在するか確認
+    // `index.html` が存在するか確認 - 本当はこの辺の　public になっているところはrootとかで置き換える必要あり
     if (has_index_file("./public" + path)) {
         handle_file_request(client_socket, "./public" + path + "index.html");
     } else {
         // autoindexがONの場合、ディレクトリリストを生成する
         if (is_autoindex_enabled) {
-            // std::string dir_listing = generate_directory_listing(path);
-            std::string dir_listing = "test";
+            std::string dir_listing = generate_directory_listing("./public" + path);
             HttpResponse::send_response(client_socket, 200, dir_listing, "text/html");
         } else {
             // 403 forbidden
@@ -292,9 +291,27 @@ int HttpRequest::delete_directory(const std::string& dir_path) {
     return 0;
 }
 
-// autoindex_未実装
+std::string HttpRequest::generate_directory_listing(const std::string &dir_path) {
+    DIR *dir = opendir(dir_path.c_str());
+    if (!dir) {
+        return "<html><body><h1>403 Forbidden</h1></body></html>";
+    }
+    
+    std::ostringstream html;
+    html << "<html><head><title>Index of " << dir_path << "</title></head>";
+    html << "<body><h1>Index of " << dir_path << "</h1>";
+    html << "<ul>";
 
-std::string generate_directory_listing(const std::string &dir_path) {
-    std::string html = dir_path;
-    return html;   
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string name = entry->d_name;
+        if (name == "." || name == "..") {
+            continue;
+        }
+        html << "<li><a href=\"" << name << "\">" << name << "</a></li>";
+    }
+    html << "</ul></body></html>";
+    closedir(dir);
+    
+    return html.str();
 }

@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/09 15:46:24 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 14:29:29 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <dirent.h>
 
 enum ResourceType {
     File,
@@ -57,6 +58,8 @@ public:
     void handle_delete_request(int client_socket,std::string path);
     int handle_file_delete(const std::string& file_path);
     int delete_directory(const std::string& dir_path);
+    // autoindex (directory listing)
+    std::string generate_directory_listing(const std::string &dir_path);
 
     private:
         std::string get_requested_resource(const std::string &path);
