@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/19 19:24:27 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/10 11:50:28 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 22:35:08 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@ class Parse{
         static const char* required_keys[];
         // 最初のvectorはserverの設定がそれぞれ並んでいる, mapがキーとvalueの組み合わせ, valueのvectorはlistenなど複数ありえるのでvector
         std::vector<std::map<std::string, std::vector<std::string> > > server_configs;
+        std::vector<std::map<std::string, std::map<std::string, std::vector<std::string> > > > locations_configs;
 
     public:
 
@@ -39,7 +40,8 @@ class Parse{
         void validate_listen_ip(const std::map<std::string, std::vector<std::string> >& config);
 
         /*parser*/
-        std::vector<std::map<std::string, std::vector<std::string> > > parse_nginx_config();
+        std::vector<std::pair<std::map<std::string, std::vector<std::string> >, 
+            std::map<std::string, std::map<std::string, std::vector<std::string> > > > > parse_nginx_config();
         void process_line(std::string& line, std::map<std::string, std::vector<std::string> >& current_config, std::map<std::string, std::map<std::string, std::vector<std::string> > >& location_configs, bool& in_server_block, bool& in_location_block,std::string& current_location_path, bool& server_root_seen);
         void handle_server_block(const std::string& line, std::map<std::string, std::vector<std::string> >& current_config, std::map<std::string, std::map<std::string, std::vector<std::string> > >& location_configs, bool& in_location_block, std::string& current_location_path, bool& server_root_seen);
 

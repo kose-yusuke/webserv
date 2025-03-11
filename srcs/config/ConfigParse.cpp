@@ -204,7 +204,8 @@ void Parse::check_duplicate_key(const std::string& key, const std::map<std::stri
 }
 
 /* Parser */
-std::vector<std::map<std::string, std::vector<std::string> > > Parse::parse_nginx_config()
+std::vector<std::pair<std::map<std::string, std::vector<std::string> >, 
+      std::map<std::string, std::map<std::string, std::vector<std::string> > > > > Parse::parse_nginx_config()
 {
     std::ifstream _config_file(_config_path.c_str());
     if (!_config_file.is_open())
@@ -217,27 +218,29 @@ std::vector<std::map<std::string, std::vector<std::string> > > Parse::parse_ngin
     bool server_root_seen = false;
     std::string current_location_path = "";
 
-    std::vector<std::map<std::string, std::vector<std::string> > > server_configs;
-    std::map<std::string, std::vector<std::string> > current_config;
-    std::map<std::string, std::map<std::string, std::vector<std::string> > > location_configs;
+    std::vector<std::pair<std::map<std::string, std::vector<std::string> >, 
+                          std::map<std::string, std::map<std::string, std::vector<std::string> > > > > server_location_configs;
+    std::map<std::string, std::vector<std::string> > current_server_config;
+    std::map<std::string, std::map<std::string, std::vector<std::string> > > current_location_configs;
 
 
     while (std::getline(_config_file, line))
     {
-        process_line(line, current_config, location_configs, in_server_block, in_location_block, current_location_path, server_root_seen);
+        process_line(line, current_server_config, current_location_configs, in_server_block, in_location_block, current_location_path, server_root_seen);
         if (in_server_block)
             found_server_block = true;
-        if (!in_server_block && !current_config.empty()) {
-            validate_config(current_config);
-            server_configs.push_back(current_config);
-            reset_server_config(current_config, location_configs, server_root_seen);
+        if (!in_server_block && !current_server_config.empty()) {
+            validate_config(current_server_config);
+            server_location_configs.push_back(std::make_pair(current_server_config, current_location_configs));
+            reset_server_config(current_server_config, current_location_configs, server_root_seen);
         }
     }
 
     if (!found_server_block) {
         throw std::runtime_error("No server block found in config file.");
     }
-    return server_configs;
+
+    return server_location_configs;
 }
 
 void Parse::process_line(std::string& line, std::map<std::string, std::vector<std::string> >& current_config, std::map<std::string, std::map<std::string, std::vector<std::string> > >& location_configs, bool& in_server_block, bool& in_location_block,std::string& current_location_path, bool& server_root_seen)

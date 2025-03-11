@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 14:58:40 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 22:44:12 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,23 @@
 #include "HttpResponse.hpp"
 #include "Utils.hpp"
 
-HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string> >& config) {
+HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string> >& config, const std::map<std::string, std::map<std::string, std::vector<std::string> > >&  location_config) {
+    this->server_configs = config;
+    this->location_configs = location_config;
+}
+
+void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes) {
+    (void)nbytes;
+    std::string method, path, version;
+    if (!parse_http_request(buffer, method, path, version)) {
+        HttpResponse::send_error_response(clientFd, 400, "Bad Request");
+        return;
+    }
+
+    std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
+
+    std::map<std::string, std::vector<std::string> > config = get_location_config(path);
+
     // autoindex初期化
     is_autoindex_enabled = false;
 
@@ -31,27 +47,16 @@ HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string> >&
     }
 
     // allow_methods初期化
-    std::map<std::string, std::vector<std::string> >::const_iterator it = config.find("allow_methods");
-    if (it != config.end()) {
-        allow_methods = it->second;
+    std::map<std::string, std::vector<std::string> >::const_iterator method_it = config.find("allow_methods");
+    if (method_it != config.end()) {
+        allow_methods = method_it->second;
     } else {
         allow_methods.push_back("GET");
         allow_methods.push_back("POST");
         allow_methods.push_back("DELETE");
     }
-}
 
-void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes) {
-    (void)nbytes;
-    std::string method, path, version;
-    if (!parse_http_request(buffer, method, path, version)) {
-        HttpResponse::send_error_response(clientFd, 400, "Bad Request");
-        return;
-    }
-
-    std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
-
-    std::vector<std::string>::iterator it = std::find(allow_methods.begin(), allow_methods.end(), method);
+    std::vector<std::string>::const_iterator it = std::find(allow_methods.begin(), allow_methods.end(), method);
     if (it != allow_methods.end()){
         if (method == "GET") {
             handle_get_request(clientFd, path);
@@ -71,6 +76,29 @@ bool HttpRequest::parse_http_request(const std::string &request, std::string &me
         return false;
     }
     return true;
+}
+
+std::map<std::string, std::vector<std::string> > HttpRequest::get_location_config(const std::string& path) {
+    std::map<std::string, std::vector<std::string> > selected_config;
+
+    // 最もマッチする `location` を探す
+    std::string best_match = "/";
+    std::map<std::string, std::map<std::string, std::vector<std::string> > >::const_iterator best_match_it = location_configs.find("/");
+
+    for (std::map<std::string, std::map<std::string, std::vector<std::string> > >::const_iterator it = location_configs.begin();
+        it != location_configs.end(); ++it) {
+        if (path.find(it->first) == 0 && it->first.length() > best_match.length()) {
+            best_match = it->first;
+            best_match_it = it;
+        }
+    }
+
+    // `best_match` に対応する設定を取得
+    if (best_match_it != location_configs.end()) {
+        selected_config = best_match_it->second;
+    }
+
+    return selected_config;
 }
 
 /*GET Request*/
@@ -118,7 +146,6 @@ ResourceType HttpRequest::get_resource_type(const std::string& path) {
 }
 
 /*Requestがディレクトリかファイルかの分岐処理*/
-
 void HttpRequest::handle_file_request(int client_socket, const std::string& file_path) {
     std::ifstream file(file_path.c_str(), std::ios::in);
     if (!file.is_open()) {
@@ -154,69 +181,6 @@ void HttpRequest::handle_directory_request(int client_socket, std::string path) 
     }
 }
 
-/*Cgi関連の処理*/
-
-bool HttpRequest::is_cgi_request(const std::string& path) {
-    std::string::size_type dot_pos = path.find_last_of('.');
-    if (dot_pos == std::string::npos) {
-        return false;
-    }
-
-    std::string extension = path.substr(dot_pos);
-    for (size_t i = 0; i < cgi_extensions.size(); ++i) {
-        if (cgi_extensions[i] == extension) {
-            return true;
-        }
-    }
-    return false;
-    // return (extension == ".cgi" || extension == ".php" || extension == ".py" || extension == ".pl"); → confファイルで指示あり？
-}
-
-void HttpRequest::handle_cgi_request(int client_socket, const std::string& cgi_path) {
-    int pipefd[2];
-    if (pipe(pipefd) == -1)
-    {
-        std::cerr << "pipe failed" << std::endl;
-        exit(1);
-    }
-
-    pid_t pid = fork();
-    if (pid < 0)
-    {
-        std::cerr << "pipe failed" << std::endl;
-        exit(1);
-    }
-
-    if (pid == 0)
-    {
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
-
-        char* argv[2];
-        argv[0] = const_cast<char*>(cgi_path.c_str());
-        argv[1] = NULL; 
-        char* envp[] = {NULL};
-        execve(cgi_path.c_str(), argv, envp);
-        exit(1);
-    }
-
-    close(pipefd[1]);
-    char buffer[1024];
-    std::string cgi_output;
-    ssize_t bytes_read;
-    
-    while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0)
-    {
-        buffer[bytes_read] = '\0';
-        cgi_output += buffer;
-    }
-
-    close(pipefd[0]);
-    waitpid(pid, NULL, 0);
-
-    HttpResponse::send_response(client_socket, 200, cgi_output, "text/html");
-}
 
 // 何を書くべきかわからず未実装
 bool is_location_upload_file()
@@ -292,6 +256,71 @@ int HttpRequest::delete_directory(const std::string& dir_path) {
     return 0;
 }
 
+/*Cgi関連の処理*/
+
+bool HttpRequest::is_cgi_request(const std::string& path) {
+    std::string::size_type dot_pos = path.find_last_of('.');
+    if (dot_pos == std::string::npos) {
+        return false;
+    }
+
+    std::string extension = path.substr(dot_pos);
+    for (size_t i = 0; i < cgi_extensions.size(); ++i) {
+        if (cgi_extensions[i] == extension) {
+            return true;
+        }
+    }
+    return false;
+    // return (extension == ".cgi" || extension == ".php" || extension == ".py" || extension == ".pl"); → confファイルで指示あり？
+}
+
+void HttpRequest::handle_cgi_request(int client_socket, const std::string& cgi_path) {
+    int pipefd[2];
+    if (pipe(pipefd) == -1)
+    {
+        std::cerr << "pipe failed" << std::endl;
+        exit(1);
+    }
+
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        std::cerr << "pipe failed" << std::endl;
+        exit(1);
+    }
+
+    if (pid == 0)
+    {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+
+        char* argv[2];
+        argv[0] = const_cast<char*>(cgi_path.c_str());
+        argv[1] = NULL; 
+        char* envp[] = {NULL};
+        execve(cgi_path.c_str(), argv, envp);
+        exit(1);
+    }
+
+    close(pipefd[1]);
+    char buffer[1024];
+    std::string cgi_output;
+    ssize_t bytes_read;
+    
+    while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0)
+    {
+        buffer[bytes_read] = '\0';
+        cgi_output += buffer;
+    }
+
+    close(pipefd[0]);
+    waitpid(pid, NULL, 0);
+
+    HttpResponse::send_response(client_socket, 200, cgi_output, "text/html");
+}
+
+// autoindex
 std::string HttpRequest::generate_directory_listing(const std::string &dir_path) {
     DIR *dir = opendir(dir_path.c_str());
     if (!dir) {

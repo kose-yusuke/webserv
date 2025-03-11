@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 15:09:11 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 22:19:32 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,12 +42,16 @@ public:
     bool is_autoindex_enabled;
     std::vector<std::string> cgi_extensions;
     std::vector<std::string> allow_methods;
+    std::map<std::string, std::vector<std::string> >  server_configs;
+    std::map<std::string, std::map<std::string, std::vector<std::string> > > location_configs;
 
     HttpRequest() {};
-    HttpRequest(const std::map<std::string, std::vector<std::string> >& config);
+    HttpRequest(const std::map<std::string, std::vector<std::string> >& config, const std::map<std::string, std::map<std::string, std::vector<std::string> > >&  location_config);
     void handleHttpRequest(int clientFd, const char *buffer, int nbytes);
     // リクエストの解析
     bool parse_http_request(const std::string &request, std::string &method, std::string &path, std::string &version);
+    std::map<std::string, std::vector<std::string> > get_location_config(const std::string& path);
+    
     // GETの処理
     ResourceType get_resource_type(const std::string &path);
     void handle_get_request(int client_socket, std::string path);

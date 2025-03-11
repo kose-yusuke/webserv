@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/05 21:12:02 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 22:46:46 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,9 @@ void HttpResponse::send_custom_error_page(int client_socket, int status_code, co
 
         std::ostringstream response;
         response << "HTTP/1.1 " << status_code << " ";
-        if (status_code == 404) {
+        if (status_code == 403) {
+            response << "Forbidden";
+        } else if (status_code == 404) {
             response << "Not Found";
         } else if (status_code == 405) {
             response << "Method Not Allowed";
