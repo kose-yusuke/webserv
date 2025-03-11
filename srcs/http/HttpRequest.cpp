@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 14:54:16 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 14:58:40 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,8 @@ void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes
 
     std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
 
-    if (std::find(allow_methods.begin(), allow_methods.end(), std::string(method)) != allow_methods.end()) {
+    std::vector<std::string>::iterator it = std::find(allow_methods.begin(), allow_methods.end(), method);
+    if (it != allow_methods.end()){
         if (method == "GET") {
             handle_get_request(clientFd, path);
         } else if (method == "POST") {
