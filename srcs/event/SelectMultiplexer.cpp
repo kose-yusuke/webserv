@@ -96,6 +96,12 @@ void SelectMultiplexer::accept_client(int server_fd) {
     std::cerr << "accept failed\n";
     return;
   }
+  if (fcntl(client_fd, F_SETFL, fcntl(client_fd, F_GETFL) | O_NONBLOCK) == -1) {
+    std::cerr << "Error: Failed to set O_NONBLOCK on client_fd " << client_fd
+              << ": " << strerror(errno) << "\n";
+    close(client_fd);
+    return;
+  }
   try {
     add_to_client_map(client_fd, new Client(client_fd, server_fd));
   } catch (const std::exception &e) {

@@ -2,6 +2,7 @@
 #include "Multiplexer.hpp"
 #include "config_parse.hpp"
 #include <cstring>
+#include <fcntl.h>
 #include <netdb.h>
 #include <sstream>
 #include <sys/socket.h>
@@ -66,7 +67,7 @@ void Server::createSockets() {
 }
 
 int Server::createListenSocket(int port) {
-  int sockfd = -1, status, opt = 1;
+  int server_fd = -1, status, opt = 1;
   struct addrinfo hints, *ai, *p;
   std::stringstream ss;
   ss << port;
@@ -83,16 +84,25 @@ int Server::createListenSocket(int port) {
   }
   // 複数の結果がgetaddrinfoに入っている。順に試す
   for (p = ai; p; p = p->ai_next) {
-    sockfd = -1;
-    if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+    server_fd = -1;
+    if ((server_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) ==
+        -1) {
       continue;
     }
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-      close(sockfd);
+    if (fcntl(server_fd, F_SETFL, fcntl(server_fd, F_GETFL) | O_NONBLOCK) ==
+        -1) {
+      std::cerr << "Error: Failed to set O_NONBLOCK on server_fd " << server_fd
+                << ": " << strerror(errno) << "\n";
+      close(server_fd);
       continue;
     }
-    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-      close(sockfd);
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
+        -1) {
+      close(server_fd);
+      continue;
+    }
+    if (bind(server_fd, p->ai_addr, p->ai_addrlen) == -1) {
+      close(server_fd);
       continue;
     }
     // socket(), setsockopt(), bind() 全部成功したらloopを抜ける
@@ -103,17 +113,17 @@ int Server::createListenSocket(int port) {
   if (!p) {
     throw std::runtime_error("Faild to prepare socket for port: " + port_str);
   }
-  listenSocket(sockfd, port_str);
-  return sockfd;
+  listenSocket(server_fd, port_str);
+  return server_fd;
 }
 
-void Server::listenSocket(int sockfd, std::string portStr) {
-  if (listen(sockfd, SOMAXCONN) < 0) {
-    close(sockfd);
+void Server::listenSocket(int server_fd, std::string portStr) {
+  if (listen(server_fd, SOMAXCONN) < 0) {
+    close(server_fd);
     throw std::runtime_error("Failed to listen on port: " + portStr);
   }
-  std::cout << "Server is listening on port " << portStr << " (fd: " << sockfd
-            << ")\n";
+  std::cout << "Server is listening on port " << portStr
+            << " (fd: " << server_fd << ")\n";
 }
 
 Server::Server() {}
@@ -126,7 +136,7 @@ Server &Server::operator=(const Server &src) {
 }
 
 void Server::handleHttp(int clientFd, const char *buffer, int nbytes) {
-    httpRequest.handleHttpRequest(clientFd, buffer, nbytes);
+  httpRequest.handleHttpRequest(clientFd, buffer, nbytes);
 }
 
 // Server::Server(const Server &src)
