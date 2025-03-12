@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/12 14:03:13 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/12 22:14:38 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,16 @@ void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes
 
     std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
 
+    // best matchなlocationのconfigを取得する
     std::map<std::string, std::vector<std::string> > config = get_location_config(path);
+    this->best_match_location_config = config;
+
+    if (!best_match_location_config["root"].empty())
+        _root = best_match_location_config["root"][0];
+    else if (!server_configs["root"].empty())
+        _root = server_configs["root"][0];
+    else 
+        print_error_message("No root defound in config file.");
 
     // autoindex初期化
     is_autoindex_enabled = false;
@@ -127,8 +136,7 @@ void HttpRequest::handle_get_request(int client_socket, std::string path) {
 }
 
 std::string HttpRequest::get_requested_resource(const std::string& path) {
-    std::string root = "./public";
-    std::string file_path = root + path;
+    std::string file_path = _root + path;
 
     if (!file_exists(file_path)) {
         return "";
@@ -167,12 +175,12 @@ void HttpRequest::handle_directory_request(int client_socket, std::string path) 
     }
 
     // `index.html` が存在するか確認 - 本当はこの辺の　public になっているところはrootとかで置き換える必要あり
-    if (has_index_file("./public" + path)) {
-        handle_file_request(client_socket, "./public" + path + "index.html");
+    if (has_index_file(_root + path)) {
+        handle_file_request(client_socket, _root + path + "index.html");
     } else {
         // autoindexがONの場合、ディレクトリリストを生成する
         if (is_autoindex_enabled) {
-            std::string dir_listing = generate_directory_listing("./public" + path);
+            std::string dir_listing = generate_directory_listing(_root + path);
             HttpResponse::send_response(client_socket, 200, dir_listing, "text/html");
         } else {
             // 403 forbidden
@@ -181,29 +189,58 @@ void HttpRequest::handle_directory_request(int client_socket, std::string path) 
     }
 }
 
-
-// 何を書くべきかわからず未実装 - 親ディレクトリが存在している & 親ディレクトリとファイルに書き込み権限がある && cgiでない
-bool is_location_upload_file()
+bool HttpRequest::is_location_upload_file(int client_socket, const std::string file_path)
 {
+    //親ディレクトリ取得
+    size_t last_slash = file_path.find_last_of('/');
+    if (last_slash == std::string::npos) {
+        std::cerr << "Invalid file path: " << file_path << std::endl;
+        HttpResponse::send_error_response(client_socket, 400, "Bad Request");
+        return false;
+    }
+    std::string parent_dir = file_path.substr(0, last_slash);
+    if (!is_directory(parent_dir)) {
+        std::cerr << "Parent directory does not exist: " << parent_dir << std::endl;
+        HttpResponse::send_error_response(client_socket, 404, "Parent Directory Not Found");
+        return false;
+    }
+
+    // 書き込み権限
+    if (access(parent_dir.c_str(), W_OK) != 0) {
+        HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+        return false;
+    }
+    
+    if (file_exists(file_path)) {
+        if (access(file_path.c_str(), W_OK) != 0) {
+            HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+            return false;
+        }
+    }
+    
+    if (is_cgi_request(file_path))
+        return false;
     return true;
 }
 
 void HttpRequest::handle_post_request(int client_socket, const std::string &request, std::string path) {
-    if (is_location_upload_file()) 
+    std::string full_path = _root + path;
+    if (is_location_upload_file(client_socket, full_path)) 
     {
         std::cout << "Received POST request for path: " << path << std::endl;
 
         size_t body_start = request.find("\r\n\r\n");
         if (body_start == std::string::npos) {
-            HttpResponse::send_error_response(client_socket, 204, "No Content");
+            // コンテンツなくても特にすることはない？ (そのまま空のファイルを作る？)
+            // HttpResponse::send_error_response(client_socket, 204, "No Content");
             // HttpResponse::send_error_response(client_socket, 400, "Bad Request");
-            return;
+            // return;
         }
 
         std::string body = request.substr(body_start + 4);
         std::cout << "Received POST body: " << body << "\n";
 
-        std::string full_path = "public" + path;
+        std::string full_path = "./public" + path;
         std::ofstream ofs(full_path.c_str());
         if (!ofs) {
             // エラーコード確認
@@ -281,7 +318,6 @@ int HttpRequest::delete_directory(const std::string& dir_path) {
 }
 
 /*Cgi関連の処理*/
-
 bool HttpRequest::is_cgi_request(const std::string& path) {
     std::string::size_type dot_pos = path.find_last_of('.');
     if (dot_pos == std::string::npos) {

@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 22:19:32 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/12 22:13:58 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,8 @@ enum ResourceType {
     NotFound
 };
 
+enum MethodType { GET, POST, DELETE };
+
 class HttpRequest {
 public:
     // メンバ変数（仮）
@@ -39,11 +41,14 @@ public:
     std::string version;
     std::string body;
     std::map<std::string, std::string> headers; 
+
+    MethodType methodType_;
     bool is_autoindex_enabled;
     std::vector<std::string> cgi_extensions;
     std::vector<std::string> allow_methods;
     std::map<std::string, std::vector<std::string> >  server_configs;
     std::map<std::string, std::map<std::string, std::vector<std::string> > > location_configs;
+    std::map<std::string, std::vector<std::string> > best_match_location_config;
 
     HttpRequest() {};
     HttpRequest(const std::map<std::string, std::vector<std::string> >& config, const std::map<std::string, std::map<std::string, std::vector<std::string> > >&  location_config);
@@ -60,6 +65,7 @@ public:
     void handle_cgi_request(int client_socket, const std::string& cgi_path);
     // POSTの処理
     void handle_post_request(int client_socket, const std::string &request, std::string path);
+    bool is_location_upload_file(int client_socket, const std::string file_path);
     // DELETEの処理
     void handle_delete_request(int client_socket,std::string path);
     int handle_file_delete(const std::string& file_path);
@@ -68,6 +74,8 @@ public:
     std::string generate_directory_listing(const std::string &dir_path);
 
     private:
+        std::string _root;
+        
         std::string get_requested_resource(const std::string &path);
         void handle_file_request(int client_socket, const std::string &file_path);
 };
