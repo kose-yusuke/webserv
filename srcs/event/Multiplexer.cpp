@@ -5,6 +5,7 @@
 #include "PollMultiplexer.hpp"
 #include "SelectMultiplexer.hpp"
 #include "Server.hpp"
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
