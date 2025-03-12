@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/12 13:25:47 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/12 14:03:13 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -245,8 +245,11 @@ void HttpRequest::handle_delete_request(int client_socket, std::string path) {
     } else if (type == File) {
         if (is_cgi_request(file_path))
             handle_cgi_request(client_socket, file_path);
-        else
-            handle_file_delete(file_path);
+        else{
+            status = handle_file_delete(file_path);
+            if (status == -1)
+                HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+        }
     }
     else {
         HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
@@ -261,7 +264,14 @@ void HttpRequest::handle_delete_request(int client_socket, std::string path) {
 
 int HttpRequest::handle_file_delete(const std::string& file_path)
 {
-    std::string html = file_path;
+    if (std::remove(file_path.c_str()) == 0) {
+        std::cout << "File deleted successfully: " << file_path << std::endl;
+        return 0;
+    } else {
+        std::cerr << "Failed to delete file: " << file_path << std::endl;
+        perror("Error"); 
+        return -1;
+    }
     return 0;
 }
 
