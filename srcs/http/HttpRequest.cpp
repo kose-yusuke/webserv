@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 22:44:12 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/12 13:25:47 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -182,23 +182,37 @@ void HttpRequest::handle_directory_request(int client_socket, std::string path) 
 }
 
 
-// 何を書くべきかわからず未実装
+// 何を書くべきかわからず未実装 - 親ディレクトリが存在している & 親ディレクトリとファイルに書き込み権限がある && cgiでない
 bool is_location_upload_file()
 {
     return true;
 }
 
 void HttpRequest::handle_post_request(int client_socket, const std::string &request, std::string path) {
-    if (is_location_upload_file())
+    if (is_location_upload_file()) 
     {
+        std::cout << "Received POST request for path: " << path << std::endl;
+
         size_t body_start = request.find("\r\n\r\n");
         if (body_start == std::string::npos) {
-            HttpResponse::send_error_response(client_socket, 400, "Bad Request");
+            HttpResponse::send_error_response(client_socket, 204, "No Content");
+            // HttpResponse::send_error_response(client_socket, 400, "Bad Request");
             return;
         }
 
         std::string body = request.substr(body_start + 4);
         std::cout << "Received POST body: " << body << "\n";
+
+        std::string full_path = "public" + path;
+        std::ofstream ofs(full_path.c_str());
+        if (!ofs) {
+            // エラーコード確認
+            std::cout << "Failed to open file" << std::endl;
+            return ;
+        }
+        ofs << body;
+        std::cout << "File written successfully: " << path << std::endl;
+        ofs.close();
 
         HttpResponse::send_response(client_socket, 201, body, "text/plain");   
     }
