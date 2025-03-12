@@ -8,18 +8,30 @@
  */
 class SelectMultiplexer : public Multiplexer {
 public:
-  static void run();
+  SelectMultiplexer();
+  ~SelectMultiplexer();
+
+  void run();
 
 private:
-  static void addFd(fd_set &fdSet, int &maxFd, int fd);
-  static void removeFd(fd_set &fdSet, int &maxFd, int fd);
-  static void addAllServerFdsToFdSet(fd_set &fdSet, int &maxFd);
+  fd_set read_fds;
+  fd_set write_fds;
+  int max_fd;
 
-  static void acceptClient(fd_set &fdSet, int &maxFd, int serverFd);
-  static void handleClient(fd_set &fdSet, int &maxFd, int clientFd);
+  void initialize_fds();
 
-  SelectMultiplexer();
+  void add_to_read_fds(int fd);
+  void remove_from_read_fds(int fd);
+  bool is_readable(int fd);
+
+  void add_to_write_fds(int fd);
+  void remove_from_write_fds(int fd);
+  bool is_writable(int fd);
+
+  void accept_client(int server_fd);
+  void handle_client(int client_fd);
+  void remove_client(int client_fd);
+
   SelectMultiplexer(const SelectMultiplexer &other);
-  ~SelectMultiplexer();
   SelectMultiplexer &operator=(const SelectMultiplexer &other);
 };
