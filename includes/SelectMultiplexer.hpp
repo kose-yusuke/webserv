@@ -14,8 +14,12 @@ public:
   void run();
 
 private:
-  fd_set read_fds;
-  fd_set write_fds;
+  fd_set read_fds;        // 継続的に監視するfd
+  fd_set active_read_fds; // select() の結果を保存するfd
+
+  fd_set write_fds;        // 継続的に監視するfd
+  fd_set active_write_fds; // select() の結果を保存するfd
+
   int max_fd;
 
   void initialize_fds();
