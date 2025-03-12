@@ -6,14 +6,24 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/09 00:45:59 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/12 16:41:09 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include <iostream>
 
 HttpRequest::HttpRequest() {}
+
+size_t HttpRequest::get_content_length() { return 0; };
+bool HttpRequest::is_header_received() { return true; };
+void HttpRequest::parse_header(const std::string &request) {
+  std::cout << "Http request received:\n";
+  std::cout << request << std::endl;
+};
+void HttpRequest::parse_body(const std::string &request) { (void)request; };
+void HttpRequest::clear() {};
 
 void HttpRequest::handleHttpRequest(int clientFd, const char *buffer,
                                     int nbytes) {

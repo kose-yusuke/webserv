@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/09 00:49:25 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/12 16:38:51 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,11 +33,11 @@ public:
 
   // TODO: 未作成の関数群
   HttpRequest();
-  size_t get_content_length() { return 0; };
-  bool is_header_received() { return true; };
-  void parse_header(const std::string &request) { (void)request; };
-  void parse_body(const std::string &request) { (void)request; };
-  void clear() {};
+  size_t get_content_length();
+  bool is_header_received();
+  void parse_header(const std::string &request);
+  void parse_body(const std::string &request);
+  void clear();
   // ここまで未完成
 
   void handleHttpRequest(int clientFd, const char *buffer, int nbytes);

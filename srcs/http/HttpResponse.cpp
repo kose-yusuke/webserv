@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/12 15:27:23 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/12 16:49:18 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,9 +16,13 @@
 std::string HttpResponse::generate(const HttpRequest &request, int server_fd) {
   (void)request;
   (void)server_fd;
-  std::string response;
-  // TODO: 未完成
-  return response;
+  std::ostringstream oss;
+  oss << "HTTP/1.1 200 OK\r\n";
+  oss << "Content-Length: 13\r\n";
+  oss << "Content-Type: text/plain\r\n";
+  oss << "\r\n";
+  oss << "Hello, world?";
+  return oss.str();
 }
 
 void HttpResponse::send_custom_error_page(int client_socket, int status_code,
