@@ -1,11 +1,6 @@
 #include "KqueueMultiplexer.hpp"
-#include "PollMultiplexer.hpp"
-#include <iostream>
 
-void KqueueMultiplexer::run() {
-  std::cout << "KqueueMultiplexer is not ready !!\nCalling poll ...\n";
-  PollMultiplexer::run();
-}
+void KqueueMultiplexer::run() {}
 
 KqueueMultiplexer::KqueueMultiplexer() {}
 

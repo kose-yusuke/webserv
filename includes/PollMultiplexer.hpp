@@ -9,19 +9,22 @@
  */
 class PollMultiplexer : public Multiplexer {
 public:
-  static void run();
+  PollMultiplexer();
+  ~PollMultiplexer();
+
+  void run();
 
 private:
-  static void addPfd(std::vector<struct pollfd> &pfds, int fd);
-  static void removePfd(std::vector<struct pollfd> &pfds, int fd);
-  static bool isInPfds(const std::vector<struct pollfd> &pfds, int fd);
-  static void addAllServerFdsToPfds(std::vector<struct pollfd> &pfds);
+  // std::vector<struct pollfd> &pfds;
 
-  static void acceptClient(std::vector<struct pollfd> &pfds, int serverFd);
-  static void handleClient(std::vector<struct pollfd> &pfds, int clientFd);
+  void addPfd(std::vector<struct pollfd> &pfds, int fd);
+  void removePfd(std::vector<struct pollfd> &pfds, int fd);
+  bool isInPfds(const std::vector<struct pollfd> &pfds, int fd);
+  void addAllServerFdsToPfds(std::vector<struct pollfd> &pfds);
 
-  PollMultiplexer();
+  void acceptClient(std::vector<struct pollfd> &pfds, int serverFd);
+  void handleClient(std::vector<struct pollfd> &pfds, int clientFd);
+
   PollMultiplexer(const PollMultiplexer &other);
-  ~PollMultiplexer();
   PollMultiplexer &operator=(const PollMultiplexer &other);
 };

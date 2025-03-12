@@ -66,7 +66,7 @@ bool Client::on_parse() {
     request.parse_body(request_buffer.substr(0, bodySize));
     request_buffer.erase(0, bodySize);
   }
-  response_buffer = HttpResponse::generate(request);
+  response_buffer = HttpResponse::generate(request, server_fd);
   response_sent = 0;
   request.clear();
   return true; // 解析完了

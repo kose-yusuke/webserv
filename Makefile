@@ -11,7 +11,8 @@ SRCS     := $(SRCDIR)/main.cpp $(SRCDIR)/server/Server.cpp $(SRCDIR)/utils.cpp \
 			$(SRCDIR)/event/KqueueMultiplexer.cpp \
 			$(SRCDIR)/event/PollMultiplexer.cpp \
 			$(SRCDIR)/http/HttpRequest.cpp \
-			$(SRCDIR)/http/HttpResponse.cpp
+			$(SRCDIR)/http/HttpResponse.cpp \
+			$(SRCDIR)/client/Client.cpp
 OBJS     := $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 DEPS     := $(OBJS:.o=.d)
 

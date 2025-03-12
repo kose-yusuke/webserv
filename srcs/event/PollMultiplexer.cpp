@@ -100,7 +100,7 @@ void PollMultiplexer::handleClient(std::vector<struct pollfd> &pfds,
     }
     close(clientFd);
     removePfd(pfds, clientFd);
-    remove_client_fd(clientFd);
+    remove_from_client_map(clientFd);
     return;
   }
   try {

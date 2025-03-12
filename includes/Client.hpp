@@ -1,10 +1,9 @@
 #pragma once
 
+#include "HttpRequest.hpp"
 #include <string>
 
 class Server;
-class HttpRequest;
-class HttpResponse;
 
 enum IOStatus {
   IO_SUCCESS,  // 処理完了
@@ -19,7 +18,6 @@ public:
 
   IOStatus on_read();
   IOStatus on_write();
-  bool on_parse();
 
 private:
   int fd;              // client fd
@@ -28,7 +26,9 @@ private:
 
   std::string request_buffer;  // recv用の受信buffer
   std::string response_buffer; // send用の送信buffer
-  ssize_t response_sent;       // send済みのbytes数
+  size_t response_sent;        // send済みのbytes数
+
+  bool on_parse();
 
   Client();
   Client(const Client &other);

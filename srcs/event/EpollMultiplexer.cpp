@@ -1,11 +1,6 @@
 #include "EpollMultiplexer.hpp"
-#include "PollMultiplexer.hpp"
-#include <iostream>
 
-void EpollMultiplexer::run() {
-  std::cout << "EpollMultiplexer is not ready !!\nCalling poll ...\n";
-  PollMultiplexer::run();
-}
+void EpollMultiplexer::run() {}
 
 EpollMultiplexer::EpollMultiplexer() {}
 
