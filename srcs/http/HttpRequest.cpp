@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/14 01:36:07 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/14 01:44:43 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -407,3 +407,13 @@ std::string HttpRequest::generate_directory_listing(const std::string &dir_path)
 
     return html.str();
 }
+
+
+size_t HttpRequest::get_content_length() { return 0; };
+bool HttpRequest::is_header_received() { return true; };
+void HttpRequest::parse_header(const std::string &request) {
+  std::cout << "Http request received:\n";
+  std::cout << request << std::endl;
+};
+void HttpRequest::parse_body(const std::string &request) { (void)request; };
+void HttpRequest::clear() {};

@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:51 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/14 01:35:35 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/14 01:43:04 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <string>
 #include <sys/socket.h>
 
+class HttpRequest;
 
 class HttpResponse {
 public:
@@ -24,4 +25,6 @@ public:
     static void send_error_response(int clientFd, int status_code, const std::string &message);
     static void send_response(int client_socket, int status_code, const std::string &content, const std::string &content_type);
     static void send_redirect(int client_socket, int status_code, const std::string new_location);
+
+    static std::string generate(const HttpRequest &request, int server_fd);
 };
