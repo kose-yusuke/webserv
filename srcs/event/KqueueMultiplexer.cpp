@@ -1,6 +1,33 @@
 #include "KqueueMultiplexer.hpp"
+#include <cstdlib>
+#include <iostream>
 
-void KqueueMultiplexer::run() {}
+Multiplexer &KqueueMultiplexer::get_instance() {
+  if (!Multiplexer::instance) {
+    Multiplexer::instance = new KqueueMultiplexer();
+    std::atexit(Multiplexer::delete_instance);
+  }
+  return *Multiplexer::instance;
+}
+
+void KqueueMultiplexer::run() {
+  std::cout << "KqueueMultiplexer::run() called\n";
+}
+
+void KqueueMultiplexer::add_to_read_fds(int fd) { (void)fd; }
+void KqueueMultiplexer::remove_from_read_fds(int fd) { (void)fd; }
+void KqueueMultiplexer::add_to_write_fds(int fd) { (void)fd; }
+void KqueueMultiplexer::remove_from_write_fds(int fd) { (void)fd; }
+
+bool KqueueMultiplexer::is_readable(int fd) {
+  (void)fd;
+  return true;
+}
+
+bool KqueueMultiplexer::is_writable(int fd) {
+  (void)fd;
+  return true;
+}
 
 KqueueMultiplexer::KqueueMultiplexer() {}
 
