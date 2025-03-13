@@ -2,6 +2,7 @@
 #include "Server.hpp"
 #include <iostream>
 #include <sstream>
+#include <string.h>
 #include <sys/socket.h>
 
 Multiplexer &PollMultiplexer::get_instance() {

@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <iostream>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
