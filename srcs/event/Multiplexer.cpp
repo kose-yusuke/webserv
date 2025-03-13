@@ -5,7 +5,7 @@
 #include "PollMultiplexer.hpp"
 #include "SelectMultiplexer.hpp"
 #include "Server.hpp"
-#include <cstdlib>
+#include <fcntl.h>
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
@@ -13,22 +13,18 @@
 Multiplexer *Multiplexer::instance = 0;
 
 Multiplexer &Multiplexer::get_instance() {
-  if (!instance) {
-    // #if defined(__linux__)
-    //     instance = new EpollMultiplexer();
-    // #elif defined(__APPLE__) || defined(__MACH__)
-    //     instance = new SelectMultiplexer();
-    // #elif defined(__FreeBSD__) || defined(__OpenBSD__)
-    //     instance = new KqueueMultiplexer();
-    // #elif defined(HAS_POLL)
-    //     instance = new Poller();
-    // #else
-    //     instance = new SelectMultiplexer();
-    // #endif
-    instance = new SelectMultiplexer();
-    std::atexit(Multiplexer::delete_instance);
-  }
-  return *instance;
+  return PollMultiplexer::get_instance();
+#if defined(__linux__)
+  return EpollMultiplexer::get_instance();
+#elif defined(__APPLE__) || defined(__MACH__)
+  return SelectMultiplexer::get_instance();
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+  return KqueueMultiplexer::get_instance();
+#elif defined(HAS_POLL)
+  return PollMultiplexer::get_instance();
+#else
+  return SelectMultiplexer::get_instance();
+#endif
 }
 
 void Multiplexer::delete_instance() {
@@ -38,9 +34,9 @@ void Multiplexer::delete_instance() {
 
 void Multiplexer::add_to_server_map(int fd, Server *server) {
   if (is_in_server_map(fd)) {
-    std::stringstream ss;
-    ss << "Duplicate server fd: " << fd;
-    throw std::runtime_error(ss.str());
+    std::ostringstream oss;
+    oss << "Duplicate server fd: " << fd;
+    throw std::runtime_error(oss.str());
   }
   server_map[fd] = server;
 }
@@ -54,25 +50,27 @@ void Multiplexer::remove_from_server_map(int fd) {
   }
 }
 
-bool Multiplexer::is_in_server_map(int fd) {
+bool Multiplexer::is_in_server_map(int fd) const {
   return server_map.find(fd) != server_map.end();
 }
 
-Server *Multiplexer::get_server_from_map(int fd) {
-  ServerIt it = server_map.find(fd);
+Server *Multiplexer::get_server_from_map(int fd) const {
+  ConstServerIt it = server_map.find(fd);
   if (it == server_map.end()) {
-    std::stringstream ss;
-    ss << "Server not found for fd: " << fd;
-    throw std::runtime_error(ss.str());
+    std::ostringstream oss;
+    oss << "Server not found for fd: " << fd;
+    throw std::runtime_error(oss.str());
   }
   return it->second;
 }
 
+size_t Multiplexer::get_num_servers() const { return server_map.size(); }
+
 void Multiplexer::add_to_client_map(int fd, Client *client) {
   if (is_in_client_map(fd)) {
-    std::stringstream ss;
-    ss << "Duplicate client fd: " << fd;
-    throw std::runtime_error(ss.str());
+    std::ostringstream oss;
+    oss << "Duplicate client fd: " << fd;
+    throw std::runtime_error(oss.str());
   }
   client_map[fd] = client;
 }
@@ -86,18 +84,47 @@ void Multiplexer::remove_from_client_map(int fd) {
   }
 }
 
-bool Multiplexer::is_in_client_map(int fd) {
+bool Multiplexer::is_in_client_map(int fd) const {
   return client_map.find(fd) != client_map.end();
 }
 
-Client *Multiplexer::get_client_from_map(int fd) {
-  ClientIt it = client_map.find(fd);
+Client *Multiplexer::get_client_from_map(int fd) const {
+  ConstClientIt it = client_map.find(fd);
   if (it == client_map.end()) {
-    std::stringstream ss;
-    ss << "Client not found for fd: " << fd;
-    throw std::runtime_error(ss.str());
+    std::ostringstream oss;
+    oss << "Client not found for fd: " << fd;
+    throw std::runtime_error(oss.str());
   }
   return it->second;
+}
+
+size_t Multiplexer::get_num_clients() const { return client_map.size(); }
+
+void Multiplexer::initialize_fds() {
+  std::cout << "initialize_fds() called\n";
+  if (server_map.empty()) {
+    throw std::runtime_error("Error: No servers available.");
+  }
+  for (ServerIt it = server_map.begin(); it != server_map.end(); ++it) {
+    add_to_read_fds(it->first);
+  }
+}
+
+void Multiplexer::process_event(int fd, bool readable, bool writable) {
+  if (!readable && !writable) {
+    return;
+  }
+  if (is_in_server_map(fd) && readable) {
+    accept_client(fd);
+    return;
+  }
+  if (is_in_client_map(fd)) {
+    if (readable) {
+      read_from_client(fd);
+    } else if (writable) {
+      write_to_client(fd);
+    }
+  }
 }
 
 void Multiplexer::free_all_fds() {
@@ -118,6 +145,65 @@ Multiplexer::Multiplexer() {}
 Multiplexer::Multiplexer(const Multiplexer &other) { (void)other; }
 
 Multiplexer::~Multiplexer() { free_all_fds(); }
+
+void Multiplexer::accept_client(int server_fd) {
+  std::cout << "accept_client() called on server fd " << server_fd << "\n";
+  struct sockaddr_storage client_addr;
+  socklen_t addrlen = sizeof(client_addr);
+  int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addrlen);
+  if (client_fd == -1) {
+    std::cerr << "accept failed\n";
+    return;
+  }
+  if (fcntl(client_fd, F_SETFL, fcntl(client_fd, F_GETFL) | O_NONBLOCK) == -1) {
+    std::cerr << "Error: Failed to set O_NONBLOCK on client_fd " << client_fd
+              << ": " << strerror(errno) << "\n";
+    close(client_fd);
+    return;
+  }
+  try {
+    add_to_client_map(client_fd, new Client(client_fd, server_fd));
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    close(client_fd);
+    return;
+  }
+  add_to_read_fds(client_fd);
+  std::cout << "New connection on client fd: " << client_fd << "\n";
+}
+
+void Multiplexer::read_from_client(int client_fd) {
+  std::cout << "read_from_client() called on client fd " << client_fd << "\n";
+  Client *client = get_client_from_map(client_fd);
+  IOStatus status = client->on_read();
+  if (status == IO_SUCCESS) {
+    std::cout << "success\n";
+    add_to_write_fds(client_fd);
+  } else if (status == IO_FAILED) {
+    std::cout << "failed\n";
+    remove_client(client_fd);
+  }
+}
+
+void Multiplexer::write_to_client(int client_fd) {
+  std::cout << "write_to_client() called on client fd " << client_fd << "\n";
+  Client *client = get_client_from_map(client_fd);
+  IOStatus status = client->on_write();
+  if (status == IO_SUCCESS) {
+    std::cout << "success\n";
+    remove_from_write_fds(client_fd);
+  } else if (status == IO_FAILED) {
+    std::cout << "failed\n";
+    remove_client(client_fd);
+  }
+}
+
+void Multiplexer::remove_client(int client_fd) {
+  std::cout << "remove_client() called on client fd" << client_fd << "\n";
+  remove_from_write_fds(client_fd);
+  remove_from_read_fds(client_fd);
+  remove_from_client_map(client_fd); // close, delete もこの中
+}
 
 Multiplexer &Multiplexer::operator=(const Multiplexer &other) {
   (void)other;

@@ -8,34 +8,31 @@
  */
 class SelectMultiplexer : public Multiplexer {
 public:
-  SelectMultiplexer();
-  ~SelectMultiplexer();
+  static Multiplexer &get_instance();
 
   void run();
 
-private:
-  fd_set read_fds;        // 継続的に監視するfd
-  fd_set active_read_fds; // select() の結果を保存するfd
+protected:
+  void add_to_read_fds(int fd);
+  void remove_from_read_fds(int fd);
+  void add_to_write_fds(int fd);
+  void remove_from_write_fds(int fd);
 
-  fd_set write_fds;        // 継続的に監視するfd
-  fd_set active_write_fds; // select() の結果を保存するfd
+private:
+  fd_set read_fds;  // 常時監視
+  fd_set write_fds; // 必要時監視
+
+  fd_set active_read_fds;
+  fd_set active_write_fds;
 
   int max_fd;
 
-  void initialize_fds();
-
-  void add_to_read_fds(int fd);
-  void remove_from_read_fds(int fd);
   bool is_readable(int fd);
-
-  void add_to_write_fds(int fd);
-  void remove_from_write_fds(int fd);
   bool is_writable(int fd);
 
-  void accept_client(int server_fd);
-  void handle_client(int client_fd);
-  void remove_client(int client_fd);
-
+  SelectMultiplexer();
   SelectMultiplexer(const SelectMultiplexer &other);
+  ~SelectMultiplexer();
+
   SelectMultiplexer &operator=(const SelectMultiplexer &other);
 };
