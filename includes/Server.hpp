@@ -10,12 +10,13 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+#include <utility> 
 
 #include "HttpRequest.hpp"
 
 class Server {
 public:
-  Server(const std::map<std::string, std::vector<std::string> > &config);
+  Server(const std::map<std::string, std::vector<std::string> > &config, const std::map<std::string, std::map<std::string, std::vector<std::string> > >& location_configs);
   ~Server();
 
   void createSockets();
@@ -23,6 +24,7 @@ public:
 
 private:
   std::map<std::string, std::vector<std::string> > config;
+  std::map<std::string, std::map<std::string, std::vector<std::string> > > location_configs;
   std::vector<int> listenPorts_;
   std::string public_root;
   std::string error_404;
