@@ -1,5 +1,6 @@
 #include "PollMultiplexer.hpp"
 #include "Server.hpp"
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string.h>
