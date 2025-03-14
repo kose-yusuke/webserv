@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/14 01:42:21 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/15 04:07:30 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,16 +74,4 @@ void HttpResponse::send_redirect(int client_socket, int status_code, const std::
     std::cout << client_socket << std::endl;
     std::cout << status_code << std::endl;
     std::cout << new_location << std::endl;
-}
-
-std::string HttpResponse::generate(const HttpRequest &request, int server_fd) {
-  (void)request;
-  (void)server_fd;
-  std::ostringstream oss;
-  oss << "HTTP/1.1 200 OK\r\n";
-  oss << "Content-Length: 13\r\n";
-  oss << "Content-Type: text/plain\r\n";
-  oss << "\r\n";
-  oss << "Hello, world?";
-  return oss.str();
 }
