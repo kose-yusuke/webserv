@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/15 03:32:26 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/15 03:58:04 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,15 +47,14 @@ public:
   MethodType methodType_;
 
   // TODO: 未作成の関数群
-  HttpRequest();
-  size_t get_content_length();
-  bool is_header_received();
-  void parse_header(const std::string &request);
-  void parse_body(const std::string &request);
-  void clear();
+  HttpRequest(){}
+  size_t get_content_length(){return 0;}
+  bool is_header_received(){return true;};
+  void parse_header(const std::string &request){(void)request;}
+  void parse_body(const std::string &request){(void)request;}
+  void clear(){}
   // ここまで未完成
 
-    MethodType methodType_;
     bool is_autoindex_enabled;
     std::vector<std::string> cgi_extensions;
     std::vector<std::string> allow_methods;
@@ -63,7 +62,6 @@ public:
     std::map<std::string, std::map<std::string, std::vector<std::string> > > location_configs;
     std::map<std::string, std::vector<std::string> > best_match_location_config;
 
-    HttpRequest() {};
     HttpRequest(const std::map<std::string, std::vector<std::string> >& config, const std::map<std::string, std::map<std::string, std::vector<std::string> > >&  location_config);
     void handleHttpRequest(int clientFd, const char *buffer, int nbytes);
     // リクエストの解析

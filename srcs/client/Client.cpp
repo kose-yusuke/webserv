@@ -59,14 +59,17 @@ bool Client::on_parse() {
     request_buffer.erase(0, end + 4);
   }
   if (request.methodType_ == POST) {
-    size_t bodySize = request.get_content_length();
+    // size_t bodySize = request.get_content_length();
+    size_t bodySize = 0; // XXX: tmp
     if (bodySize > 0 && request_buffer.size() < bodySize) {
       return false; // body未受信
     }
     request.parse_body(request_buffer.substr(0, bodySize));
     request_buffer.erase(0, bodySize);
   }
-  response_buffer = HttpResponse::generate(request, server_fd);
+  // response_buffer = HttpResponse::generate(request, server_fd);
+  (void)server_fd; // XXX: tmp
+  response_buffer = "tmp";
   response_sent = 0;
   request.clear();
   return true; // 解析完了
