@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/12 22:14:38 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/15 03:33:40 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes
         return;
     }
 
-    std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
+  std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
 
     // best matchなlocationのconfigを取得する
     std::map<std::string, std::vector<std::string> > config = get_location_config(path);
@@ -37,7 +37,7 @@ void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes
         _root = best_match_location_config["root"][0];
     else if (!server_configs["root"].empty())
         _root = server_configs["root"][0];
-    else 
+    else
         print_error_message("No root defound in config file.");
 
     // autoindex初期化
@@ -79,12 +79,14 @@ void HttpRequest::handleHttpRequest(int clientFd, const char *buffer, int nbytes
     }
 }
 
-bool HttpRequest::parse_http_request(const std::string &request, std::string &method, std::string &path, std::string &version) {
-    std::istringstream request_stream(request);
-    if (!(request_stream >> method >> path >> version)) {
-        return false;
-    }
-    return true;
+bool HttpRequest::parse_http_request(const std::string &request,
+                                     std::string &method, std::string &path,
+                                     std::string &version) {
+  std::istringstream request_stream(request);
+  if (!(request_stream >> method >> path >> version)) {
+    return false;
+  }
+  return true;
 }
 
 std::map<std::string, std::vector<std::string> > HttpRequest::get_location_config(const std::string& path) {
@@ -114,12 +116,12 @@ std::map<std::string, std::vector<std::string> > HttpRequest::get_location_confi
 void HttpRequest::handle_get_request(int client_socket, std::string path) {
 
     std::string file_path = get_requested_resource(path);
-    
+
     if (file_path.empty()) {
         HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
         return;
     }
-    
+
     ResourceType type = get_resource_type(file_path);
 
     if (type == Directory) {
@@ -210,14 +212,14 @@ bool HttpRequest::is_location_upload_file(int client_socket, const std::string f
         HttpResponse::send_error_response(client_socket, 403, "Forbidden");
         return false;
     }
-    
+
     if (file_exists(file_path)) {
         if (access(file_path.c_str(), W_OK) != 0) {
             HttpResponse::send_error_response(client_socket, 403, "Forbidden");
             return false;
         }
     }
-    
+
     if (is_cgi_request(file_path))
         return false;
     return true;
@@ -225,7 +227,7 @@ bool HttpRequest::is_location_upload_file(int client_socket, const std::string f
 
 void HttpRequest::handle_post_request(int client_socket, const std::string &request, std::string path) {
     std::string full_path = _root + path;
-    if (is_location_upload_file(client_socket, full_path)) 
+    if (is_location_upload_file(client_socket, full_path))
     {
         std::cout << "Received POST request for path: " << path << std::endl;
 
@@ -251,7 +253,7 @@ void HttpRequest::handle_post_request(int client_socket, const std::string &requ
         std::cout << "File written successfully: " << path << std::endl;
         ofs.close();
 
-        HttpResponse::send_response(client_socket, 201, body, "text/plain");   
+        HttpResponse::send_response(client_socket, 201, body, "text/plain");
     }
     else
     {
@@ -262,12 +264,12 @@ void HttpRequest::handle_post_request(int client_socket, const std::string &requ
 
 void HttpRequest::handle_delete_request(int client_socket, std::string path) {
     std::string file_path = get_requested_resource(path);
-    
+
     if (file_path.empty()) {
         HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
         return;
     }
-    
+
     ResourceType type = get_resource_type(file_path);
 
     // 書き込み権限
@@ -306,7 +308,7 @@ int HttpRequest::handle_file_delete(const std::string& file_path)
         return 0;
     } else {
         std::cerr << "Failed to delete file: " << file_path << std::endl;
-        perror("Error"); 
+        perror("Error");
         return -1;
     }
     return 0;
@@ -357,7 +359,7 @@ void HttpRequest::handle_cgi_request(int client_socket, const std::string& cgi_p
 
         char* argv[2];
         argv[0] = const_cast<char*>(cgi_path.c_str());
-        argv[1] = NULL; 
+        argv[1] = NULL;
         char* envp[] = {NULL};
         execve(cgi_path.c_str(), argv, envp);
         exit(1);
@@ -367,7 +369,7 @@ void HttpRequest::handle_cgi_request(int client_socket, const std::string& cgi_p
     char buffer[1024];
     std::string cgi_output;
     ssize_t bytes_read;
-    
+
     while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0)
     {
         buffer[bytes_read] = '\0';
@@ -386,7 +388,7 @@ std::string HttpRequest::generate_directory_listing(const std::string &dir_path)
     if (!dir) {
         return "<html><body><h1>403 Forbidden</h1></body></html>";
     }
-    
+
     std::ostringstream html;
     html << "<html><head><title>Index of " << dir_path << "</title></head>";
     html << "<body><h1>Index of " << dir_path << "</h1>";
@@ -402,6 +404,6 @@ std::string HttpRequest::generate_directory_listing(const std::string &dir_path)
     }
     html << "</ul></body></html>";
     closedir(dir);
-    
+
     return html.str();
 }

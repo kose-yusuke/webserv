@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 22:46:46 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/15 03:33:56 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,28 +43,29 @@ void HttpResponse::send_custom_error_page(int client_socket, int status_code, co
         response << "Content-Type: text/html\r\n\r\n";
         response << file_content;
 
-        send(client_socket, response.str().c_str(), response.str().size(), 0);
-    } catch (const std::exception &e) {
-        std::ostringstream fallback;
-        fallback << "HTTP/1.1 " << status_code << " ";
-        if (status_code == 404) {
-            fallback << "Not Found";
-        } else if (status_code == 405) {
-            fallback << "Method Not Allowed";
-        }
-        fallback << "\r\nContent-Length: 9\r\n\r\nNot Found";
-        send(client_socket, fallback.str().c_str(), fallback.str().size(), 0);
+    send(client_socket, response.str().c_str(), response.str().size(), 0);
+  } catch (const std::exception &e) {
+    std::ostringstream fallback;
+    fallback << "HTTP/1.1 " << status_code << " ";
+    if (status_code == 404) {
+      fallback << "Not Found";
+    } else if (status_code == 405) {
+      fallback << "Method Not Allowed";
     }
+    fallback << "\r\nContent-Length: 9\r\n\r\nNot Found";
+    send(client_socket, fallback.str().c_str(), fallback.str().size(), 0);
+  }
 }
 
-void HttpResponse::send_error_response(int client_socket, int status_code, const std::string &message) {
-    std::ostringstream response;
-    response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
-    response << "Content-Length: " << message.size() << "\r\n";
-    response << "Content-Type: text/plain\r\n\r\n";
-    response << message;
+void HttpResponse::send_error_response(int client_socket, int status_code,
+                                       const std::string &message) {
+  std::ostringstream response;
+  response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
+  response << "Content-Length: " << message.size() << "\r\n";
+  response << "Content-Type: text/plain\r\n\r\n";
+  response << message;
 
-    send(client_socket, response.str().c_str(), response.str().size(), 0);
+  send(client_socket, response.str().c_str(), response.str().size(), 0);
 }
 
 // 未実装

@@ -1,37 +1,75 @@
 #pragma once
 
+#include <cstddef>
 #include <map>
 #include <vector>
 
 class Server;
+class Client;
 
 /**
  * Server の I/O 多重化を管理する基底クラス
  */
 class Multiplexer {
 public:
-  static void run();
+  // Singleton pattern
+  static Multiplexer &get_instance();
+  static void delete_instance();
 
-  static void addServerFd(int serverFd, Server *server);
-  static void closeAllFds();
+  virtual void run() = 0;
+  void add_to_server_map(int fd, Server *server);
 
 protected:
-  static std::map<int, Server *> serverFdMap_;     // map: serverFd->Server*
-  static std::map<int, Server *> clientServerMap_; // map: clientFd->Server*
+  // Singleton pattern
+  static Multiplexer *instance;
 
-  static void removeServerFd(int serverFd);
-  static bool isInServerFdMap(int serverFd);
-  static Server *getServerFromServerFdMap(int serverFd);
+  // server_mapの管理
+  void remove_from_server_map(int fd);
+  bool is_in_server_map(int fd) const;
+  Server *get_server_from_map(int fd) const;
+  size_t get_num_servers() const;
 
-  static void addClientFd(int clientFd, Server *server);
-  static void removeClientFd(int clientFd);
-  static bool isInClientServerMap(int clientFd);
-  static Server *getServerFromClientServerMap(int clientFd);
+  // client_mapの管理
+  void add_to_client_map(int fd, Client *client);
+  void remove_from_client_map(int fd);
+  bool is_in_client_map(int fd) const;
+  Client *get_client_from_map(int fd) const;
+  size_t get_num_clients() const;
+
+  // I/O多重化処理の管理
+  void initialize_fds();
+  void process_event(int fd, bool readable, bool writable);
+
+  // 監視fd管理用の純粋仮想関数
+  virtual void add_to_read_fds(int fd) = 0;
+  virtual void remove_from_read_fds(int fd) = 0;
+  virtual void add_to_write_fds(int fd) = 0;
+  virtual void remove_from_write_fds(int fd) = 0;
+
+  // 解放処理（fd close & インスタンスの削除）
+  void free_all_fds();
 
   Multiplexer();
   Multiplexer(const Multiplexer &other);
-  ~Multiplexer();
+  virtual ~Multiplexer();
 
 private:
+  // mapのiterator型定義
+  typedef std::map<int, Server *>::iterator ServerIt;
+  typedef std::map<int, Client *>::iterator ClientIt;
+  typedef std::map<int, Server *>::const_iterator ConstServerIt;
+  typedef std::map<int, Client *>::const_iterator ConstClientIt;
+
+  // client, server の fd管理
+  std::map<int, Server *> server_map; // serverfd -> Server*
+  std::map<int, Client *> client_map; // clientfd -> Client*
+
+  // I/O多重化処理の補助関数
+  void accept_client(int server_fd);
+  void read_from_client(int client_fd);
+  void write_to_client(int client_fd);
+  void remove_client(int client_fd);
+
+  // 代入禁止
   Multiplexer &operator=(const Multiplexer &other);
 };

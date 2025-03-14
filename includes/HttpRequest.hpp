@@ -3,16 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/12 22:13:58 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/15 03:58:04 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <fstream>
@@ -35,14 +37,24 @@ enum MethodType { GET, POST, DELETE };
 
 class HttpRequest {
 public:
-    // メンバ変数（仮）
-    std::string method;
-    std::string path;
-    std::string version;
-    std::string body;
-    std::map<std::string, std::string> headers; 
+  // メンバ変数（仮）
+  std::string method;
+  std::string path;
+  std::string version;
+  std::string body;
+  std::map<std::string, std::string> headers;
 
-    MethodType methodType_;
+  MethodType methodType_;
+
+  // TODO: 未作成の関数群
+  HttpRequest(){}
+  size_t get_content_length(){return 0;}
+  bool is_header_received(){return true;};
+  void parse_header(const std::string &request){(void)request;}
+  void parse_body(const std::string &request){(void)request;}
+  void clear(){}
+  // ここまで未完成
+
     bool is_autoindex_enabled;
     std::vector<std::string> cgi_extensions;
     std::vector<std::string> allow_methods;
@@ -50,13 +62,12 @@ public:
     std::map<std::string, std::map<std::string, std::vector<std::string> > > location_configs;
     std::map<std::string, std::vector<std::string> > best_match_location_config;
 
-    HttpRequest() {};
     HttpRequest(const std::map<std::string, std::vector<std::string> >& config, const std::map<std::string, std::map<std::string, std::vector<std::string> > >&  location_config);
     void handleHttpRequest(int clientFd, const char *buffer, int nbytes);
     // リクエストの解析
     bool parse_http_request(const std::string &request, std::string &method, std::string &path, std::string &version);
     std::map<std::string, std::vector<std::string> > get_location_config(const std::string& path);
-    
+
     // GETの処理
     ResourceType get_resource_type(const std::string &path);
     void handle_get_request(int client_socket, std::string path);
@@ -75,7 +86,7 @@ public:
 
     private:
         std::string _root;
-        
+
         std::string get_requested_resource(const std::string &path);
         void handle_file_request(int client_socket, const std::string &file_path);
 };

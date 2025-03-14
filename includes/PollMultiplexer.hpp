@@ -5,23 +5,34 @@
 #include <vector>
 
 /**
- * poll を用いたI/O多重化
+ * poll を用いた I/O 多重化
  */
 class PollMultiplexer : public Multiplexer {
 public:
-  static void run();
+  static Multiplexer &get_instance();
+
+  void run();
+
+protected:
+  void add_to_read_fds(int fd);
+  void remove_from_read_fds(int fd);
+  void add_to_write_fds(int fd);
+  void remove_from_write_fds(int fd);
 
 private:
-  static void addPfd(std::vector<struct pollfd> &pfds, int fd);
-  static void removePfd(std::vector<struct pollfd> &pfds, int fd);
-  static bool isInPfds(const std::vector<struct pollfd> &pfds, int fd);
-  static void addAllServerFdsToPfds(std::vector<struct pollfd> &pfds);
+  typedef std::vector<struct pollfd> PollFdVec;
+  typedef std::vector<struct pollfd>::iterator PollFdIt;
 
-  static void acceptClient(std::vector<struct pollfd> &pfds, int serverFd);
-  static void handleClient(std::vector<struct pollfd> &pfds, int clientFd);
+  PollFdVec pfds;
+
+  bool is_readable(struct pollfd fd) const;
+  bool is_writable(struct pollfd fd) const;
+
+  PollFdIt find_pollfd(int fd);
 
   PollMultiplexer();
   PollMultiplexer(const PollMultiplexer &other);
   ~PollMultiplexer();
+
   PollMultiplexer &operator=(const PollMultiplexer &other);
 };
