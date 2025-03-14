@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Utils.hpp                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/03/05 21:09:37 by koseki.yusu       #+#    #+#             */
+/*   Updated: 2025/03/05 21:09:39 by koseki.yusu      ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #pragma once
 
 #include <cstring>
@@ -11,6 +23,8 @@
 // #include <thread>
 #include <unistd.h>
 #include <vector>
+#include <sys/stat.h>
+#include <cstdlib>
 
 // kosekiさんから引き継いだ時点でのServer classのheader（一旦コメントアウト）
 // class Server {
@@ -49,3 +63,9 @@
 
 std::string read_file(const std::string &file_path);
 int print_error_message(const std::string &message);
+
+// utils
+bool file_exists(const std::string &path);
+bool ends_with(const std::string &str, const std::string &suffix);
+bool has_index_file(const std::string &dir_path);
+bool is_directory(const std::string &path);

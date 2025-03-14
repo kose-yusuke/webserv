@@ -6,20 +6,34 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/02 16:51:25 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 22:46:46 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpResponse.hpp"
 #include "HttpRequest.hpp"
+#include "Utils.hpp"
+
+void HttpResponse::send_response(int client_socket, int status_code, const std::string &content, const std::string &content_type) {
+    std::ostringstream response;
+    response << "HTTP/1.1 " << status_code << " OK\r\n";
+    response << "Content-Length: " << content.size() << "\r\n";
+    response << "Content-Type: " << content_type << "\r\n\r\n";
+    response << content;
+
+    send(client_socket, response.str().c_str(), response.str().size(), 0);
+}
+
 
 void HttpResponse::send_custom_error_page(int client_socket, int status_code, const std::string &error_page) {
     try {
-        std::string file_content = HttpRequest().read_file("./public/" + error_page);
+        std::string file_content = read_file("./public/" + error_page);
 
         std::ostringstream response;
         response << "HTTP/1.1 " << status_code << " ";
-        if (status_code == 404) {
+        if (status_code == 403) {
+            response << "Forbidden";
+        } else if (status_code == 404) {
             response << "Not Found";
         } else if (status_code == 405) {
             response << "Method Not Allowed";
@@ -53,12 +67,10 @@ void HttpResponse::send_error_response(int client_socket, int status_code, const
     send(client_socket, response.str().c_str(), response.str().size(), 0);
 }
 
-void HttpResponse::send_response(int client_socket, int status_code, const std::string &content, const std::string &content_type) {
-    std::ostringstream response;
-    response << "HTTP/1.1 " << status_code << " OK\r\n";
-    response << "Content-Length: " << content.size() << "\r\n";
-    response << "Content-Type: " << content_type << "\r\n\r\n";
-    response << content;
-
-    send(client_socket, response.str().c_str(), response.str().size(), 0);
+// 未実装
+void HttpResponse::send_redirect(int client_socket, int status_code, const std::string new_location)
+{
+    std::cout << client_socket << std::endl;
+    std::cout << status_code << std::endl;
+    std::cout << new_location << std::endl;
 }
