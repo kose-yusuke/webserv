@@ -1,6 +1,6 @@
 #include "Server.hpp"
 #include "Multiplexer.hpp"
-#include "config_parse.hpp"
+#include "ConfigParse.hpp"
 #include <cstring>
 #include <fcntl.h>
 #include <netdb.h>
@@ -8,20 +8,20 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-Server::Server(const std::map<std::string, std::vector<std::string> > &config)
-    : config(config) {
-  try {
+Server::Server(const std::map<std::string, std::vector<std::string> > &config,
+               const std::map<std::string, std::map<std::string, std::vector<std::string> > >& locations)
+    : config(config), location_configs(locations), httpRequest(config, locations) {
     // listen
     std::map<std::string, std::vector<std::string> >::const_iterator listen_it =
         config.find("listen");
     if (listen_it == config.end() || listen_it->second.empty())
-      throw std::runtime_error("Missing required key: listen");
+      print_error_message("Missing required key: listen");
 
     for (size_t i = 0; i < listen_it->second.size(); i++) {
       int port;
       std::stringstream ss(listen_it->second[i]);
       if (!(ss >> port))
-        throw std::runtime_error("Invalid port number: " +
+        print_error_message("Invalid port number: " +
                                  listen_it->second[i]);
       listenPorts_.push_back(port);
     }
@@ -29,9 +29,8 @@ Server::Server(const std::map<std::string, std::vector<std::string> > &config)
     // root
     std::map<std::string, std::vector<std::string> >::const_iterator root_it =
         config.find("root");
-    if (root_it == config.end() || root_it->second.empty()) {
-      throw std::runtime_error("Missing required key: root");
-    }
+    if (root_it == config.end() || root_it->second.empty())
+      print_error_message("Missing required key: root");
     // この辺実はいらなそう
     public_root = root_it->second[0];
 
@@ -40,11 +39,6 @@ Server::Server(const std::map<std::string, std::vector<std::string> > &config)
     error_404 = (error_it != config.end() && !error_it->second.empty())
                     ? error_it->second[0]
                     : "404.html";
-
-  } catch (const std::exception &e) {
-    throw std::runtime_error(std::string("Error initializing server: ") +
-                             e.what());
-  }
 }
 
 Server::~Server() {}

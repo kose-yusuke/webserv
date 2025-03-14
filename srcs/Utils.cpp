@@ -6,17 +6,50 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/02 16:30:41 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/11 22:18:25 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 
-#include "../includes/webserv.hpp"
+#include "Utils.hpp"
 
 int print_error_message(const std::string& message)
 {
     std::cerr << "Error: " << message << std::endl;
+    exit(1);
     return (1);
+}
+
+bool ends_with(const std::string &str, const std::string &suffix) {
+    if (str.length() < suffix.length()) return false;
+    return (str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0);
+}
+
+bool file_exists(const std::string &path) {
+    return (access(path.c_str(), F_OK) == 0);
+}
+
+bool has_index_file(const std::string &dir_path) {
+    std::string index_file = dir_path + "/index.html";
+    return file_exists(index_file);
+}
+
+bool is_directory(const std::string &path) {
+    struct stat buffer;
+    if (stat(path.c_str(), &buffer) != 0) {
+        return false;
+    }
+    return S_ISDIR(buffer.st_mode);
+}
+
+std::string read_file(const std::string& file_path) {
+    std::ifstream file(file_path.c_str(), std::ios::in);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + file_path);
+    }
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
 }
 
 
@@ -49,3 +82,4 @@ int print_error_message(const std::string& message)
 //     // デフォルトのMIMEタイプ
 //     return "application/octet-stream";
 // }
+
