@@ -131,7 +131,8 @@ void Multiplexer::process_event(int fd, bool readable, bool writable) {
 void Multiplexer::free_all_fds() {
   for (ServerIt it = server_map.begin(); it != server_map.end(); ++it) {
     close(it->first);
-    delete it->second;
+    // delete it->second;
+    // 複数のfd（port）が同じserverに結びつくので、ここでserverインスタンスを削除できない
   }
   server_map.clear();
   for (ClientIt it = client_map.begin(); it != client_map.end(); ++it) {
