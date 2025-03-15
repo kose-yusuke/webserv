@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 
 Client::Client(int clientfd, int serverfd)
-    : fd(clientfd), server_fd(serverfd), request(), response_sent(0) {}
+    : fd(clientfd), server_fd(serverfd), request(serverfd), response_sent(0) {}
 
 Client::~Client() {}
 
@@ -46,11 +46,15 @@ IOStatus Client::on_write() {
   return IO_CONTINUE; // 未送信部分があるため、再度sendが必要
 }
 
+// void Server::handleHttp(int clientFd, const char *buffer, int nbytes) {
+//   httpRequest.handleHttpRequest(clientFd, buffer, nbytes);
+// }
+
 bool Client::on_parse() {
   if (!response_buffer.empty()) {
     return true; // 送信可能なresponseがbufferにすでに待機
   }
-  if (!request.is_header_received()) {
+  if (request.is_waiting_for_header()) {
     size_t end = request_buffer.find("\r\n\r\n");
     if (end == std::string::npos) {
       return false; // header未受信
@@ -58,7 +62,7 @@ bool Client::on_parse() {
     request.parse_header(request_buffer.substr(0, end + 4));
     request_buffer.erase(0, end + 4);
   }
-  if (request.methodType_ == POST) {
+  if (request.methodType == POST) {
     // size_t bodySize = request.get_content_length();
     size_t bodySize = 0; // XXX: tmp
     if (bodySize > 0 && request_buffer.size() < bodySize) {
@@ -75,7 +79,7 @@ bool Client::on_parse() {
   return true; // 解析完了
 }
 
-Client::Client() {}
+Client::Client() : request() {}
 
 Client::Client(const Client &other) { (void)other; }
 

@@ -18,6 +18,7 @@ public:
 
   virtual void run() = 0;
   void add_to_server_map(int fd, Server *server);
+  Server *get_server_from_map(int fd) const;
 
 protected:
   // Singleton pattern
@@ -26,7 +27,6 @@ protected:
   // server_mapの管理
   void remove_from_server_map(int fd);
   bool is_in_server_map(int fd) const;
-  Server *get_server_from_map(int fd) const;
   size_t get_num_servers() const;
 
   // client_mapの管理
@@ -46,7 +46,7 @@ protected:
   virtual void add_to_write_fds(int fd) = 0;
   virtual void remove_from_write_fds(int fd) = 0;
 
-  // 解放処理（fd close & インスタンスの削除）
+  // 解放処理（fd close & clientのみインスタンス削除）
   void free_all_fds();
 
   Multiplexer();
