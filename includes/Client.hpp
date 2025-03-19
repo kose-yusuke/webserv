@@ -3,6 +3,7 @@
 #include "HttpRequest.hpp"
 #include "HttpRequestParser.hpp"
 #include "HttpResponse.hpp"
+#include <queue>
 #include <string>
 
 class Server;
