@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/19 17:48:15 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/19 22:35:17 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,7 +53,7 @@ public:
   ConfigMap best_match_location_config;
   // std::map<std::string, std::vector<std::string>> best_match_location_config;
 
-  void handleHttpRequest(int clientFd, const char *buffer, int nbytes);
+  std::string handle_http_request(int clientFd, const char *buffer, int nbytes);
 
   // リクエストの解析
   bool parse_http_request(const std::string &request, std::string &method,

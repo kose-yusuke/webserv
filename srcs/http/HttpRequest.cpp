@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/19 17:17:31 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/19 22:48:57 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,14 +35,14 @@ HttpRequest::~HttpRequest() {}
 //     this->location_configs = location_config;
 // }
 
-void HttpRequest::handleHttpRequest(int clientFd, const char *buffer,
-                                    int nbytes) {
+std::string HttpRequest::handle_http_request(int clientFd, const char *buffer,
+                                             int nbytes) {
   (void)nbytes;
   std::string method, path, version;
-  if (!parse_http_request(buffer, method, path, version)) {
-    HttpResponse::send_error_response(clientFd, 400, "Bad Request");
-    return;
-  }
+  // if (!parse_http_request(buffer, method, path, version)) {
+  //   HttpResponse::send_error_response(clientFd, 400, "Bad Request");
+  //   return;
+  // }
 
   std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
 
@@ -99,6 +99,7 @@ void HttpRequest::handleHttpRequest(int clientFd, const char *buffer,
   } else {
     HttpResponse::send_error_response(clientFd, 405, "Method Not Allowed");
   }
+  return 0;
 }
 
 bool HttpRequest::parse_http_request(const std::string &request,

@@ -24,43 +24,38 @@ IOStatus Client::on_read() {
     return IO_FAILED; // 異常終了
   }
   parser.append_data(buffer, bytes_read);
+  // parse 成功時, write fd監視開始
   return on_parse() ? IO_SUCCESS : IO_CONTINUE;
 }
 
 IOStatus Client::on_write() {
   if (!on_parse()) {
-    return IO_SUCCESS; // 送信可能なresponseがないため, write側監視のみ終了
+    return IO_SUCCESS; // 送信可能なresponseがない時, writeを終了
   }
-  ssize_t bytes_sent = send(fd, response_buffer.c_str() + response_sent,
-                            response_buffer.size() - response_sent, 0);
+  std::string &response = response_queue.front();
+  ssize_t bytes_sent = send(fd, response.c_str() + response_sent,
+                            response.size() - response_sent, 0);
   if (bytes_sent == 0 || bytes_sent == -1) {
     std::cerr << "Error: send failed: " << fd << " (" << bytes_sent << ")\n";
     return IO_FAILED; // 異常終了
   }
   response_sent += bytes_sent;
-  if (response_sent >= response_buffer.size()) {
-    response_buffer.clear();
+  if (response_sent >= response.size()) {
+    response_queue.pop();
     response_sent = 0;
-    // 次に送信可能なbufがあれば継続し、なければwrite側監視のみ終了
-    return on_parse() ? IO_CONTINUE : IO_SUCCESS;
   }
-  return IO_CONTINUE; // 未送信部分があるため、再度sendが必要
+  return response_queue.empty() ? IO_SUCCESS : IO_CONTINUE;
 }
 
 bool Client::on_parse() {
-  if (!response_buffer.empty()) {
-    // 送信可能なresponseがbufferにすでに待機済み
-    return true;
-  }
-  if (parser.parse()) {
+  // 複数のresponseを生成できる
+  while (parser.parse()) {
     // trueの場合、requestの解析が完了しレスポンスを生成できる状態
-    // PARSE_ERRORもerror responseを用意できる
-    // response_buffer = HttpResponse::generate(request, server_fd);
+    std::string response = request.handle_http_request(0, 0, 0);
+    response_queue.push(response);
     parser.clear(); // 常態をclearして, 再びheader待機状態に
-    response_sent = 0;
-    return true;
   }
-  return false; // responseを用意できなかった
+  return !response_queue.empty(); // 待機済みのresponseがあるか確認
 }
 
 Client &Client::operator=(const Client &other) {
