@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/15 19:47:39 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/19 17:17:31 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@
 #include "Server.hpp"
 #include "Utils.hpp"
 
-HttpRequest::HttpRequest() {}
 // server fd 経由で, server_config, locations_configs を取得
 HttpRequest::HttpRequest(int server_fd) {
   Server *server = Multiplexer::get_instance().get_server_from_map(server_fd);
@@ -26,6 +25,8 @@ HttpRequest::HttpRequest(int server_fd) {
   this->server_config = server->get_config();
   this->location_configs = server->get_locations();
 }
+
+HttpRequest::~HttpRequest() {}
 
 // HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string>
 // >& config, const std::map<std::string, std::map<std::string,
@@ -432,4 +433,7 @@ HttpRequest::generate_directory_listing(const std::string &dir_path) {
   return html.str();
 }
 
-bool HttpRequest::is_waiting_for_header() const { return headers.empty(); }
+HttpRequest &HttpRequest::operator=(const HttpRequest &other) {
+  (void)other;
+  return *this;
+}

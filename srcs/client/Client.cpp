@@ -6,14 +6,15 @@
 #include <sys/socket.h>
 
 Client::Client(int clientfd, int serverfd)
-    : fd(clientfd), server_fd(serverfd), request(serverfd), response_sent(0) {}
+    : fd(clientfd), server_fd(serverfd), request(serverfd), parser(request),
+      response_sent(0) {}
 
 Client::~Client() {}
 
 IOStatus Client::on_read() {
   const int buf_size = 1024;
   char buffer[buf_size];
-  ssize_t bytes_read = recv(fd, buffer, sizeof(buf_size), 0);
+  ssize_t bytes_read = recv(fd, buffer, sizeof(buffer), 0);
   if (bytes_read == 0) {
     std::cout << "Client disconnected: " << fd << std::endl;
     return IO_FAILED; // client切断
@@ -46,42 +47,21 @@ IOStatus Client::on_write() {
   return IO_CONTINUE; // 未送信部分があるため、再度sendが必要
 }
 
-// void Server::handleHttp(int clientFd, const char *buffer, int nbytes) {
-//   httpRequest.handleHttpRequest(clientFd, buffer, nbytes);
-// }
-
 bool Client::on_parse() {
   if (!response_buffer.empty()) {
-    return true; // 送信可能なresponseがbufferにすでに待機
+    // 送信可能なresponseがbufferにすでに待機済み
+    return true;
   }
-  if (request.is_waiting_for_header()) {
-    size_t end = request_buffer.find("\r\n\r\n");
-    if (end == std::string::npos) {
-      return false; // header未受信
-    }
-    request.parse_header(request_buffer.substr(0, end + 4));
-    request_buffer.erase(0, end + 4);
+  if (parser.parse(request_buffer)) {
+    // trueの場合、requestの解析が完了しレスポンスを生成できる状態
+    // PARSE_ERRORもerror responseを用意できる
+    // response_buffer = HttpResponse::generate(request, server_fd);
+    parser.clear(); // 常態をclearして, 再びheader待機状態に
+    response_sent = 0;
+    return true;
   }
-  if (request.methodType == POST) {
-    // size_t bodySize = request.get_content_length();
-    size_t bodySize = 0; // XXX: tmp
-    if (bodySize > 0 && request_buffer.size() < bodySize) {
-      return false; // body未受信
-    }
-    request.parse_body(request_buffer.substr(0, bodySize));
-    request_buffer.erase(0, bodySize);
-  }
-  // response_buffer = HttpResponse::generate(request, server_fd);
-  (void)server_fd; // XXX: tmp
-  response_buffer = "tmp";
-  response_sent = 0;
-  request.clear();
-  return true; // 解析完了
+  return false; // responseを用意できなかった
 }
-
-Client::Client() : request() {}
-
-Client::Client(const Client &other) { (void)other; }
 
 Client &Client::operator=(const Client &other) {
   (void)other;

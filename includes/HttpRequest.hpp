@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/15 19:47:25 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/19 17:17:14 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,8 +32,8 @@ enum MethodType { GET, POST, DELETE };
 
 class HttpRequest {
 public:
-  HttpRequest();
   HttpRequest(int server_fd);
+  ~HttpRequest();
 
   // メンバ変数（仮）
   std::string method;
@@ -42,7 +42,6 @@ public:
   std::string body;
   std::map<std::string, std::string> headers;
 
-  bool headerParsed;
   MethodType methodType;
 
   bool is_autoindex_enabled;
@@ -78,13 +77,8 @@ public:
   // autoindex (directory listing)
   std::string generate_directory_listing(const std::string &dir_path);
 
-  bool is_waiting_for_header() const;
-
   // TODO: 未作成の関数群
   size_t get_content_length() { return 0; }
-  bool is_header_received() { return true; };
-  void parse_header(const std::string &request) { (void)request; }
-  void parse_body(const std::string &request) { (void)request; }
   void clear() {}
 
 private:
