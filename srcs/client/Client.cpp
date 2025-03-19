@@ -6,8 +6,8 @@
 #include <sys/socket.h>
 
 Client::Client(int clientfd, int serverfd)
-    : fd(clientfd), server_fd(serverfd), request(serverfd), parser(request),
-      response_sent(0) {}
+    : fd(clientfd), server_fd(serverfd), response(),
+      request(serverfd, response), parser(request), response_sent(0) {}
 
 Client::~Client() {}
 
@@ -29,33 +29,41 @@ IOStatus Client::on_read() {
 }
 
 IOStatus Client::on_write() {
-  if (!on_parse()) {
-    return IO_SUCCESS; // 送信可能なresponseがない時, writeを終了
+  if (!has_response()) {
+    return IO_SUCCESS; // 送信可能なresponseがない
   }
-  std::string &response = response_queue.front();
-  ssize_t bytes_sent = send(fd, response.c_str() + response_sent,
-                            response.size() - response_sent, 0);
-  if (bytes_sent == 0 || bytes_sent == -1) {
+  if (response_buffer.empty()) {
+    response_buffer = response.get_next_response();
+    response_sent = 0;
+  }
+
+  ssize_t bytes_sent = send(fd, response_buffer.c_str() + response_sent,
+                            response_buffer.size() - response_sent, 0);
+  if (bytes_sent <= 0) {
     std::cerr << "Error: send failed: " << fd << " (" << bytes_sent << ")\n";
     return IO_FAILED; // 異常終了
   }
   response_sent += bytes_sent;
-  if (response_sent >= response.size()) {
-    response_queue.pop();
-    response_sent = 0;
+  if (response_sent >= response_buffer.size()) {
+    response_buffer.clear();
+    response.pop_response();
   }
-  return response_queue.empty() ? IO_SUCCESS : IO_CONTINUE;
+  // continue: write続行, success: write完了
+  return has_response() ? IO_CONTINUE : IO_SUCCESS;
 }
 
 bool Client::on_parse() {
-  // 複数のresponseを生成できる
   while (parser.parse()) {
     // trueの場合、requestの解析が完了しレスポンスを生成できる状態
-    std::string response = request.handle_http_request(0, 0, 0);
-    response_queue.push(response);
-    parser.clear(); // 常態をclearして, 再びheader待機状態に
+    // request内でresponseクラスにresponseをpushしている
+    request.handle_http_request();
+    parser.clear(); // 常態をclearして, 再びheaderのparseを待機
   }
-  return !response_queue.empty(); // 待機済みのresponseがあるか確認
+  return has_response();
+}
+
+bool Client::has_response() const {
+  return (!response_buffer.empty() || response.has_next_response());
 }
 
 Client &Client::operator=(const Client &other) {
