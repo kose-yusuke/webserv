@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/19 22:35:17 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/20 02:33:57 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,13 +26,15 @@
 #include <unistd.h>
 #include <vector>
 
+class HttpResponse;
+
 enum ResourceType { File, Directory, NotFound };
 
 enum MethodType { GET, POST, DELETE };
 
 class HttpRequest {
 public:
-  HttpRequest(int server_fd);
+  HttpRequest(int server_fd, HttpResponse &httpResponse);
   ~HttpRequest();
 
   // メンバ変数（仮）
@@ -53,7 +55,7 @@ public:
   ConfigMap best_match_location_config;
   // std::map<std::string, std::vector<std::string>> best_match_location_config;
 
-  std::string handle_http_request(int clientFd, const char *buffer, int nbytes);
+  std::string handle_http_request();
 
   // リクエストの解析
   bool parse_http_request(const std::string &request, std::string &method,
@@ -62,16 +64,15 @@ public:
 
   // GETの処理
   ResourceType get_resource_type(const std::string &path);
-  void handle_get_request(int client_socket, std::string path);
-  void handle_directory_request(int client_socket, std::string path);
+  void handle_get_request(std::string path);
+  void handle_directory_request(std::string path);
   bool is_cgi_request(const std::string &path);
-  void handle_cgi_request(int client_socket, const std::string &cgi_path);
+  void handle_cgi_request(const std::string &cgi_path);
   // POSTの処理
-  void handle_post_request(int client_socket, const std::string &request,
-                           std::string path);
-  bool is_location_upload_file(int client_socket, const std::string file_path);
+  void handle_post_request(const std::string &request, std::string path);
+  bool is_location_upload_file(const std::string file_path);
   // DELETEの処理
-  void handle_delete_request(int client_socket, std::string path);
+  void handle_delete_request(const std::string path);
   int handle_file_delete(const std::string &file_path);
   int delete_directory(const std::string &dir_path);
   // autoindex (directory listing)
@@ -82,10 +83,11 @@ public:
   void clear() {}
 
 private:
+  HttpResponse &response;
   std::string _root;
 
   std::string get_requested_resource(const std::string &path);
-  void handle_file_request(int client_socket, const std::string &file_path);
+  void handle_file_request(const std::string &file_path);
 
   HttpRequest(const HttpRequest &other);
   HttpRequest &operator=(const HttpRequest &other);

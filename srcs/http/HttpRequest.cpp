@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/19 22:48:57 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/20 02:38:12 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,8 @@
 #include "Utils.hpp"
 
 // server fd 経由で, server_config, locations_configs を取得
-HttpRequest::HttpRequest(int server_fd) {
+HttpRequest::HttpRequest(int server_fd, HttpResponse &httpResponse)
+    : response(httpResponse) {
   Server *server = Multiplexer::get_instance().get_server_from_map(server_fd);
   if (!server) {
     throw std::runtime_error("server not found by HttpRequest");
@@ -35,9 +36,8 @@ HttpRequest::~HttpRequest() {}
 //     this->location_configs = location_config;
 // }
 
-std::string HttpRequest::handle_http_request(int clientFd, const char *buffer,
-                                             int nbytes) {
-  (void)nbytes;
+std::string HttpRequest::handle_http_request() {
+
   std::string method, path, version;
   // if (!parse_http_request(buffer, method, path, version)) {
   //   HttpResponse::send_error_response(clientFd, 400, "Bad Request");
@@ -90,14 +90,15 @@ std::string HttpRequest::handle_http_request(int clientFd, const char *buffer,
       std::find(allow_methods.begin(), allow_methods.end(), method);
   if (it != allow_methods.end()) {
     if (method == "GET") {
-      handle_get_request(clientFd, path);
+      handle_get_request(path);
     } else if (method == "POST") {
-      handle_post_request(clientFd, buffer, path);
+      handle_post_request(body, path); // XXX: buffer -> body
     } else if (method == "DELETE") {
-      handle_delete_request(clientFd, path);
+      handle_delete_request(path);
     }
   } else {
-    HttpResponse::send_error_response(clientFd, 405, "Method Not Allowed");
+    // HttpResponse::send_error_response(clientFd, 405, "Method Not Allowed");
+    response.generate_error_response(405, "Method Not Allowed");
   }
   return 0;
 }
@@ -139,26 +140,28 @@ ConfigMap HttpRequest::get_location_config(const std::string &path) {
 }
 
 /*GET Request*/
-void HttpRequest::handle_get_request(int client_socket, std::string path) {
+void HttpRequest::handle_get_request(std::string path) {
 
   std::string file_path = get_requested_resource(path);
 
   if (file_path.empty()) {
-    HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    response.generate_custom_error_page(404, "404.html");
     return;
   }
 
   ResourceType type = get_resource_type(file_path);
 
   if (type == Directory) {
-    handle_directory_request(client_socket, path);
+    handle_directory_request(path);
   } else if (type == File) {
     if (is_cgi_request(file_path))
-      handle_cgi_request(client_socket, file_path);
+      handle_cgi_request(file_path);
     else
-      handle_file_request(client_socket, file_path);
+      handle_file_request(file_path);
   } else {
-    HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    response.generate_custom_error_page(404, "404.html");
   }
 }
 
@@ -181,70 +184,78 @@ ResourceType HttpRequest::get_resource_type(const std::string &path) {
 }
 
 /*Requestがディレクトリかファイルかの分岐処理*/
-void HttpRequest::handle_file_request(int client_socket,
-                                      const std::string &file_path) {
+void HttpRequest::handle_file_request(const std::string &file_path) {
   std::ifstream file(file_path.c_str(), std::ios::in);
   if (!file.is_open()) {
-    HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    response.generate_custom_error_page(404, "404.html");
     return;
   }
   std::ostringstream buffer;
   buffer << file.rdbuf();
   std::string file_content = buffer.str();
-  HttpResponse::send_response(client_socket, 200, file_content, "text/html");
+  // HttpResponse::send_response(client_socket, 200, file_content, "text/html");
+  response.generate_response(200, file_content, "text/html");
 }
 
-void HttpRequest::handle_directory_request(int client_socket,
-                                           std::string path) {
+void HttpRequest::handle_directory_request(std::string path) {
   // URLの末尾に `/` がない場合、リダイレクト（301）
   if (!ends_with(path, "/")) {
     std::string new_location = path + "/";
-    HttpResponse::send_redirect(client_socket, 301, new_location);
+    // HttpResponse::send_redirect(client_socket, 301, new_location);
+    response.generate_redirect(301, new_location);
     return;
   }
 
   // `index.html` が存在するか確認 - 本当はこの辺の　public
   // になっているところはrootとかで置き換える必要あり
   if (has_index_file(_root + path)) {
-    handle_file_request(client_socket, _root + path + "index.html");
+    handle_file_request(_root + path + "index.html");
   } else {
     // autoindexがONの場合、ディレクトリリストを生成する
     if (is_autoindex_enabled) {
       std::string dir_listing = generate_directory_listing(_root + path);
-      HttpResponse::send_response(client_socket, 200, dir_listing, "text/html");
+      // HttpResponse::send_response(client_socket, 200, dir_listing,
+      // "text/html");
+      response.generate_response(200, dir_listing, "text/html");
     } else {
       // 403 forbidden
-      HttpResponse::send_custom_error_page(client_socket, 403, "403.html");
+      // HttpResponse::send_custom_error_page(client_socket, 403, "403.html");
+      response.generate_custom_error_page(403, "403.html");
     }
   }
 }
 
-bool HttpRequest::is_location_upload_file(int client_socket,
-                                          const std::string file_path) {
+bool HttpRequest::is_location_upload_file(const std::string file_path) {
   // 親ディレクトリ取得
   size_t last_slash = file_path.find_last_of('/');
   if (last_slash == std::string::npos) {
     std::cerr << "Invalid file path: " << file_path << std::endl;
-    HttpResponse::send_error_response(client_socket, 400, "Bad Request");
+
+    // HttpResponse::send_error_response(client_socket, 400, "Bad Request");
+    response.generate_error_response(400, "Bad Request");
     return false;
   }
   std::string parent_dir = file_path.substr(0, last_slash);
   if (!is_directory(parent_dir)) {
     std::cerr << "Parent directory does not exist: " << parent_dir << std::endl;
-    HttpResponse::send_error_response(client_socket, 404,
-                                      "Parent Directory Not Found");
+    // HttpResponse::send_error_response(client_socket, 404, "Parent Directory
+    // Not Found");
+    response.generate_error_response(404, "Parent Directory Not Found");
     return false;
   }
 
   // 書き込み権限
   if (access(parent_dir.c_str(), W_OK) != 0) {
-    HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+    // HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+    response.generate_error_response(403, "Forbidden");
     return false;
   }
 
   if (file_exists(file_path)) {
     if (access(file_path.c_str(), W_OK) != 0) {
-      HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+      // HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+      response.generate_error_response(403, "Forbidden");
       return false;
     }
   }
@@ -254,11 +265,10 @@ bool HttpRequest::is_location_upload_file(int client_socket,
   return true;
 }
 
-void HttpRequest::handle_post_request(int client_socket,
-                                      const std::string &request,
+void HttpRequest::handle_post_request(const std::string &request,
                                       std::string path) {
   std::string full_path = _root + path;
-  if (is_location_upload_file(client_socket, full_path)) {
+  if (is_location_upload_file(full_path)) {
     std::cout << "Received POST request for path: " << path << std::endl;
 
     size_t body_start = request.find("\r\n\r\n");
@@ -283,18 +293,20 @@ void HttpRequest::handle_post_request(int client_socket,
     std::cout << "File written successfully: " << path << std::endl;
     ofs.close();
 
-    HttpResponse::send_response(client_socket, 201, body, "text/plain");
+    // HttpResponse::send_response(client_socket, 201, body, "text/plain");
+    response.generate_response(201, body, "text/plain");
   } else {
     // アップロードできない場合は通常のresource取得になるらしい (GETと同様処理)
-    handle_get_request(client_socket, path);
+    handle_get_request(path);
   }
 }
 
-void HttpRequest::handle_delete_request(int client_socket, std::string path) {
+void HttpRequest::handle_delete_request(std::string path) {
   std::string file_path = get_requested_resource(path);
 
   if (file_path.empty()) {
-    HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    response.generate_custom_error_page(404, "404.html");
     return;
   }
 
@@ -302,7 +314,8 @@ void HttpRequest::handle_delete_request(int client_socket, std::string path) {
 
   // 書き込み権限
   if (access(file_path.c_str(), W_OK) != 0) {
-    HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+    // HttpResponse::send_error_response(client_socket, 403, "Forbidden");
+    response.generate_error_response(403, "Forbidden");
     return;
   }
 
@@ -311,21 +324,28 @@ void HttpRequest::handle_delete_request(int client_socket, std::string path) {
     delete_directory(file_path);
   } else if (type == File) {
     if (is_cgi_request(file_path))
-      handle_cgi_request(client_socket, file_path);
+      handle_cgi_request(file_path);
     else {
       status = handle_file_delete(file_path);
-      if (status == -1)
-        HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+      if (status == -1) {
+        //       HttpResponse::send_custom_error_page(client_socket, 404,
+        //       "404.html");
+        response.generate_custom_error_page(404, "404.html");
+      }
     }
   } else {
-    HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
+    response.generate_custom_error_page(404, "404.html");
   }
 
   if (status == 0) {
-    HttpResponse::send_response(client_socket, 204, "", "text/plain"); // 成功
+    // HttpResponse::send_response(client_socket, 204, "", "text/plain");
+    response.generate_response(204, "", "text/plain"); // 成功
   } else {
-    HttpResponse::send_error_response(client_socket, 500,
-                                      "Internal Server Error"); // 失敗
+    // HttpResponse::send_error_response(client_socket, 500,
+    //                              "Internal Server Error");
+    // 失敗
+    response.generate_error_response(500, "Internal Server Error");
   }
 }
 
@@ -364,8 +384,7 @@ bool HttpRequest::is_cgi_request(const std::string &path) {
   // extension == ".pl"); → confファイルで指示あり？
 }
 
-void HttpRequest::handle_cgi_request(int client_socket,
-                                     const std::string &cgi_path) {
+void HttpRequest::handle_cgi_request(const std::string &cgi_path) {
   int pipefd[2];
   if (pipe(pipefd) == -1) {
     std::cerr << "pipe failed" << std::endl;
@@ -404,7 +423,8 @@ void HttpRequest::handle_cgi_request(int client_socket,
   close(pipefd[0]);
   waitpid(pid, NULL, 0);
 
-  HttpResponse::send_response(client_socket, 200, cgi_output, "text/html");
+  // HttpResponse::send_response(client_socket, 200, cgi_output, "text/html");
+  response.generate_response(200, cgi_output, "text/html");
 }
 
 // autoindex
