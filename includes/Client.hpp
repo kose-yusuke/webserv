@@ -2,6 +2,7 @@
 
 #include "HttpRequest.hpp"
 #include "HttpRequestParser.hpp"
+#include "HttpResponse.hpp"
 #include <string>
 
 class Server;
@@ -25,7 +26,6 @@ private:
   int server_fd;               // このclientが接続しているserver fd
   HttpRequest request;         // header情報, body, contentLengthなどの管理
   HttpRequestParser parser;    // header/bodyの解析管理
-  std::string request_buffer;  // recv用の受信buffer
   std::string response_buffer; // send用の送信buffer
   size_t response_sent;        // send済みのbytes数
 

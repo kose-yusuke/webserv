@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/19 17:17:14 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/19 17:48:15 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,7 @@ public:
   std::string generate_directory_listing(const std::string &dir_path);
 
   // TODO: 未作成の関数群
-  size_t get_content_length() { return 0; }
+  size_t get_content_length() const { return 0; }
   void clear() {}
 
 private:

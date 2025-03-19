@@ -1,14 +1,18 @@
 #pragma once
+
 #include "HttpRequest.hpp"
 #include <sstream>
+#include <string>
 
 class HttpRequestParser {
 public:
   HttpRequestParser(HttpRequest &http_request);
   ~HttpRequestParser();
 
-  bool parse(std::string &buffer);
+  bool parse();
   void clear(); // 状態reset
+
+  void append_data(const char *data, size_t length); // データ追加
 
 private:
   enum ParseState {
@@ -19,10 +23,11 @@ private:
   };
 
   HttpRequest &request;
-  ParseState state; // 解析状態
+  ParseState state;   // 解析状態
+  std::string buffer; // recv用の受信buffer
 
-  ParseState parse_header(std::string &buffer);
-  ParseState parse_body(std::string &buffer);
+  ParseState parse_header();
+  ParseState parse_body();
 
   HttpRequestParser(const HttpRequestParser &other);
   HttpRequestParser &operator=(const HttpRequestParser &other);

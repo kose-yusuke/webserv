@@ -23,7 +23,7 @@ IOStatus Client::on_read() {
     std::cerr << "Error: recv failed: " << fd << std::endl;
     return IO_FAILED; // 異常終了
   }
-  request_buffer.append(buffer, bytes_read);
+  parser.append_data(buffer, bytes_read);
   return on_parse() ? IO_SUCCESS : IO_CONTINUE;
 }
 
@@ -52,7 +52,7 @@ bool Client::on_parse() {
     // 送信可能なresponseがbufferにすでに待機済み
     return true;
   }
-  if (parser.parse(request_buffer)) {
+  if (parser.parse()) {
     // trueの場合、requestの解析が完了しレスポンスを生成できる状態
     // PARSE_ERRORもerror responseを用意できる
     // response_buffer = HttpResponse::generate(request, server_fd);

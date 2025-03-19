@@ -5,12 +5,15 @@ HttpRequestParser::HttpRequestParser(HttpRequest &http_request)
 
 HttpRequestParser::~HttpRequestParser() {}
 
-bool HttpRequestParser::parse(std::string &buffer) {
+bool HttpRequestParser::parse() {
+  if (buffer.empty()) {
+    return state;
+  }
   if (state == PARSE_HEADER) {
-    state = parse_header(buffer);
+    state = parse_header();
   }
   if (state == PARSE_BODY) {
-    state = parse_body(buffer);
+    state = parse_body();
   }
   return (state == PARSE_DONE || state == PARSE_ERROR);
 }
@@ -20,8 +23,11 @@ void HttpRequestParser::clear() {
   state = PARSE_HEADER;
 }
 
-HttpRequestParser::ParseState
-HttpRequestParser::parse_header(std::string &buffer) {
+void HttpRequestParser::append_data(const char *data, size_t length) {
+  buffer.append(data, length);
+}
+
+HttpRequestParser::ParseState HttpRequestParser::parse_header() {
   size_t end = buffer.find("\r\n\r\n");
   if (end == std::string::npos) {
     return PARSE_HEADER; // header未受信
@@ -44,8 +50,7 @@ HttpRequestParser::parse_header(std::string &buffer) {
   return PARSE_DONE;
 }
 
-HttpRequestParser::ParseState
-HttpRequestParser::parse_body(std::string &buffer) {
+HttpRequestParser::ParseState HttpRequestParser::parse_body() {
   size_t body_size = request.get_content_length();
   if (body_size == 0) {
     return PARSE_DONE; // bodyなし
