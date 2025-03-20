@@ -77,3 +77,8 @@ extern LogLevel current_log_level;
 extern std::ofstream debug_log;
 
 void log(LogLevel level, const std::string &message);
+
+// trim string
+std::string trim_left(const std::string &s);
+std::string trim_right(const std::string &s);
+std::string trim(const std::string &s);

@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/20 15:56:52 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/21 02:53:33 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,4 +98,19 @@ void log(LogLevel level, const std::string &message) {
       break;
     }
   }
+}
+
+std::string trim_left(const std::string &s) {
+  size_t start = s.find_first_not_of(" \t\r\n");
+  return (start == std::string::npos) ? "" : s.substr(start);
+}
+
+std::string trim_right(const std::string &s) {
+  size_t end = s.find_last_not_of(" \t\r\n");
+  return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+}
+
+std::string trim(const std::string &s) {
+  std::string trimmed = trim_right(s);
+  return trim_left(trimmed);
 }
