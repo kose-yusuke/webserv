@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/20 02:38:12 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/21 03:21:29 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 
 // server fd 経由で, server_config, locations_configs を取得
 HttpRequest::HttpRequest(int server_fd, HttpResponse &httpResponse)
-    : response(httpResponse) {
+    : response(httpResponse), status_code(0) {
   Server *server = Multiplexer::get_instance().get_server_from_map(server_fd);
   if (!server) {
     throw std::runtime_error("server not found by HttpRequest");
@@ -453,6 +453,20 @@ HttpRequest::generate_directory_listing(const std::string &dir_path) {
 
   return html.str();
 }
+
+void HttpRequest::set_status_code(int status) { status_code = status; }
+
+int HttpRequest::get_status_code() const { return status_code; }
+
+bool HttpRequest::add_header(std::string &key, std::string &value) {
+  if (headers.find(key) != headers.end()) {
+    return false;
+  }
+  headers[key] = value;
+  return true;
+}
+
+void HttpRequest::clear() { status_code = 0; }
 
 HttpRequest &HttpRequest::operator=(const HttpRequest &other) {
   (void)other;

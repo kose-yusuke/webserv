@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/20 02:33:57 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/21 03:20:08 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,11 @@ public:
 
   std::string handle_http_request();
 
+  void set_status_code(int status);
+  int get_status_code() const;
+
+  bool add_header(std::string &key, std::string &value);
+
   // リクエストの解析
   bool parse_http_request(const std::string &request, std::string &method,
                           std::string &path, std::string &version);
@@ -80,10 +85,11 @@ public:
 
   // TODO: 未作成の関数群
   size_t get_content_length() const { return 0; }
-  void clear() {}
+  void clear();
 
 private:
   HttpResponse &response;
+  int status_code;
   std::string _root;
 
   std::string get_requested_resource(const std::string &path);
