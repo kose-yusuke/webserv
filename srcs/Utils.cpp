@@ -1,58 +1,56 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   utils.cpp                                          :+:      :+:    :+:   */
+/*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 22:18:25 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/20 15:56:52 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-
 #include "Utils.hpp"
 
-int print_error_message(const std::string& message)
-{
-    std::cerr << "Error: " << message << std::endl;
-    exit(1);
-    return (1);
+int print_error_message(const std::string &message) {
+  std::cerr << "Error: " << message << std::endl;
+  exit(1);
+  return (1);
 }
 
 bool ends_with(const std::string &str, const std::string &suffix) {
-    if (str.length() < suffix.length()) return false;
-    return (str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0);
+  if (str.length() < suffix.length())
+    return false;
+  return (str.compare(str.length() - suffix.length(), suffix.length(),
+                      suffix) == 0);
 }
 
 bool file_exists(const std::string &path) {
-    return (access(path.c_str(), F_OK) == 0);
+  return (access(path.c_str(), F_OK) == 0);
 }
 
 bool has_index_file(const std::string &dir_path) {
-    std::string index_file = dir_path + "/index.html";
-    return file_exists(index_file);
+  std::string index_file = dir_path + "/index.html";
+  return file_exists(index_file);
 }
 
 bool is_directory(const std::string &path) {
-    struct stat buffer;
-    if (stat(path.c_str(), &buffer) != 0) {
-        return false;
-    }
-    return S_ISDIR(buffer.st_mode);
+  struct stat buffer;
+  if (stat(path.c_str(), &buffer) != 0) {
+    return false;
+  }
+  return S_ISDIR(buffer.st_mode);
 }
 
-std::string read_file(const std::string& file_path) {
-    std::ifstream file(file_path.c_str(), std::ios::in);
-    if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + file_path);
-    }
-    std::ostringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
+std::string read_file(const std::string &file_path) {
+  std::ifstream file(file_path.c_str(), std::ios::in);
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open file: " + file_path);
+  }
+  std::ostringstream buffer;
+  buffer << file.rdbuf();
+  return buffer.str();
 }
-
-
 
 // 拡張子に基づいてMIMEタイプを返す関数
 // std::string get_mime_type(const std::string& file_path) {
@@ -83,3 +81,21 @@ std::string read_file(const std::string& file_path) {
 //     return "application/octet-stream";
 // }
 
+LogLevel current_log_level = LOG_INFO;
+std::ofstream debug_log("debug.log");
+
+void log(LogLevel level, const std::string &message) {
+  if (level >= current_log_level) {
+    switch (level) {
+    case LOG_INFO:
+      std::cout << "[INFO] " << message << std::endl;
+      break;
+    case LOG_DEBUG:
+      debug_log << "[DEBUG] " << message << std::endl;
+      break;
+    case LOG_ERROR:
+      std::cerr << "[ERROR] " << message << std::endl;
+      break;
+    }
+  }
+}

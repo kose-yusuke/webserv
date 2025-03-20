@@ -21,10 +21,10 @@
 #include <stdexcept>
 #include <string>
 // #include <thread>
+#include <cstdlib>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
-#include <sys/stat.h>
-#include <cstdlib>
 
 // kosekiさんから引き継いだ時点でのServer classのheader（一旦コメントアウト）
 // class Server {
@@ -69,3 +69,11 @@ bool file_exists(const std::string &path);
 bool ends_with(const std::string &str, const std::string &suffix);
 bool has_index_file(const std::string &dir_path);
 bool is_directory(const std::string &path);
+
+// log
+enum LogLevel { LOG_INFO, LOG_DEBUG, LOG_ERROR };
+// global 変数宣言
+extern LogLevel current_log_level;
+extern std::ofstream debug_log;
+
+void log(LogLevel level, const std::string &message);
