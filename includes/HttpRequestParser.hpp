@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 
+#define MAX_REQUEST_LINE 10000
+
 class HttpRequestParser {
 public:
   HttpRequestParser(HttpRequest &http_request);
@@ -28,6 +30,9 @@ private:
 
   ParseState parse_header();
   ParseState parse_body();
+
+  bool parse_request_line(std::string &line);
+  bool parse_header_line(std::string &line);
 
   HttpRequestParser(const HttpRequestParser &other);
   HttpRequestParser &operator=(const HttpRequestParser &other);
