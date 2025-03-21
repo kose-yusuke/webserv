@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/21 02:53:33 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 01:07:31 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,6 +98,12 @@ void log(LogLevel level, const std::string &message) {
       break;
     }
   }
+}
+
+void logfd(LogLevel level, const std::string &message, int fd) {
+  std::ostringstream oss;
+  oss << message << fd;
+  log(level, oss.str());
 }
 
 std::string trim_left(const std::string &s) {

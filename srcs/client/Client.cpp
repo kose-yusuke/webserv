@@ -2,6 +2,8 @@
 #include "Client.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include "Utils.hpp"
+#include <sstream>
 #include <stdexcept>
 #include <sys/socket.h>
 
@@ -16,11 +18,11 @@ IOStatus Client::on_read() {
   char buffer[buf_size];
   ssize_t bytes_read = recv(fd, buffer, sizeof(buffer), 0);
   if (bytes_read == 0) {
-    std::cout << "Client disconnected: " << fd << std::endl;
+    logfd(LOG_DEBUG, "Client disconnected: ", fd);
     return IO_FAILED; // client切断
   }
   if (bytes_read == -1) {
-    std::cerr << "Error: recv failed: " << fd << std::endl;
+    logfd(LOG_ERROR, "recv() failed: ", fd);
     return IO_FAILED; // 異常終了
   }
   parser.append_data(buffer, bytes_read);
@@ -40,7 +42,7 @@ IOStatus Client::on_write() {
   ssize_t bytes_sent = send(fd, response_buffer.c_str() + response_sent,
                             response_buffer.size() - response_sent, 0);
   if (bytes_sent <= 0) {
-    std::cerr << "Error: send failed: " << fd << " (" << bytes_sent << ")\n";
+    logfd(LOG_ERROR, "send() failed: ", fd);
     return IO_FAILED; // 異常終了
   }
   response_sent += bytes_sent;

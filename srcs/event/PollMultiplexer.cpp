@@ -1,5 +1,6 @@
 #include "PollMultiplexer.hpp"
 #include "Server.hpp"
+#include "Utils.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -42,7 +43,7 @@ void PollMultiplexer::add_to_read_fds(int fd) {
   std::cout << "add_to_read_fds() called on " << fd << "\n";
   PollFdIt it = find_pollfd(fd);
   if (it != pfds.end()) {
-    std::cerr << "Warning: fd " << fd << " is already registered\n";
+    logfd(LOG_ERROR, "Warning: Already registered fd: ", fd);
     it->events |= POLLIN;
     return;
   }
@@ -57,7 +58,7 @@ void PollMultiplexer::remove_from_read_fds(int fd) {
   std::cout << "remove_from_read_fds() called on " << fd << "\n";
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
-    std::cerr << "Warning: fd " << fd << " is already erased\n";
+    logfd(LOG_ERROR, "Warning: Already erased fd: ", fd);
     return;
   }
   pfds.erase(it);
@@ -67,8 +68,7 @@ void PollMultiplexer::add_to_write_fds(int fd) {
   std::cout << "add_to_write_fds() called on " << fd << "\n";
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
-    std::cerr << "Warning: fd " << fd
-              << " is not in read monitor. Adding it now.\n";
+    logfd(LOG_ERROR, "Warning: Not in read monitor. Adding it now: ", fd);
     struct pollfd pfd;
     pfd.fd = fd;
     pfd.events = POLLIN | POLLOUT;

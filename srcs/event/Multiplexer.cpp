@@ -5,6 +5,7 @@
 #include "PollMultiplexer.hpp"
 #include "SelectMultiplexer.hpp"
 #include "Server.hpp"
+#include "Utils.hpp"
 #include <fcntl.h>
 #include <iostream>
 #include <sstream>
@@ -154,12 +155,11 @@ void Multiplexer::accept_client(int server_fd) {
   socklen_t addrlen = sizeof(client_addr);
   int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addrlen);
   if (client_fd == -1) {
-    std::cerr << "accept failed\n";
+    log(LOG_ERROR, "accept failed");
     return;
   }
   if (fcntl(client_fd, F_SETFL, fcntl(client_fd, F_GETFL) | O_NONBLOCK) == -1) {
-    std::cerr << "Error: Failed to set O_NONBLOCK on client_fd " << client_fd
-              << ": " << strerror(errno) << "\n";
+    logfd(LOG_ERROR, "Failed to set O_NONBLOCK: ", client_fd);
     close(client_fd);
     return;
   }
