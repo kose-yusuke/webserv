@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/21 03:21:29 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 00:51:43 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,12 +38,11 @@ HttpRequest::~HttpRequest() {}
 
 std::string HttpRequest::handle_http_request() {
 
-  std::string method, path, version;
+  // std::string method, path, version;
   // if (!parse_http_request(buffer, method, path, version)) {
   //   HttpResponse::send_error_response(clientFd, 400, "Bad Request");
   //   return;
   // }
-
   std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
 
   // best matchなlocationのconfigを取得する
@@ -466,7 +465,14 @@ bool HttpRequest::add_header(std::string &key, std::string &value) {
   return true;
 }
 
-void HttpRequest::clear() { status_code = 0; }
+void HttpRequest::clear() {
+  method.clear();
+  path.clear();
+  version.clear();
+  body.clear();
+  headers.clear();
+  status_code = 0;
+}
 
 HttpRequest &HttpRequest::operator=(const HttpRequest &other) {
   (void)other;

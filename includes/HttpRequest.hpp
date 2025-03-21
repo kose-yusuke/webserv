@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/21 03:20:08 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 00:45:43 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,8 +30,6 @@ class HttpResponse;
 
 enum ResourceType { File, Directory, NotFound };
 
-enum MethodType { GET, POST, DELETE };
-
 class HttpRequest {
 public:
   HttpRequest(int server_fd, HttpResponse &httpResponse);
@@ -43,8 +41,6 @@ public:
   std::string version;
   std::string body;
   std::map<std::string, std::string> headers;
-
-  MethodType methodType;
 
   bool is_autoindex_enabled;
   std::vector<std::string> cgi_extensions;
