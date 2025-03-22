@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 13:32:12 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 15:06:51 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,6 +87,9 @@ std::ofstream debug_log("debug.log");
 void log(LogLevel level, const std::string &message) {
   if (level >= current_log_level) {
     switch (level) {
+    case LOG_FUNC:
+      std::cout << "[FUNC] " << message << std::endl;
+      break;
     case LOG_INFO:
       std::cout << "[INFO] " << message << std::endl;
       break;

@@ -12,7 +12,7 @@ Multiplexer &EpollMultiplexer::get_instance() {
 }
 
 void EpollMultiplexer::run() {
-  log(LOG_INFO, "EpollMultiplexer::run() called");
+  LOG_DEBUG_FUNC();
 }
 
 void EpollMultiplexer::add_to_read_fds(int fd) { (void)fd; }

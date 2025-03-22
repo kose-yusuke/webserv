@@ -103,8 +103,7 @@ Client *Multiplexer::get_client_from_map(int fd) const {
 size_t Multiplexer::get_num_clients() const { return client_map.size(); }
 
 void Multiplexer::initialize_fds() {
-
-  std::cout << "initialize_fds() called\n";
+  LOG_DEBUG_FUNC();
   if (server_map.empty()) {
     throw std::runtime_error("Error: No servers available.");
   }
@@ -151,7 +150,7 @@ Multiplexer::Multiplexer(const Multiplexer &other) { (void)other; }
 Multiplexer::~Multiplexer() { free_all_fds(); }
 
 void Multiplexer::accept_client(int server_fd) {
-  std::cout << "accept_client() called on server fd " << server_fd << "\n";
+  LOG_DEBUG_FUNC_FD(server_fd);
   struct sockaddr_storage client_addr;
   socklen_t addrlen = sizeof(client_addr);
   int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addrlen);
@@ -176,7 +175,7 @@ void Multiplexer::accept_client(int server_fd) {
 }
 
 void Multiplexer::read_from_client(int client_fd) {
-  std::cout << "read_from_client() called on client fd " << client_fd << "\n";
+  LOG_DEBUG_FUNC_FD(client_fd);
   Client *client = get_client_from_map(client_fd);
   IOStatus status = client->on_read();
   if (status == IO_SUCCESS) {
@@ -189,7 +188,7 @@ void Multiplexer::read_from_client(int client_fd) {
 }
 
 void Multiplexer::write_to_client(int client_fd) {
-  std::cout << "write_to_client() called on client fd " << client_fd << "\n";
+  LOG_DEBUG_FUNC_FD(client_fd);
   Client *client = get_client_from_map(client_fd);
   IOStatus status = client->on_write();
   if (status == IO_SUCCESS) {
@@ -202,7 +201,7 @@ void Multiplexer::write_to_client(int client_fd) {
 }
 
 void Multiplexer::remove_client(int client_fd) {
-  std::cout << "remove_client() called on client fd" << client_fd << "\n";
+  LOG_DEBUG_FUNC_FD(client_fd);
   remove_from_write_fds(client_fd);
   remove_from_read_fds(client_fd);
   remove_from_client_map(client_fd); // close, delete もこの中

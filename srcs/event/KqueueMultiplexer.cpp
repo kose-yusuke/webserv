@@ -11,9 +11,7 @@ Multiplexer &KqueueMultiplexer::get_instance() {
   return *Multiplexer::instance;
 }
 
-void KqueueMultiplexer::run() {
-  log(LOG_INFO, "KqueueMultiplexer::run() called");
-}
+void KqueueMultiplexer::run() { LOG_DEBUG_FUNC(); }
 
 void KqueueMultiplexer::add_to_read_fds(int fd) { (void)fd; }
 void KqueueMultiplexer::remove_from_read_fds(int fd) { (void)fd; }
