@@ -15,7 +15,7 @@
 Multiplexer *Multiplexer::instance = 0;
 
 Multiplexer &Multiplexer::get_instance() {
-  return PollMultiplexer::get_instance();
+  return SelectMultiplexer::get_instance();
 #if defined(__linux__)
   return EpollMultiplexer::get_instance();
 #elif defined(__APPLE__) || defined(__MACH__)
@@ -171,7 +171,7 @@ void Multiplexer::accept_client(int server_fd) {
     return;
   }
   add_to_read_fds(client_fd);
-  std::cout << "New connection on client fd: " << client_fd << "\n";
+  logfd(LOG_INFO, "New connection on client fd: ", client_fd);
 }
 
 void Multiplexer::read_from_client(int client_fd) {
@@ -179,11 +179,13 @@ void Multiplexer::read_from_client(int client_fd) {
   Client *client = get_client_from_map(client_fd);
   IOStatus status = client->on_read();
   if (status == IO_SUCCESS) {
-    std::cout << "success\n";
+    log(LOG_DEBUG, std::string(__func__) + "() success");
     add_to_write_fds(client_fd);
   } else if (status == IO_FAILED) {
-    std::cout << "failed\n";
+    log(LOG_DEBUG, std::string(__func__) + "() failed");
     remove_client(client_fd);
+  } else {
+    log(LOG_DEBUG, std::string(__func__) + "() continue");
   }
 }
 
@@ -192,10 +194,10 @@ void Multiplexer::write_to_client(int client_fd) {
   Client *client = get_client_from_map(client_fd);
   IOStatus status = client->on_write();
   if (status == IO_SUCCESS) {
-    std::cout << "success\n";
+    log(LOG_DEBUG, "write success");
     remove_from_write_fds(client_fd);
   } else if (status == IO_FAILED) {
-    std::cout << "failed\n";
+    log(LOG_DEBUG, "write failed");
     remove_client(client_fd);
   }
 }

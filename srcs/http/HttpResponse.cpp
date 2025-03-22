@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/20 02:10:48 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 16:04:38 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,15 +20,21 @@ HttpResponse::~HttpResponse() {}
 bool HttpResponse::has_next_response() const { return !response_queue.empty(); }
 
 std::string HttpResponse::get_next_response() {
+  LOG_DEBUG_FUNC();
   if (response_queue.empty()) {
     return "";
   }
   return response_queue.front();
 }
 
-void HttpResponse::pop_response() { response_queue.pop(); }
+void HttpResponse::pop_response() {
+  LOG_DEBUG_FUNC();
+
+  response_queue.pop();
+}
 
 void HttpResponse::push_response(const std::string &response) {
+  LOG_DEBUG_FUNC();
   if (response.empty()) {
     return;
   }
@@ -38,6 +44,7 @@ void HttpResponse::push_response(const std::string &response) {
 void HttpResponse::generate_response(int status_code,
                                      const std::string &content,
                                      const std::string &content_type) {
+  LOG_DEBUG_FUNC();
   std::ostringstream response;
   response << "HTTP/1.1 " << status_code << " OK\r\n";
   response << "Content-Length: " << content.size() << "\r\n";
@@ -50,6 +57,7 @@ void HttpResponse::generate_response(int status_code,
 
 void HttpResponse::generate_custom_error_page(int status_code,
                                               const std::string &error_page) {
+  LOG_DEBUG_FUNC();
   try {
     std::string file_content = read_file("./public/" + error_page);
 
@@ -86,6 +94,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
 
 void HttpResponse::generate_error_response(int status_code,
                                            const std::string &message) {
+  LOG_DEBUG_FUNC();
   std::ostringstream response;
   response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
   response << "Content-Length: " << message.size() << "\r\n";
@@ -102,6 +111,7 @@ void HttpResponse::generate_redirect(int status_code,
   // std::cout << client_socket << std::endl;
   // std::cout << status_code << std::endl;
   // std::cout << new_location << std::endl;
+  LOG_DEBUG_FUNC();
   std::ostringstream response; // TODO: 仮の状態
   response << "HTTP/1.1 " << status_code << " ";
   response << HttpResponse::get_status_message(status_code) << "\r\n";

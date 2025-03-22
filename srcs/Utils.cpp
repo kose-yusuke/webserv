@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 15:06:51 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 15:22:42 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,7 @@ std::string read_file(const std::string &file_path) {
 //     return "application/octet-stream";
 // }
 
-LogLevel current_log_level = LOG_INFO;
+LogLevel current_log_level = LOG_FUNC;
 std::ofstream debug_log("debug.log");
 
 void log(LogLevel level, const std::string &message) {
