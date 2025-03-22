@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Webserv Review Page</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Webserv Review Page</h1>
+  <p>未完成の動作確認用ページ。<b>method</b> や <b>status code</b> の振る舞いを見れるようにする</p>
+  <img src="img/bear.png" alt="A bear handling HTTP requests">
+  <p style="font-size: 11px;">Image created with DALL·E by OpenAI.</p>
+  <p><a href="https://github.com/kose-yusuke/webserv/issues/6">全体的なTo-do list</a></p>
+  <hr>
+
+
+  <h2>入力値の和を表示します</h2>
+  <form action="/cgi-bin/formtest.py" method="POST">
+      値１を入力してください
+      <input type="text" name="value1">
+      値２を入力してください
+      <input type="text" name="value2">
+      <input type="submit" name="submit" value="送信">
+  </form>
+
+  <h2>GET method</h2>
+  <p><a href="/get_page.html">Try GET request</a></p>
+
+  <h2>POST method</h2>
+  <form action="/cgi-bin/post.py" method="post">
+    <input type="text" name="test_data" placeholder="Enter some text">
+    <button type="submit">Send POST request</button>
+  </form>
+
+  <h2>Upload Files</h2>
+  <form action="cgi-bin/upload.py" method="post" enctype="multipart/form-data">
+    <input type="file" name="file">
+    <button type="submit">Upload File</button>
+  </form>
+
+
+
+  <h2>Status Code Check</h2><h3>1. 存在しないfile</h3>
+  <p><a href="404_not_found.html">Click here to trigger 404</a></p>
+  <h3>2. まちがったURL</h3>
+  <p><a href="/wrong_url_test">Try wrong URL</a></p>
+  <h3>3. permissionなし</h3>
+  <p><a href="no_permission.html">Click here</a></p>
+
+  <h2>Request a directory</h2>
+  <p><a href="/test_dir/">Try opening a directory</a></p>
+
+  <h2>Download Files</h2>
+  <p>？</p>
+
+  <h2>DELETE method</h2>
+  <p>？</p>
+
+</body>
+
+</html>
