@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 00:51:43 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 16:04:48 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,7 +36,8 @@ HttpRequest::~HttpRequest() {}
 //     this->location_configs = location_config;
 // }
 
-std::string HttpRequest::handle_http_request() {
+void HttpRequest::handle_http_request() {
+  LOG_DEBUG_FUNC();
 
   // std::string method, path, version;
   // if (!parse_http_request(buffer, method, path, version)) {
@@ -99,20 +100,11 @@ std::string HttpRequest::handle_http_request() {
     // HttpResponse::send_error_response(clientFd, 405, "Method Not Allowed");
     response.generate_error_response(405, "Method Not Allowed");
   }
-  return 0;
-}
-
-bool HttpRequest::parse_http_request(const std::string &request,
-                                     std::string &method, std::string &path,
-                                     std::string &version) {
-  std::istringstream request_stream(request);
-  if (!(request_stream >> method >> path >> version)) {
-    return false;
-  }
-  return true;
 }
 
 ConfigMap HttpRequest::get_location_config(const std::string &path) {
+  LOG_DEBUG_FUNC();
+
   ConfigMap selected_config;
 
   // 最もマッチする `location` を探す
@@ -140,6 +132,7 @@ ConfigMap HttpRequest::get_location_config(const std::string &path) {
 
 /*GET Request*/
 void HttpRequest::handle_get_request(std::string path) {
+  LOG_DEBUG_FUNC();
 
   std::string file_path = get_requested_resource(path);
 
@@ -165,6 +158,8 @@ void HttpRequest::handle_get_request(std::string path) {
 }
 
 std::string HttpRequest::get_requested_resource(const std::string &path) {
+  LOG_DEBUG_FUNC();
+
   std::string file_path = _root + path;
 
   if (!file_exists(file_path)) {
@@ -174,6 +169,8 @@ std::string HttpRequest::get_requested_resource(const std::string &path) {
 }
 
 ResourceType HttpRequest::get_resource_type(const std::string &path) {
+  LOG_DEBUG_FUNC();
+
   if (is_directory(path)) {
     return Directory;
   } else if (file_exists(path)) {
@@ -184,6 +181,7 @@ ResourceType HttpRequest::get_resource_type(const std::string &path) {
 
 /*Requestがディレクトリかファイルかの分岐処理*/
 void HttpRequest::handle_file_request(const std::string &file_path) {
+  LOG_DEBUG_FUNC();
   std::ifstream file(file_path.c_str(), std::ios::in);
   if (!file.is_open()) {
     // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
@@ -198,6 +196,8 @@ void HttpRequest::handle_file_request(const std::string &file_path) {
 }
 
 void HttpRequest::handle_directory_request(std::string path) {
+  LOG_DEBUG_FUNC();
+
   // URLの末尾に `/` がない場合、リダイレクト（301）
   if (!ends_with(path, "/")) {
     std::string new_location = path + "/";
@@ -478,3 +478,13 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &other) {
   (void)other;
   return *this;
 }
+
+// bool HttpRequest::parse_http_request(const std::string &request,
+//                                      std::string &method, std::string &path,
+//                                      std::string &version) {
+//   std::istringstream request_stream(request);
+//   if (!(request_stream >> method >> path >> version)) {
+//     return false;
+//   }
+//   return true;
+// }

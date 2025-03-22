@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 00:45:43 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 16:02:54 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ public:
   ConfigMap best_match_location_config;
   // std::map<std::string, std::vector<std::string>> best_match_location_config;
 
-  std::string handle_http_request();
+  void handle_http_request();
 
   void set_status_code(int status);
   int get_status_code() const;
@@ -59,8 +59,8 @@ public:
   bool add_header(std::string &key, std::string &value);
 
   // リクエストの解析
-  bool parse_http_request(const std::string &request, std::string &method,
-                          std::string &path, std::string &version);
+  // bool parse_http_request(const std::string &request, std::string &method,
+  //                         std::string &path, std::string &version);
   ConfigMap get_location_config(const std::string &path);
 
   // GETの処理

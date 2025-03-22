@@ -16,7 +16,7 @@ Multiplexer &PollMultiplexer::get_instance() {
 }
 
 void PollMultiplexer::run() {
-  std::cout << "PollMultiplexer::run() called\n";
+  LOG_DEBUG_FUNC();
   pfds.reserve(get_num_servers());
   initialize_fds();
   if (pfds.empty()) {
@@ -40,7 +40,7 @@ void PollMultiplexer::run() {
 }
 
 void PollMultiplexer::add_to_read_fds(int fd) {
-  std::cout << "add_to_read_fds() called on " << fd << "\n";
+  LOG_DEBUG_FUNC_FD(fd);
   PollFdIt it = find_pollfd(fd);
   if (it != pfds.end()) {
     logfd(LOG_WARNING, "fd already registered: ", fd);
@@ -55,7 +55,7 @@ void PollMultiplexer::add_to_read_fds(int fd) {
 }
 
 void PollMultiplexer::remove_from_read_fds(int fd) {
-  std::cout << "remove_from_read_fds() called on " << fd << "\n";
+  LOG_DEBUG_FUNC_FD(fd);
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
     logfd(LOG_WARNING, "fd already erased: ", fd);
@@ -65,7 +65,7 @@ void PollMultiplexer::remove_from_read_fds(int fd) {
 }
 
 void PollMultiplexer::add_to_write_fds(int fd) {
-  std::cout << "add_to_write_fds() called on " << fd << "\n";
+  LOG_DEBUG_FUNC_FD(fd);
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
     logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
@@ -83,7 +83,7 @@ void PollMultiplexer::add_to_write_fds(int fd) {
 }
 
 void PollMultiplexer::remove_from_write_fds(int fd) {
-  std::cout << "remove_from_write_fds() called on " << fd << "\n";
+  LOG_DEBUG_FUNC_FD(fd);
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
     logfd(LOG_WARNING, "fd doesn't exist in pfds vector: ", fd);

@@ -15,7 +15,7 @@
 Multiplexer *Multiplexer::instance = 0;
 
 Multiplexer &Multiplexer::get_instance() {
-  return PollMultiplexer::get_instance();
+  return SelectMultiplexer::get_instance();
 #if defined(__linux__)
   return EpollMultiplexer::get_instance();
 #elif defined(__APPLE__) || defined(__MACH__)
@@ -103,8 +103,7 @@ Client *Multiplexer::get_client_from_map(int fd) const {
 size_t Multiplexer::get_num_clients() const { return client_map.size(); }
 
 void Multiplexer::initialize_fds() {
-
-  std::cout << "initialize_fds() called\n";
+  LOG_DEBUG_FUNC();
   if (server_map.empty()) {
     throw std::runtime_error("Error: No servers available.");
   }
@@ -151,7 +150,7 @@ Multiplexer::Multiplexer(const Multiplexer &other) { (void)other; }
 Multiplexer::~Multiplexer() { free_all_fds(); }
 
 void Multiplexer::accept_client(int server_fd) {
-  std::cout << "accept_client() called on server fd " << server_fd << "\n";
+  LOG_DEBUG_FUNC_FD(server_fd);
   struct sockaddr_storage client_addr;
   socklen_t addrlen = sizeof(client_addr);
   int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addrlen);
@@ -172,37 +171,39 @@ void Multiplexer::accept_client(int server_fd) {
     return;
   }
   add_to_read_fds(client_fd);
-  std::cout << "New connection on client fd: " << client_fd << "\n";
+  logfd(LOG_INFO, "New connection on client fd: ", client_fd);
 }
 
 void Multiplexer::read_from_client(int client_fd) {
-  std::cout << "read_from_client() called on client fd " << client_fd << "\n";
+  LOG_DEBUG_FUNC_FD(client_fd);
   Client *client = get_client_from_map(client_fd);
   IOStatus status = client->on_read();
   if (status == IO_SUCCESS) {
-    std::cout << "success\n";
+    log(LOG_DEBUG, std::string(__func__) + "() success");
     add_to_write_fds(client_fd);
   } else if (status == IO_FAILED) {
-    std::cout << "failed\n";
+    log(LOG_DEBUG, std::string(__func__) + "() failed");
     remove_client(client_fd);
+  } else {
+    log(LOG_DEBUG, std::string(__func__) + "() continue");
   }
 }
 
 void Multiplexer::write_to_client(int client_fd) {
-  std::cout << "write_to_client() called on client fd " << client_fd << "\n";
+  LOG_DEBUG_FUNC_FD(client_fd);
   Client *client = get_client_from_map(client_fd);
   IOStatus status = client->on_write();
   if (status == IO_SUCCESS) {
-    std::cout << "success\n";
+    log(LOG_DEBUG, "write success");
     remove_from_write_fds(client_fd);
   } else if (status == IO_FAILED) {
-    std::cout << "failed\n";
+    log(LOG_DEBUG, "write failed");
     remove_client(client_fd);
   }
 }
 
 void Multiplexer::remove_client(int client_fd) {
-  std::cout << "remove_client() called on client fd" << client_fd << "\n";
+  LOG_DEBUG_FUNC_FD(client_fd);
   remove_from_write_fds(client_fd);
   remove_from_read_fds(client_fd);
   remove_from_client_map(client_fd); // close, delete もこの中

@@ -14,6 +14,7 @@ HttpRequestParser::HttpRequestParser(HttpRequest &http_request)
 HttpRequestParser::~HttpRequestParser() {}
 
 bool HttpRequestParser::parse() {
+  LOG_DEBUG_FUNC();
   if (buffer.empty()) {
     return parse_state;
   }
@@ -28,15 +29,20 @@ bool HttpRequestParser::parse() {
 }
 
 void HttpRequestParser::clear() {
+  LOG_DEBUG_FUNC();
   request.clear();
   parse_state = PARSE_HEADER;
 }
 
 void HttpRequestParser::append_data(const char *data, size_t length) {
+  LOG_DEBUG_FUNC();
+
   buffer.append(data, length);
 }
 
 HttpRequestParser::ParseState HttpRequestParser::parse_body() {
+  LOG_DEBUG_FUNC();
+
   size_t body_size = request.get_content_length();
   if (body_size == 0) {
     return PARSE_DONE; // bodyなし
@@ -61,6 +67,8 @@ HttpRequestParser::operator=(const HttpRequestParser &other) {
 }
 
 HttpRequestParser::ParseState HttpRequestParser::parse_header() {
+  LOG_DEBUG_FUNC();
+
   size_t end = buffer.find("\r\n\r\n");
   if (end == std::string::npos) {
     return PARSE_HEADER; // header未受信
@@ -96,6 +104,8 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
 }
 
 bool HttpRequestParser::validate_request_content() {
+  LOG_DEBUG_FUNC();
+
   if (request.method.empty() || request.path.empty() ||
       request.version.empty()) {
     log(LOG_DEBUG, "Failed to parse request line (empty value)");
@@ -128,6 +138,8 @@ bool HttpRequestParser::validate_request_content() {
 }
 
 bool HttpRequestParser::validate_headers_content() {
+  LOG_DEBUG_FUNC();
+
   // TODO: Transfer-Encoding あり. but not chunked
   // request.set_status_code(501);
 
@@ -140,6 +152,8 @@ bool HttpRequestParser::validate_headers_content() {
 }
 
 bool HttpRequestParser::parse_request_line(std::string &line) {
+  LOG_DEBUG_FUNC();
+
   if (line.empty() || line.size() > MAX_REQUEST_LINE || std::isspace(line[0])) {
     return false;
   }
@@ -162,7 +176,7 @@ bool HttpRequestParser::parse_request_line(std::string &line) {
 }
 
 bool HttpRequestParser::parse_header_line(std::string &line) {
-
+  LOG_DEBUG_FUNC();
   if (line.size() > MAX_REQUEST_LINE || std::isspace(line[0])) {
     log(LOG_ERROR, "Invalid header field: " + line);
     return false;

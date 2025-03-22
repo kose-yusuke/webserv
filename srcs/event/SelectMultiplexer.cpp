@@ -16,7 +16,7 @@ Multiplexer &SelectMultiplexer::get_instance() {
 }
 
 void SelectMultiplexer::run() {
-  std::cout << "SelectMultiplexer::run() called\n";
+  LOG_DEBUG_FUNC();
   initialize_fds();
   while (true) {
     active_read_fds = read_fds;
@@ -34,13 +34,13 @@ void SelectMultiplexer::run() {
 }
 
 void SelectMultiplexer::add_to_read_fds(int fd) {
-  std::cout << "add_to_read_fds() called on " << fd << "\n";
+  LOG_DEBUG_FUNC_FD(fd);
   FD_SET(fd, &read_fds);
   max_fd = std::max(fd, max_fd);
 }
 
 void SelectMultiplexer::remove_from_read_fds(int fd) {
-  std::cout << "remove_from_read_fds() called on " << fd << "\n";
+  LOG_DEBUG_FUNC_FD(fd);
   FD_CLR(fd, &read_fds);
   if (fd != max_fd) {
     return;
@@ -54,12 +54,12 @@ void SelectMultiplexer::remove_from_read_fds(int fd) {
 }
 
 void SelectMultiplexer::add_to_write_fds(int fd) {
-  std::cout << "add_to_write_fds() called on " << fd << "\n";
+  LOG_DEBUG_FUNC_FD(fd);
   FD_SET(fd, &write_fds);
 }
 
 void SelectMultiplexer::remove_from_write_fds(int fd) {
-  std::cout << "remove_from_write_fds() called on " << fd << "\n";
+  LOG_DEBUG_FUNC_FD(fd);
   FD_CLR(fd, &write_fds);
 }
 

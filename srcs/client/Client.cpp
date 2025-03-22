@@ -14,6 +14,7 @@ Client::Client(int clientfd, int serverfd)
 Client::~Client() {}
 
 IOStatus Client::on_read() {
+  LOG_DEBUG_FUNC();
   const int buf_size = 1024;
   char buffer[buf_size];
   ssize_t bytes_read = recv(fd, buffer, sizeof(buffer), 0);
@@ -31,6 +32,7 @@ IOStatus Client::on_read() {
 }
 
 IOStatus Client::on_write() {
+  LOG_DEBUG_FUNC();
   if (!has_response()) {
     return IO_SUCCESS; // 送信可能なresponseがない
   }
@@ -55,6 +57,7 @@ IOStatus Client::on_write() {
 }
 
 bool Client::on_parse() {
+  LOG_DEBUG_FUNC();
   while (parser.parse()) {
     // trueの場合、requestの解析が完了しレスポンスを生成できる状態
     // request内でresponseクラスにresponseをpushしている

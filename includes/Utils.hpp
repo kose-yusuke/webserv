@@ -26,6 +26,10 @@
 #include <unistd.h>
 #include <vector>
 
+#define LOG_DEBUG_FUNC() log(LOG_FUNC, std::string(__func__) + "() called")
+#define LOG_DEBUG_FUNC_FD(fd)                                                  \
+  logfd(LOG_FUNC, std::string(__func__) + "() called on fd: ", fd)
+
 // kosekiさんから引き継いだ時点でのServer classのheader（一旦コメントアウト）
 // class Server {
 // private:
@@ -71,7 +75,7 @@ bool has_index_file(const std::string &dir_path);
 bool is_directory(const std::string &path);
 
 // log
-enum LogLevel { LOG_INFO, LOG_DEBUG, LOG_WARNING, LOG_ERROR };
+enum LogLevel { LOG_FUNC, LOG_INFO, LOG_DEBUG, LOG_WARNING, LOG_ERROR };
 // global 変数宣言
 extern LogLevel current_log_level;
 extern std::ofstream debug_log;
