@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 16:04:48 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 16:46:08 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,10 @@ HttpRequest::~HttpRequest() {}
 
 void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
+  if (status_code != 0) {
+    response.generate_error_response(status_code);
+    return;
+  }
 
   // std::string method, path, version;
   // if (!parse_http_request(buffer, method, path, version)) {
