@@ -1,5 +1,5 @@
 #include "SelectMultiplexer.hpp"
-#include <cerrno>
+#include "Utils.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <string.h>
@@ -24,7 +24,7 @@ void SelectMultiplexer::run() {
     int ret = select(max_fd + 1, &active_read_fds, &active_write_fds, 0, 0);
     std::cout << "Select returned: " << ret << "\n";
     if (ret < 0 && errno != EINTR) {
-      std::cerr << "Error: select() failed: " << strerror(errno) << "\n";
+      log(LOG_ERROR, "select() failed: ");
       continue;
     }
     for (int fd = 0; fd <= max_fd; ++fd) {

@@ -50,7 +50,7 @@ void Server::createSockets() {
       tempFds.push_back(serverFd);
       Multiplexer::get_instance().add_to_server_map(serverFd, this);
     }
-    std::cout << "Socket created and options set successfully\n";
+    log(LOG_INFO, "Socket created and options set successfully");
   } catch (...) {
     for (size_t i = 0; i < tempFds.size(); i++) {
       close(tempFds[i]);
@@ -84,8 +84,7 @@ int Server::createListenSocket(int port) {
     }
     if (fcntl(server_fd, F_SETFL, fcntl(server_fd, F_GETFL) | O_NONBLOCK) ==
         -1) {
-      std::cerr << "Error: Failed to set O_NONBLOCK on server_fd " << server_fd
-                << ": " << strerror(errno) << "\n";
+      logfd(LOG_ERROR, "Failed to set O_NONBLOCK on server fd: ", server_fd);
       close(server_fd);
       continue;
     }
@@ -99,7 +98,7 @@ int Server::createListenSocket(int port) {
       continue;
     }
     // socket(), setsockopt(), bind() 全部成功したらloopを抜ける
-    std::cout << "Socket bound to port " << port << "\n";
+    logfd(LOG_INFO, "Socket bound to port ", port);
     break;
   }
   freeaddrinfo(ai);
@@ -115,8 +114,7 @@ void Server::listenSocket(int server_fd, std::string portStr) {
     close(server_fd);
     throw std::runtime_error("Failed to listen on port: " + portStr);
   }
-  std::cout << "Server is listening on port " << portStr
-            << " (fd: " << server_fd << ")\n";
+  logfd(LOG_INFO, "Server is listening on port " + portStr + " fd:", server_fd);
 }
 
 Server::Server() {}

@@ -103,6 +103,7 @@ Client *Multiplexer::get_client_from_map(int fd) const {
 size_t Multiplexer::get_num_clients() const { return client_map.size(); }
 
 void Multiplexer::initialize_fds() {
+
   std::cout << "initialize_fds() called\n";
   if (server_map.empty()) {
     throw std::runtime_error("Error: No servers available.");

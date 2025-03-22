@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 01:07:31 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 13:32:12 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,8 +93,17 @@ void log(LogLevel level, const std::string &message) {
     case LOG_DEBUG:
       debug_log << "[DEBUG] " << message << std::endl;
       break;
+    case LOG_WARNING:
+      std::cerr << "[WARNING] " << message << std::endl;
+      break;
     case LOG_ERROR:
-      std::cerr << "[ERROR] " << message << std::endl;
+      std::cerr << "[ERROR] " << message;
+      if (errno != 0) {
+        int err = errno;
+        errno = 0;
+        std::cerr << " (errno: " << err << ", reason: " << strerror(err) << ")";
+      }
+      std::cerr << std::endl;
       break;
     }
   }

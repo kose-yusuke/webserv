@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/15 17:10:26 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 13:18:42 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,8 +37,10 @@ int main(int argc, char **argv) {
     multiplexer.delete_instance(); // fd close & clientのdelete
     for (size_t i = 0; i < servers.size(); i++)
       delete servers[i];
+    debug_log.close();
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
+    debug_log.close();
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;

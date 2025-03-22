@@ -71,7 +71,7 @@ bool has_index_file(const std::string &dir_path);
 bool is_directory(const std::string &path);
 
 // log
-enum LogLevel { LOG_INFO, LOG_DEBUG, LOG_ERROR };
+enum LogLevel { LOG_INFO, LOG_DEBUG, LOG_WARNING, LOG_ERROR };
 // global 変数宣言
 extern LogLevel current_log_level;
 extern std::ofstream debug_log;
