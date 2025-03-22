@@ -1,6 +1,6 @@
 #include "Server.hpp"
-#include "Multiplexer.hpp"
 #include "ConfigParse.hpp"
+#include "Multiplexer.hpp"
 #include <cstring>
 #include <fcntl.h>
 #include <netdb.h>
@@ -8,40 +8,39 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-Server::Server(const std::map<std::string, std::vector<std::string> > &config,
-               const std::map<std::string, std::map<std::string, std::vector<std::string> > >& locations)
-    : config(config), location_configs(locations), httpRequest(config, locations) {
-    // listen
-    std::map<std::string, std::vector<std::string> >::const_iterator listen_it =
-        config.find("listen");
-    if (listen_it == config.end() || listen_it->second.empty())
-      print_error_message("Missing required key: listen");
+Server::Server(const ConfigMap &config, const LocationMap &locations)
+    : server_config(config), location_configs(locations) {
+  // listen
+  ConstConfigIt listen_it = config.find("listen");
+  if (listen_it == config.end() || listen_it->second.empty())
+    print_error_message("Missing required key: listen");
 
-    for (size_t i = 0; i < listen_it->second.size(); i++) {
-      int port;
-      std::stringstream ss(listen_it->second[i]);
-      if (!(ss >> port))
-        print_error_message("Invalid port number: " +
-                                 listen_it->second[i]);
-      listenPorts_.push_back(port);
-    }
+  for (size_t i = 0; i < listen_it->second.size(); i++) {
+    int port;
+    std::stringstream ss(listen_it->second[i]);
+    if (!(ss >> port))
+      print_error_message("Invalid port number: " + listen_it->second[i]);
+    listenPorts_.push_back(port);
+  }
 
-    // root
-    std::map<std::string, std::vector<std::string> >::const_iterator root_it =
-        config.find("root");
-    if (root_it == config.end() || root_it->second.empty())
-      print_error_message("Missing required key: root");
-    // この辺実はいらなそう
-    public_root = root_it->second[0];
+  // root
+  ConstConfigIt root_it = config.find("root");
+  if (root_it == config.end() || root_it->second.empty())
+    print_error_message("Missing required key: root");
+  // この辺実はいらなそう
+  public_root = root_it->second[0];
 
-    std::map<std::string, std::vector<std::string> >::const_iterator error_it =
-        config.find("error_page 404");
-    error_404 = (error_it != config.end() && !error_it->second.empty())
-                    ? error_it->second[0]
-                    : "404.html";
+  ConstConfigIt error_it = config.find("error_page 404");
+  error_404 = (error_it != config.end() && !error_it->second.empty())
+                  ? error_it->second[0]
+                  : "404.html";
 }
 
 Server::~Server() {}
+
+const ConfigMap &Server::get_config() const { return server_config; }
+
+const LocationMap &Server::get_locations() const { return location_configs; }
 
 void Server::createSockets() {
   std::vector<int> tempFds;
@@ -51,7 +50,7 @@ void Server::createSockets() {
       tempFds.push_back(serverFd);
       Multiplexer::get_instance().add_to_server_map(serverFd, this);
     }
-    std::cout << "Socket created and options set successfully\n";
+    log(LOG_INFO, "Socket created and options set successfully");
   } catch (...) {
     for (size_t i = 0; i < tempFds.size(); i++) {
       close(tempFds[i]);
@@ -85,8 +84,7 @@ int Server::createListenSocket(int port) {
     }
     if (fcntl(server_fd, F_SETFL, fcntl(server_fd, F_GETFL) | O_NONBLOCK) ==
         -1) {
-      std::cerr << "Error: Failed to set O_NONBLOCK on server_fd " << server_fd
-                << ": " << strerror(errno) << "\n";
+      logfd(LOG_ERROR, "Failed to set O_NONBLOCK on server fd: ", server_fd);
       close(server_fd);
       continue;
     }
@@ -100,7 +98,7 @@ int Server::createListenSocket(int port) {
       continue;
     }
     // socket(), setsockopt(), bind() 全部成功したらloopを抜ける
-    std::cout << "Socket bound to port " << port << "\n";
+    logfd(LOG_INFO, "Socket bound to port ", port);
     break;
   }
   freeaddrinfo(ai);
@@ -116,8 +114,7 @@ void Server::listenSocket(int server_fd, std::string portStr) {
     close(server_fd);
     throw std::runtime_error("Failed to listen on port: " + portStr);
   }
-  std::cout << "Server is listening on port " << portStr
-            << " (fd: " << server_fd << ")\n";
+  logfd(LOG_INFO, "Server is listening on port " + portStr + " fd:", server_fd);
 }
 
 Server::Server() {}
@@ -129,9 +126,11 @@ Server &Server::operator=(const Server &src) {
   return *this;
 }
 
-void Server::handleHttp(int clientFd, const char *buffer, int nbytes) {
-  httpRequest.handleHttpRequest(clientFd, buffer, nbytes);
-}
+// server
+// ではなく、clientからの呼び出しでhandleHttpできるようにするためコメントアウト
+// void Server::handleHttp(int clientFd, const char *buffer, int nbytes) {
+//   httpRequest.handleHttpRequest(clientFd, buffer, nbytes);
+// }
 
 // Server::Server(const Server &src)
 //     : config(src.config), listen_ports(src.listen_ports),

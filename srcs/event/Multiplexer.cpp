@@ -5,6 +5,7 @@
 #include "PollMultiplexer.hpp"
 #include "SelectMultiplexer.hpp"
 #include "Server.hpp"
+#include "Utils.hpp"
 #include <fcntl.h>
 #include <iostream>
 #include <sstream>
@@ -102,6 +103,7 @@ Client *Multiplexer::get_client_from_map(int fd) const {
 size_t Multiplexer::get_num_clients() const { return client_map.size(); }
 
 void Multiplexer::initialize_fds() {
+
   std::cout << "initialize_fds() called\n";
   if (server_map.empty()) {
     throw std::runtime_error("Error: No servers available.");
@@ -131,7 +133,8 @@ void Multiplexer::process_event(int fd, bool readable, bool writable) {
 void Multiplexer::free_all_fds() {
   for (ServerIt it = server_map.begin(); it != server_map.end(); ++it) {
     close(it->first);
-    delete it->second;
+    // delete it->second;
+    // 複数のfd（port）が同じserverに結びつくので、ここでserverインスタンスを削除できない
   }
   server_map.clear();
   for (ClientIt it = client_map.begin(); it != client_map.end(); ++it) {
@@ -153,12 +156,11 @@ void Multiplexer::accept_client(int server_fd) {
   socklen_t addrlen = sizeof(client_addr);
   int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addrlen);
   if (client_fd == -1) {
-    std::cerr << "accept failed\n";
+    log(LOG_ERROR, "accept failed");
     return;
   }
   if (fcntl(client_fd, F_SETFL, fcntl(client_fd, F_GETFL) | O_NONBLOCK) == -1) {
-    std::cerr << "Error: Failed to set O_NONBLOCK on client_fd " << client_fd
-              << ": " << strerror(errno) << "\n";
+    logfd(LOG_ERROR, "Failed to set O_NONBLOCK: ", client_fd);
     close(client_fd);
     return;
   }

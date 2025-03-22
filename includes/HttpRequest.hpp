@@ -6,37 +6,35 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/15 03:58:04 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 00:45:43 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include "types.hpp"
+#include <algorithm>
+#include <dirent.h>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
-#include <fstream>
-#include <map>
-#include <vector>
-#include <algorithm>
-#include <unistd.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <sys/types.h>
-#include <dirent.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <vector>
 
-enum ResourceType {
-    File,
-    Directory,
-    NotFound
-};
+class HttpResponse;
 
-enum MethodType { GET, POST, DELETE };
+enum ResourceType { File, Directory, NotFound };
 
 class HttpRequest {
 public:
+  HttpRequest(int server_fd, HttpResponse &httpResponse);
+  ~HttpRequest();
+
   // メンバ変数（仮）
   std::string method;
   std::string path;
@@ -44,49 +42,65 @@ public:
   std::string body;
   std::map<std::string, std::string> headers;
 
-  MethodType methodType_;
+  bool is_autoindex_enabled;
+  std::vector<std::string> cgi_extensions;
+  std::vector<std::string> allow_methods;
+
+  ConfigMap server_config;
+  LocationMap location_configs;
+  ConfigMap best_match_location_config;
+  // std::map<std::string, std::vector<std::string>> best_match_location_config;
+
+  std::string handle_http_request();
+
+  void set_status_code(int status);
+  int get_status_code() const;
+
+  bool add_header(std::string &key, std::string &value);
+
+  // リクエストの解析
+  bool parse_http_request(const std::string &request, std::string &method,
+                          std::string &path, std::string &version);
+  ConfigMap get_location_config(const std::string &path);
+
+  // GETの処理
+  ResourceType get_resource_type(const std::string &path);
+  void handle_get_request(std::string path);
+  void handle_directory_request(std::string path);
+  bool is_cgi_request(const std::string &path);
+  void handle_cgi_request(const std::string &cgi_path);
+  // POSTの処理
+  void handle_post_request(const std::string &request, std::string path);
+  bool is_location_upload_file(const std::string file_path);
+  // DELETEの処理
+  void handle_delete_request(const std::string path);
+  int handle_file_delete(const std::string &file_path);
+  int delete_directory(const std::string &dir_path);
+  // autoindex (directory listing)
+  std::string generate_directory_listing(const std::string &dir_path);
 
   // TODO: 未作成の関数群
-  HttpRequest(){}
-  size_t get_content_length(){return 0;}
-  bool is_header_received(){return true;};
-  void parse_header(const std::string &request){(void)request;}
-  void parse_body(const std::string &request){(void)request;}
-  void clear(){}
-  // ここまで未完成
+  size_t get_content_length() const { return 0; }
+  void clear();
 
-    bool is_autoindex_enabled;
-    std::vector<std::string> cgi_extensions;
-    std::vector<std::string> allow_methods;
-    std::map<std::string, std::vector<std::string> >  server_configs;
-    std::map<std::string, std::map<std::string, std::vector<std::string> > > location_configs;
-    std::map<std::string, std::vector<std::string> > best_match_location_config;
+private:
+  HttpResponse &response;
+  int status_code;
+  std::string _root;
 
-    HttpRequest(const std::map<std::string, std::vector<std::string> >& config, const std::map<std::string, std::map<std::string, std::vector<std::string> > >&  location_config);
-    void handleHttpRequest(int clientFd, const char *buffer, int nbytes);
-    // リクエストの解析
-    bool parse_http_request(const std::string &request, std::string &method, std::string &path, std::string &version);
-    std::map<std::string, std::vector<std::string> > get_location_config(const std::string& path);
+  std::string get_requested_resource(const std::string &path);
+  void handle_file_request(const std::string &file_path);
 
-    // GETの処理
-    ResourceType get_resource_type(const std::string &path);
-    void handle_get_request(int client_socket, std::string path);
-    void handle_directory_request(int client_socket, std::string path);
-    bool is_cgi_request(const std::string& path);
-    void handle_cgi_request(int client_socket, const std::string& cgi_path);
-    // POSTの処理
-    void handle_post_request(int client_socket, const std::string &request, std::string path);
-    bool is_location_upload_file(int client_socket, const std::string file_path);
-    // DELETEの処理
-    void handle_delete_request(int client_socket,std::string path);
-    int handle_file_delete(const std::string& file_path);
-    int delete_directory(const std::string& dir_path);
-    // autoindex (directory listing)
-    std::string generate_directory_listing(const std::string &dir_path);
+  HttpRequest(const HttpRequest &other);
+  HttpRequest &operator=(const HttpRequest &other);
 
-    private:
-        std::string _root;
+  // HttpRequest(const std::map<std::string, std::vector<std::string>> &config,
+  //             const std::map<std::string,
+  //                            std::map<std::string, std::vector<std::string>>>
+  //                 &location_config);
 
-        std::string get_requested_resource(const std::string &path);
-        void handle_file_request(int client_socket, const std::string &file_path);
+  // std::map<std::string, std::vector<std::string> >  server_configs;
+  // std::map<std::string, std::map<std::string, std::vector<std::string>>>
+  // location_configs;
+  // std::map<std::string, std::vector<std::string>> best_match_location_config;
 };

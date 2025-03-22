@@ -1,5 +1,6 @@
 #include "PollMultiplexer.hpp"
 #include "Server.hpp"
+#include "Utils.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -42,7 +43,7 @@ void PollMultiplexer::add_to_read_fds(int fd) {
   std::cout << "add_to_read_fds() called on " << fd << "\n";
   PollFdIt it = find_pollfd(fd);
   if (it != pfds.end()) {
-    std::cerr << "Warning: fd " << fd << " is already registered\n";
+    logfd(LOG_WARNING, "fd already registered: ", fd);
     it->events |= POLLIN;
     return;
   }
@@ -57,7 +58,7 @@ void PollMultiplexer::remove_from_read_fds(int fd) {
   std::cout << "remove_from_read_fds() called on " << fd << "\n";
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
-    std::cerr << "Warning: fd " << fd << " is already erased\n";
+    logfd(LOG_WARNING, "fd already erased: ", fd);
     return;
   }
   pfds.erase(it);
@@ -67,8 +68,7 @@ void PollMultiplexer::add_to_write_fds(int fd) {
   std::cout << "add_to_write_fds() called on " << fd << "\n";
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
-    std::cerr << "Warning: fd " << fd
-              << " is not in read monitor. Adding it now.\n";
+    logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
     struct pollfd pfd;
     pfd.fd = fd;
     pfd.events = POLLIN | POLLOUT;
@@ -76,8 +76,7 @@ void PollMultiplexer::add_to_write_fds(int fd) {
     return;
   }
   if (it->events & POLLOUT) {
-    std::cerr << "Warning: fd " << fd
-              << " is already registered for write monitor\n";
+    logfd(LOG_WARNING, "fd already registered for write monitor: ", fd);
     return;
   }
   it->events |= POLLOUT;
@@ -87,11 +86,11 @@ void PollMultiplexer::remove_from_write_fds(int fd) {
   std::cout << "remove_from_write_fds() called on " << fd << "\n";
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
-    std::cerr << "Warning: fd " << fd << " doesn't exist in pfds vector.\n";
+    logfd(LOG_WARNING, "fd doesn't exist in pfds vector: ", fd);
     return;
   }
   if (!(it->events & POLLOUT)) {
-    std::cerr << "Warning: fd " << fd << " is already not in write monitor.\n";
+    logfd(LOG_WARNING, "fd is already in write monitor: ", fd);
     return;
   }
   it->events &= ~POLLOUT;

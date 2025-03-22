@@ -12,7 +12,8 @@ SRCS     := $(SRCDIR)/main.cpp $(SRCDIR)/server/Server.cpp $(SRCDIR)/Utils.cpp \
 			$(SRCDIR)/event/PollMultiplexer.cpp \
 			$(SRCDIR)/http/HttpRequest.cpp \
 			$(SRCDIR)/http/HttpResponse.cpp \
-			$(SRCDIR)/client/Client.cpp
+			$(SRCDIR)/client/Client.cpp \
+			$(SRCDIR)/http/HttpRequestParser.cpp
 OBJS     := $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 DEPS     := $(OBJS:.o=.d)
 

@@ -1,4 +1,5 @@
 #include "KqueueMultiplexer.hpp"
+#include "Utils.hpp"
 #include <cstdlib>
 #include <iostream>
 
@@ -11,7 +12,7 @@ Multiplexer &KqueueMultiplexer::get_instance() {
 }
 
 void KqueueMultiplexer::run() {
-  std::cout << "KqueueMultiplexer::run() called\n";
+  log(LOG_INFO, "KqueueMultiplexer::run() called");
 }
 
 void KqueueMultiplexer::add_to_read_fds(int fd) { (void)fd; }

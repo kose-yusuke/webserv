@@ -1,4 +1,5 @@
 #include "EpollMultiplexer.hpp"
+#include "Utils.hpp"
 #include <cstdlib>
 #include <iostream>
 
@@ -11,7 +12,7 @@ Multiplexer &EpollMultiplexer::get_instance() {
 }
 
 void EpollMultiplexer::run() {
-  std::cout << "EpollMultiplexer::run() called\n";
+  log(LOG_INFO, "EpollMultiplexer::run() called");
 }
 
 void EpollMultiplexer::add_to_read_fds(int fd) { (void)fd; }
