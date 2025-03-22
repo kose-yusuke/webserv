@@ -1,113 +1,85 @@
 #include "SelectMultiplexer.hpp"
-#include "Server.hpp"
-#include <fcntl.h>
+#include "Utils.hpp"
+#include <cstdlib>
 #include <iostream>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <unistd.h>
+
+Multiplexer &SelectMultiplexer::get_instance() {
+  if (!Multiplexer::instance) {
+    Multiplexer::instance = new SelectMultiplexer();
+    std::atexit(Multiplexer::delete_instance);
+  }
+  return *Multiplexer::instance;
+}
 
 void SelectMultiplexer::run() {
-  std::cout << "SelectMultiplexer::run() called\n";
-  fd_set mainFds;
-  int maxFd = -1;
-  addAllServerFdsToFdSet(mainFds, maxFd);
+  LOG_DEBUG_FUNC();
+  initialize_fds();
   while (true) {
-    fd_set readFds = mainFds;
-    int activity = select(maxFd + 1, &readFds, NULL, NULL, NULL);
-    if (activity < 0 && errno != EINTR) {
-      std::cerr << "Error: select() failed with errno " << errno << " ("
-                << strerror(errno) << ")\n";
+    active_read_fds = read_fds;
+    active_write_fds = write_fds;
+    int ret = select(max_fd + 1, &active_read_fds, &active_write_fds, 0, 0);
+    std::cout << "Select returned: " << ret << "\n";
+    if (ret < 0 && errno != EINTR) {
+      log(LOG_ERROR, "select() failed: ");
       continue;
     }
-    for (int eventFd = 0; eventFd <= maxFd; ++eventFd) {
-      if (FD_ISSET(eventFd, &readFds)) {
-        if (isInServerFdMap(eventFd)) {
-          acceptClient(mainFds, maxFd, eventFd);
-        } else {
-          handleClient(mainFds, maxFd, eventFd);
-        }
-      }
+    for (int fd = 0; fd <= max_fd; ++fd) {
+      process_event(fd, is_readable(fd), is_writable(fd));
     }
   }
 }
 
-void SelectMultiplexer::addFd(fd_set &fdSet, int &maxFd, int fd) {
-  FD_SET(fd, &fdSet);
-  maxFd = std::max(fd, maxFd);
+void SelectMultiplexer::add_to_read_fds(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  FD_SET(fd, &read_fds);
+  max_fd = std::max(fd, max_fd);
 }
 
-void SelectMultiplexer::removeFd(fd_set &fdSet, int &maxFd, int fd) {
-  FD_CLR(fd, &fdSet);
-  if (maxFd != fd) {
+void SelectMultiplexer::remove_from_read_fds(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  FD_CLR(fd, &read_fds);
+  if (fd != max_fd) {
     return;
   }
-  maxFd = -1;
-  for (int tmp = fd - 1; tmp >= 0; --tmp) {
-    if (FD_ISSET(tmp, &fdSet)) {
-      maxFd = tmp;
+  for (int tmp_fd = fd - 1; tmp_fd >= 0; --tmp_fd) {
+    if (FD_ISSET(tmp_fd, &read_fds)) {
+      max_fd = tmp_fd;
       break;
     }
   }
 }
 
-void SelectMultiplexer::addAllServerFdsToFdSet(fd_set &fdSet, int &maxFd) {
-  for (std::map<int, Server *>::iterator it = serverFdMap_.begin();
-       it != serverFdMap_.end(); ++it) {
-    addFd(fdSet, maxFd, it->first);
-  }
+void SelectMultiplexer::add_to_write_fds(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  FD_SET(fd, &write_fds);
 }
 
-void SelectMultiplexer::acceptClient(fd_set &fdSet, int &maxFd, int serverFd) {
-  struct sockaddr_storage clientAddr;
-  socklen_t addrlen = sizeof(clientAddr);
-  int clientFd = accept(serverFd, (struct sockaddr *)&clientAddr, &addrlen);
-  if (clientFd == -1) {
-    std::cerr << "accept failed\n";
-    return;
-  }
-  std::cout << "New connection on client fd: " << clientFd << "\n";
-  try {
-    addClientFd(clientFd, getServerFromServerFdMap(serverFd));
-    addFd(fdSet, maxFd, clientFd);
-  } catch (const std::exception &e) {
-    std::cerr << "Error: " << e.what() << "\n";
-    close(clientFd);
-  }
+void SelectMultiplexer::remove_from_write_fds(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  FD_CLR(fd, &write_fds);
 }
 
-void SelectMultiplexer::handleClient(fd_set &fdSet, int &maxFd, int clientFd) {
-  char buffer[1024] = {0};
-  int nbytes = recv(clientFd, buffer, sizeof(buffer), 0);
-  if (nbytes <= 0) {
-    if (errno == EWOULDBLOCK || errno == EAGAIN) {
-      return; // TODO: 確認
-    }
-    if (nbytes == 0) {
-      std::cout << "handleClient: socket hung up: " << clientFd << "\n";
-    } else {
-      std::cerr << "handleClient: recv failed: " << clientFd << "\n";
-    }
-    close(clientFd);
-    removeClientFd(clientFd);
-    removeFd(fdSet, maxFd, clientFd);
-    return;
-  }
-  try {
-    Server *server = getServerFromClientServerMap(clientFd);
-    server->handleHttp(clientFd, buffer, nbytes);
-  } catch (const std::exception &e) {
-    std::cerr << "Error: " << e.what() << "\n";
-    close(clientFd);
-  }
+bool SelectMultiplexer::is_readable(int fd) {
+  return FD_ISSET(fd, &active_read_fds);
 }
 
-SelectMultiplexer::SelectMultiplexer() {}
+bool SelectMultiplexer::is_writable(int fd) {
+  return FD_ISSET(fd, &active_write_fds);
+}
+
+SelectMultiplexer::SelectMultiplexer() : Multiplexer(), max_fd(0) {
+  FD_ZERO(&read_fds);
+  FD_ZERO(&write_fds);
+  FD_ZERO(&active_read_fds);
+  FD_ZERO(&active_write_fds);
+}
 
 SelectMultiplexer::SelectMultiplexer(const SelectMultiplexer &other)
-    : Multiplexer(other) {
-  (void)other;
-}
+    : Multiplexer(other) {}
 
 SelectMultiplexer::~SelectMultiplexer() {}
 

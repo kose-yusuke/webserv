@@ -1,117 +1,119 @@
 #include "PollMultiplexer.hpp"
 #include "Server.hpp"
+#include "Utils.hpp"
+#include <cstdlib>
 #include <iostream>
+#include <sstream>
+#include <string.h>
 #include <sys/socket.h>
-#include <unistd.h>
+
+Multiplexer &PollMultiplexer::get_instance() {
+  if (!Multiplexer::instance) {
+    Multiplexer::instance = new PollMultiplexer();
+    std::atexit(Multiplexer::delete_instance);
+  }
+  return *Multiplexer::instance;
+}
 
 void PollMultiplexer::run() {
-  std::cout << "PollMultiplexer::run() called\n";
-  std::vector<struct pollfd> pfds;
-
-  pfds.reserve(serverFdMap_.size());
-  addAllServerFdsToPfds(pfds);
+  LOG_DEBUG_FUNC();
+  pfds.reserve(get_num_servers());
+  initialize_fds();
   if (pfds.empty()) {
     throw std::runtime_error("pollfd empty");
   }
   while (true) {
-    int pollCount = poll(&pfds[0], pfds.size(), 0); // non-blocking: timeout=0
-    if (pollCount == -1) {
-      throw std::runtime_error("poll failed");
+    int ready;
+    do {
+      ready = poll(pfds.data(), pfds.size(), 0);
+    } while (ready == -1 && errno == EINTR);
+    if (ready == -1) {
+      std::ostringstream oss;
+      oss << "Error: poll failed with errno " << strerror(errno);
+      throw std::runtime_error(oss.str());
     }
-    for (size_t i = 0; i < pfds.size(); ++i) {
-      if (pfds[i].revents & (POLLIN | POLLHUP)) {
-        if (isInServerFdMap(pfds[i].fd)) {
-          acceptClient(pfds, pfds[i].fd);
-        } else {
-          handleClient(pfds, pfds[i].fd);
-        }
-      }
+    PollFdVec tmp = pfds;
+    for (size_t i = 0; i < tmp.size(); ++i) {
+      process_event(tmp[i].fd, is_readable(tmp[i]), is_writable(tmp[i]));
     }
   }
 }
 
-void PollMultiplexer::addPfd(std::vector<struct pollfd> &pfds, int fd) {
+void PollMultiplexer::add_to_read_fds(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  PollFdIt it = find_pollfd(fd);
+  if (it != pfds.end()) {
+    logfd(LOG_WARNING, "fd already registered: ", fd);
+    it->events |= POLLIN;
+    return;
+  }
   struct pollfd pfd;
   pfd.fd = fd;
   pfd.events = POLLIN;
+  pfd.revents = 0;
   pfds.push_back(pfd);
 }
 
-void PollMultiplexer::removePfd(std::vector<struct pollfd> &pfds, int fd) {
-  for (std::vector<struct pollfd>::iterator it = pfds.begin(); it != pfds.end();
-       ++it) {
+void PollMultiplexer::remove_from_read_fds(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  PollFdIt it = find_pollfd(fd);
+  if (it == pfds.end()) {
+    logfd(LOG_WARNING, "fd already erased: ", fd);
+    return;
+  }
+  pfds.erase(it);
+}
+
+void PollMultiplexer::add_to_write_fds(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  PollFdIt it = find_pollfd(fd);
+  if (it == pfds.end()) {
+    logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
+    struct pollfd pfd;
+    pfd.fd = fd;
+    pfd.events = POLLIN | POLLOUT;
+    pfds.push_back(pfd);
+    return;
+  }
+  if (it->events & POLLOUT) {
+    logfd(LOG_WARNING, "fd already registered for write monitor: ", fd);
+    return;
+  }
+  it->events |= POLLOUT;
+}
+
+void PollMultiplexer::remove_from_write_fds(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  PollFdIt it = find_pollfd(fd);
+  if (it == pfds.end()) {
+    logfd(LOG_WARNING, "fd doesn't exist in pfds vector: ", fd);
+    return;
+  }
+  if (!(it->events & POLLOUT)) {
+    logfd(LOG_WARNING, "fd is already in write monitor: ", fd);
+    return;
+  }
+  it->events &= ~POLLOUT;
+}
+
+bool PollMultiplexer::is_readable(struct pollfd pfd) const {
+  return (pfd.revents & (POLLIN | POLLHUP | POLLERR)) != 0;
+}
+
+bool PollMultiplexer::is_writable(struct pollfd pfd) const {
+  return (pfd.revents & POLLOUT) != 0;
+}
+
+PollMultiplexer::PollFdIt PollMultiplexer::find_pollfd(int fd) {
+  for (PollFdIt it = pfds.begin(); it != pfds.end(); ++it) {
     if (it->fd == fd) {
-      pfds.erase(it);
-      return;
+      return it;
     }
   }
+  return pfds.end();
 }
 
-bool PollMultiplexer::isInPfds(const std::vector<struct pollfd> &pfds, int fd) {
-  for (size_t i = 0; i < pfds.size(); ++i) {
-    if (pfds[i].fd == fd) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void PollMultiplexer::addAllServerFdsToPfds(std::vector<struct pollfd> &pfds) {
-  for (std::map<int, Server *>::iterator it = serverFdMap_.begin();
-       it != serverFdMap_.end(); ++it) {
-    addPfd(pfds, it->first);
-  }
-}
-
-void PollMultiplexer::acceptClient(std::vector<struct pollfd> &pfds,
-                                   int serverFd) {
-  struct sockaddr_storage clientAddr;
-  socklen_t addrlen = sizeof(clientAddr);
-
-  int clientFd = accept(serverFd, (struct sockaddr *)&clientAddr, &addrlen);
-  if (clientFd == -1) {
-    std::cerr << "Failed to accept incoming call\n";
-    return;
-  }
-  std::cout << "New connection on client fd: " << clientFd << "\n";
-  try {
-    addClientFd(clientFd, getServerFromServerFdMap(serverFd));
-    addPfd(pfds, clientFd);
-  } catch (const std::exception &e) {
-    std::cerr << "Error: " << e.what() << "\n";
-    close(clientFd);
-  }
-}
-
-void PollMultiplexer::handleClient(std::vector<struct pollfd> &pfds,
-                                   int clientFd) {
-  char buffer[1024] = {0};
-
-  int nbytes = recv(clientFd, buffer, sizeof(buffer), 0);
-  if (nbytes <= 0) {
-    if (errno == EWOULDBLOCK || errno == EAGAIN) {
-      return; // TODO: 確認
-    }
-    if (nbytes == 0) {
-      std::cout << "handleClient: socket hung up: " << clientFd << "\n";
-    } else {
-      std::cerr << "handleClient: recv failed: " << clientFd << "\n";
-    }
-    close(clientFd);
-    removePfd(pfds, clientFd);
-    removeClientFd(clientFd);
-    return;
-  }
-  try {
-    Server *server = getServerFromClientServerMap(clientFd);
-    server->handleHttp(clientFd, buffer, nbytes);
-  } catch (const std::exception &e) {
-    std::cerr << "Error: " << e.what() << "\n";
-    close(clientFd);
-  }
-}
-
-PollMultiplexer::PollMultiplexer() {}
+PollMultiplexer::PollMultiplexer() : Multiplexer(), pfds() {}
 
 PollMultiplexer::PollMultiplexer(const PollMultiplexer &other)
     : Multiplexer(other) {

@@ -9,6 +9,19 @@ const char* Parse::required_keys[] = {
 };
 ```
 
+## 本プロジェクトでのConfigParseの構造
+
+std::vector<std::pair<std::map<std::string, std::vector<std::string> >, 
+      std::map<std::string, std::map<std::string, std::vector<std::string> > > > > server_location_configs;
+std::vector<std::map<std::string, std::vector<std::string> > > server_configs;
+std::vector<std::map<std::string, std::map<std::string, std::vector<std::string> > > > locations_configs;
+
+- Serverとlocationは紐づいている(pair)
+- 全体として, 複数のServerが存在する
+- 1つのServerに複数のlocationが存在する
+- server_configは, key, value(valueが複数存在する場合があるため, vector管理)
+- locations_configsは, <location_path, std::map<std::string, std::vector<std::string> > > (後半のmapはserver_configと同じ要領)
+
 ### エラーハンドリング
 - nest管理({が欠如しているなど) (対応済み)
 - server block内にrootの重複 (対応済み)

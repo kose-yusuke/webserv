@@ -1,5 +1,6 @@
 #pragma once
 
+#include "types.hpp"
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -9,24 +10,30 @@
 #include <stdexcept>
 #include <string>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
-#include "HttpRequest.hpp"
+// #include "HttpRequest.hpp"
 
 class Server {
 public:
-  Server(const std::map<std::string, std::vector<std::string> > &config);
+  Server(const ConfigMap &config, const LocationMap &locations);
   ~Server();
 
   void createSockets();
-  void handleHttp(int clientFd, const char *buffer, int nbytes);
+
+  const ConfigMap &get_config() const;
+  const LocationMap &get_locations() const;
 
 private:
-  std::map<std::string, std::vector<std::string> > config;
+  ConfigMap server_config;
+  LocationMap location_configs;
+
   std::vector<int> listenPorts_;
   std::string public_root;
   std::string error_404;
-  HttpRequest httpRequest;
+  // HttpRequestはServerではなくClientに持たせたいためコメントアウト
+  // HttpRequest httpRequest;
 
   int createListenSocket(int port);
   void listenSocket(int sockfd, std::string portStr);
