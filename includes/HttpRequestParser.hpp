@@ -4,17 +4,14 @@
 #include <sstream>
 #include <string>
 
-#define MAX_REQUEST_LINE 10000
-#define MAX_REQUEST_TARGET 2048 // TODO: 確認
-
 class HttpRequestParser {
 public:
   HttpRequestParser(HttpRequest &http_request);
   ~HttpRequestParser();
 
   bool parse();
-  void clear(); // 状態reset
 
+  void clear();                                      // 状態reset
   void append_data(const char *data, size_t length); // データ追加
 
 private:
@@ -26,12 +23,17 @@ private:
     PARSE_DONE    // 解析の正常終了
   };
 
+  static const size_t k_max_request_line;
+  static const size_t k_max_request_target;
+
   HttpRequest &request;
   ParseState parse_state; // 解析状態
-  std::string buffer;     // recv用の受信buffer
+  size_t body_size;
+  std::string buffer; // recv用の受信buffer
 
   ParseState parse_header();
   ParseState parse_body();
+  ParseState parse_chunked_body();
 
   bool parse_request_line(std::string &line);
   bool parse_header_line(std::string &line);

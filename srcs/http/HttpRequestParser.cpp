@@ -2,6 +2,9 @@
 #include "Utils.hpp"
 #include <set>
 
+const size_t HttpRequestParser::k_max_request_line = 10000;
+const size_t HttpRequestParser::k_max_request_target = 2048;
+
 static const char *methods_arr[] = {"GET",    "HEAD",    "POST",    "PUT",
                                     "DELETE", "CONNECT", "OPTIONS", "TRACE"};
 
@@ -32,38 +35,12 @@ void HttpRequestParser::clear() {
   LOG_DEBUG_FUNC();
   request.clear();
   parse_state = PARSE_HEADER;
+  body_size = 0;
 }
 
 void HttpRequestParser::append_data(const char *data, size_t length) {
   LOG_DEBUG_FUNC();
-
   buffer.append(data, length);
-}
-
-HttpRequestParser::ParseState HttpRequestParser::parse_body() {
-  LOG_DEBUG_FUNC();
-
-  size_t body_size = request.get_content_length();
-  if (body_size == 0) {
-    return PARSE_DONE; // bodyなし
-  }
-  if (body_size > 0 && buffer.size() < body_size) {
-    return PARSE_BODY; // body未受信
-  }
-  if (body_size > 10 * 1024 * 1024) {
-    buffer.erase(0, body_size); // TODO: 消していいかを確認
-    return PARSE_ERROR;
-  }
-  request.body.append(buffer.substr(0, body_size));
-  buffer.erase(0, body_size);
-
-  return PARSE_DONE;
-}
-
-HttpRequestParser &
-HttpRequestParser::operator=(const HttpRequestParser &other) {
-  (void)other;
-  return *this;
 }
 
 HttpRequestParser::ParseState HttpRequestParser::parse_header() {
@@ -87,7 +64,6 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
   }
 
   while (std::getline(iss, line) && !line.empty()) {
-    // log(LOG_DEBUG, "Parsing line: " + line);
     if (!parse_header_line(line)) {
       request.set_status_code(400);
       return PARSE_ERROR;
@@ -97,64 +73,59 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
     return PARSE_ERROR;
   }
   log(LOG_DEBUG, "Parse Success !!");
-  // TODO: parse-body() にあたるかのチェック
+
+  // TODO: parse_stateの管理
+  // if (has_body()) {
+  // }
+  // // TODO: parse-body() にあたるかのチェック
   // TODO: Transfer-Encoding: chunked 対応
   // ex. parse_state == PARSE_CHUNKED
   return PARSE_DONE;
 }
 
-bool HttpRequestParser::validate_request_content() {
+HttpRequestParser::ParseState HttpRequestParser::parse_body() {
   LOG_DEBUG_FUNC();
-
-  if (request.method.empty() || request.path.empty() ||
-      request.version.empty()) {
-    log(LOG_DEBUG, "Failed to parse request line (empty value)");
-    request.set_status_code(400);
-    return false;
+  size_t body_size = request.get_content_length();
+  if (body_size == 0) {
+    return PARSE_DONE; // bodyなし
   }
-
-  if (supported_methods.find(request.method) == supported_methods.end()) {
-    log(LOG_DEBUG, "Unsupported HTTP method: " + request.method);
-    request.set_status_code(501);
-    return false;
+  if (body_size > 0 && buffer.size() < body_size) {
+    return PARSE_BODY; // body未受信
   }
-
-  if (request.path.size() > MAX_REQUEST_TARGET) {
-    log(LOG_DEBUG, "Request-target is too long");
-    request.set_status_code(414);
-    return false;
+  if (body_size > 10 * 1024 * 1024) {
+    buffer.erase(0, body_size); // TODO: 消していいかを確認
+    return PARSE_ERROR;
   }
+  request.body.append(buffer.substr(0, body_size));
+  buffer.erase(0, body_size);
 
-  // TODO: Request url が NG文字を含む
-  // request.set_status_code(400);
-
-  if (request.version != "HTTP/1.1") {
-    log(LOG_ERROR, "Unsupported HTTP version: " + request.version);
-    request.set_status_code(505);
-    return false;
-  }
-
-  return true;
+  return PARSE_DONE;
 }
 
-bool HttpRequestParser::validate_headers_content() {
+HttpRequestParser::ParseState HttpRequestParser::parse_chunked_body() {
   LOG_DEBUG_FUNC();
-
-  // TODO: Transfer-Encoding あり. but not chunked
-  // request.set_status_code(501);
-
-  // Transfer-Encoding も Content-length もある POST
-  // request.set_status_code(400);
-
-  // Request body larger than client max body size in config
-  // request.set_status_code(413);
-  return true;
+  // TODO: chunked body のparse
+  // size_t body_size = request.get_content_length();
+  // if (body_size == 0) {
+  //   return PARSE_DONE; // bodyなし
+  // }
+  // if (body_size > 0 && buffer.size() < body_size) {
+  //   return PARSE_BODY; // body未受信
+  // }
+  // if (body_size > 10 * 1024 * 1024) {
+  //   buffer.erase(0, body_size); // TODO: 消していいかを確認
+  //   return PARSE_ERROR;
+  // }
+  // request.body.append(buffer.substr(0, body_size));
+  // buffer.erase(0, body_size);
+  return PARSE_DONE;
 }
 
 bool HttpRequestParser::parse_request_line(std::string &line) {
   LOG_DEBUG_FUNC();
 
-  if (line.empty() || line.size() > MAX_REQUEST_LINE || std::isspace(line[0])) {
+  if (line.empty() || line.size() > k_max_request_line ||
+      std::isspace(line[0])) {
     return false;
   }
 
@@ -176,8 +147,8 @@ bool HttpRequestParser::parse_request_line(std::string &line) {
 }
 
 bool HttpRequestParser::parse_header_line(std::string &line) {
-  LOG_DEBUG_FUNC();
-  if (line.size() > MAX_REQUEST_LINE || std::isspace(line[0])) {
+  // LOG_DEBUG_FUNC();
+  if (line.size() > k_max_request_line || std::isspace(line[0])) {
     log(LOG_ERROR, "Invalid header field: " + line);
     return false;
   }
@@ -202,6 +173,90 @@ bool HttpRequestParser::parse_header_line(std::string &line) {
 
   log(LOG_DEBUG, "Parsed - Key: " + key + ": " + request.headers[key]);
   return true;
+}
+
+bool HttpRequestParser::validate_request_content() {
+  LOG_DEBUG_FUNC();
+  if (request.method.empty() || request.path.empty() ||
+      request.version.empty()) {
+    log(LOG_DEBUG, "Failed to parse request line (empty value)");
+    request.set_status_code(400);
+    return false;
+  }
+
+  if (supported_methods.find(request.method) == supported_methods.end()) {
+    log(LOG_DEBUG, "Unsupported HTTP method: " + request.method);
+    request.set_status_code(501);
+    return false;
+  }
+
+  // TODO: Request url が NG文字を含む
+  // request.set_status_code(400);
+
+  if (request.path.size() > k_max_request_target) {
+    log(LOG_DEBUG, "Request-target is too long");
+    request.set_status_code(414);
+    return false;
+  }
+
+  if (request.version != "HTTP/1.1") {
+    log(LOG_ERROR, "Unsupported HTTP version: " + request.version);
+    request.set_status_code(505);
+    return false;
+  }
+  return true;
+}
+
+bool HttpRequestParser::validate_headers_content() {
+  LOG_DEBUG_FUNC();
+  if (request.method != "POST") {
+    return false;
+  }
+
+  // Transfer-Encoding  あり. but not chunked
+  if (request.is_in_headers("Transfer-Encoding") &&
+      request.get_value_from_headers("Transfer-Encoding") != "chunked") {
+    request.set_status_code(501);
+    return false;
+  }
+
+  // Transfer-Encoding も Content-length もない POST
+  if (!request.is_in_headers("Transfer-Encoding") &&
+      !request.is_in_headers("Content-length")) {
+    request.set_status_code(400);
+    return false;
+  }
+
+  // TODO: status code 確認
+  // Transfer-Encoding も Content-length ON (両立しない)
+  if (request.is_in_headers("Transfer-Encoding") &&
+      request.is_in_headers("Content-length")) {
+    request.set_status_code(400);
+    return false;
+  }
+
+  // Request body larger than client max body size defined in server config
+  if (request.is_in_headers("Content-length")) {
+    size_t client_max_body_size = request.get_max_body_size();
+    std::string str = request.get_value_from_headers("Content-length");
+    try {
+      body_size = convert_str_to_size(str);
+    } catch (const std::exception &e) {
+      request.set_status_code(400); // TODO: check
+      return false;
+    }
+    if (body_size > client_max_body_size) {
+      request.set_status_code(413);
+      return false;
+    }
+  }
+  return true;
+}
+
+HttpRequestParser &
+HttpRequestParser::operator=(const HttpRequestParser &other) {
+  (void)other;
+  return *this;
 }
 
 /*
@@ -229,16 +284,4 @@ A recipient MAY combine multiple header fields with the same field
       of [Kri2001] for details.)
 
       // Cookieには今のところ未対応のつもりだから関係ない　
-*/
-
-/*
-// TODO
- The backslash octet ("\") can be used as a single-octet quoting
-   mechanism within quoted-string and comment constructs.  Recipients
-   that process the value of a quoted-string MUST handle a quoted-pair
-   as if it were replaced by the octet following the backslash.
-
-     quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
-
-
 */

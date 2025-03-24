@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 15:22:42 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/24 15:58:15 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,7 @@ std::string read_file(const std::string &file_path) {
 //     return "application/octet-stream";
 // }
 
-LogLevel current_log_level = LOG_FUNC;
+LogLevel current_log_level = LOG_INFO;
 std::ofstream debug_log("debug.log");
 
 void log(LogLevel level, const std::string &message) {
@@ -131,4 +131,24 @@ std::string trim_right(const std::string &s) {
 std::string trim(const std::string &s) {
   std::string trimmed = trim_right(s);
   return trim_left(trimmed);
+}
+
+size_t convert_str_to_size(const std::string &num_str) {
+  char *endptr;
+  errno = 0;
+
+  unsigned long val = std::strtoul(num_str.c_str(), &endptr, 10);
+  if (errno != 0 || endptr == num_str.c_str()) {
+    throw std::runtime_error("Invalid string to convert to number: " + num_str);
+  }
+  if (*endptr == '\0') {
+    return val;
+  }
+  if ((endptr[0] == 'M' || endptr[0] == 'm') && endptr[1] == '\0') {
+    if (val > SIZE_MAX / 1048576) {
+      throw std::runtime_error("Overflow during conversion: " + num_str);
+    }
+    return val * 1048576;
+  }
+  throw std::runtime_error("Invalid suffix in number: " + num_str);
 }
