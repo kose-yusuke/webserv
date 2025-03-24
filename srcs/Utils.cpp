@@ -6,11 +6,12 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/24 15:58:15 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/24 21:03:22 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Utils.hpp"
+#include <cstdint>
 
 int print_error_message(const std::string &message) {
   std::cerr << "Error: " << message << std::endl;
