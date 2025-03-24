@@ -6,12 +6,12 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/24 21:03:22 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/24 21:20:44 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Utils.hpp"
-#include <cstdint>
+#include <limits>
 
 int print_error_message(const std::string &message) {
   std::cerr << "Error: " << message << std::endl;
@@ -146,7 +146,7 @@ size_t convert_str_to_size(const std::string &num_str) {
     return val;
   }
   if ((endptr[0] == 'M' || endptr[0] == 'm') && endptr[1] == '\0') {
-    if (val > SIZE_MAX / 1048576) {
+    if (val > std::numeric_limits<std::size_t>::max() / 1048576) {
       throw std::runtime_error("Overflow during conversion: " + num_str);
     }
     return val * 1048576;
