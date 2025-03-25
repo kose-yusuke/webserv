@@ -27,7 +27,6 @@ bool HttpRequestParser::parse() {
   if (parse_state == PARSE_BODY) {
     parse_state = parse_body();
   }
-
   return (parse_state == PARSE_DONE || parse_state == PARSE_ERROR);
 }
 
@@ -45,7 +44,6 @@ void HttpRequestParser::append_data(const char *data, size_t length) {
 
 HttpRequestParser::ParseState HttpRequestParser::parse_header() {
   LOG_DEBUG_FUNC();
-
   size_t end = buffer.find("\r\n\r\n");
   if (end == std::string::npos) {
     return PARSE_HEADER; // header未受信
@@ -62,7 +60,6 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
   if (!validate_request_content()) {
     return PARSE_ERROR;
   }
-
   while (std::getline(iss, line) && !line.empty()) {
     if (!parse_header_line(line)) {
       request.set_status_code(400);
@@ -73,33 +70,30 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
     return PARSE_ERROR;
   }
   log(LOG_DEBUG, "Parse Success !!");
+  return next_parse_state();
+}
 
-  // TODO: parse_stateの管理
-  // if (has_body()) {
-  // }
-  // // TODO: parse-body() にあたるかのチェック
-  // TODO: Transfer-Encoding: chunked 対応
-  // ex. parse_state == PARSE_CHUNKED
+HttpRequestParser::ParseState HttpRequestParser::next_parse_state() const {
+  if (request.is_in_headers("Transfer-Encoding")) {
+    return PARSE_CHUNK;
+  }
+  if (request.is_in_headers("Content-length")) {
+    return PARSE_BODY;
+  }
   return PARSE_DONE;
 }
 
 HttpRequestParser::ParseState HttpRequestParser::parse_body() {
   LOG_DEBUG_FUNC();
-  size_t body_size = request.get_content_length();
   if (body_size == 0) {
     return PARSE_DONE; // bodyなし
   }
   if (body_size > 0 && buffer.size() < body_size) {
     return PARSE_BODY; // body未受信
   }
-  if (body_size > 10 * 1024 * 1024) {
-    buffer.erase(0, body_size); // TODO: 消していいかを確認
-    return PARSE_ERROR;
-  }
   request.body.append(buffer.substr(0, body_size));
   buffer.erase(0, body_size);
-
-  return PARSE_DONE;
+  return PARSE_DONE; // body受信完了
 }
 
 HttpRequestParser::ParseState HttpRequestParser::parse_chunked_body() {

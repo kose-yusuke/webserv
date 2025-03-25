@@ -32,6 +32,7 @@ private:
   std::string buffer; // recv用の受信buffer
 
   ParseState parse_header();
+  ParseState next_parse_state() const;
   ParseState parse_body();
   ParseState parse_chunked_body();
 
