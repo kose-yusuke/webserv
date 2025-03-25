@@ -98,20 +98,43 @@ HttpRequestParser::ParseState HttpRequestParser::parse_body() {
 
 HttpRequestParser::ParseState HttpRequestParser::parse_chunked_body() {
   LOG_DEBUG_FUNC();
-  // TODO: chunked body のparse
-  // size_t body_size = request.get_content_length();
-  // if (body_size == 0) {
-  //   return PARSE_DONE; // bodyなし
-  // }
-  // if (body_size > 0 && buffer.size() < body_size) {
-  //   return PARSE_BODY; // body未受信
-  // }
-  // if (body_size > 10 * 1024 * 1024) {
-  //   buffer.erase(0, body_size); // TODO: 消していいかを確認
-  //   return PARSE_ERROR;
-  // }
-  // request.body.append(buffer.substr(0, body_size));
-  // buffer.erase(0, body_size);
+  size_t chunk_size = 0;
+  while (true) {
+    size_t pos = buffer.find("\r\n");
+    if (pos == std::string::npos) {
+      return PARSE_CHUNK;
+    }
+
+    std::string size_str = buffer.substr(0, pos);
+    try {
+      chunk_size = parse_hex(size_str);
+    } catch (const std::exception &e) {
+      request.set_status_code(400);
+      return PARSE_ERROR;
+    }
+    if (chunk_size == 0) {
+      break;
+    }
+
+    size_t chunk_start = pos + 2;
+    size_t chunk_end = chunk_start + chunk_size + 2;
+    if (buffer.size() < chunk_end) {
+      return PARSE_CHUNK;
+    }
+
+    std::string chunk = buffer.substr(chunk_start, chunk_size);
+    request.body.append(chunk);
+    buffer.erase(0, chunk_end);
+  }
+
+  if (buffer.size() < 5) {
+    return PARSE_CHUNK;
+  }
+  if (buffer.substr(0, 5) != "0\r\n\r\n") {
+    request.set_status_code(400);
+    return PARSE_ERROR;
+  }
+  buffer.erase(0, 5);
   return PARSE_DONE;
 }
 

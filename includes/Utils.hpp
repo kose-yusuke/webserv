@@ -90,3 +90,4 @@ std::string trim(const std::string &s);
 
 // convert string to number
 size_t convert_str_to_size(const std::string &num_str);
+size_t parse_hex(const std::string &s);
