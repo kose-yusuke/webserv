@@ -2,6 +2,9 @@
 #include "Utils.hpp"
 #include <set>
 
+static const char *unreserved_chars = "-._~";
+static const char *reserved_chars = ":/?#[]@!$&'()*+,;=";
+
 const size_t HttpRequestParser::k_max_request_line = 10000;
 const size_t HttpRequestParser::k_max_request_target = 2048;
 
@@ -207,8 +210,15 @@ bool HttpRequestParser::validate_request_content() {
     return false;
   }
 
-  // TODO: Request url が NG文字を含む
-  // request.set_status_code(400);
+  for (size_t i = 0; i < request.path.size(); ++i) {
+    char c = request.path.at(i);
+    if (!std::isdigit(c) && !std::isalpha(c) &&
+        !std::strchr(unreserved_chars, c) && !std::strchr(reserved_chars, c)) {
+      log(LOG_DEBUG, std::string("Invalid character in target: '") + c + "'");
+      request.set_status_code(400);
+      return false;
+    }
+  }
 
   if (request.path.size() > k_max_request_target) {
     log(LOG_DEBUG, "Request-target is too long");
