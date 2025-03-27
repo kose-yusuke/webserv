@@ -15,11 +15,11 @@
 Multiplexer *Multiplexer::instance = 0;
 
 Multiplexer &Multiplexer::get_instance() {
-  return SelectMultiplexer::get_instance();
+  return KqueueMultiplexer::get_instance();
 #if defined(__linux__)
   return EpollMultiplexer::get_instance();
 #elif defined(__APPLE__) || defined(__MACH__)
-  return SelectMultiplexer::get_instance();
+  return KqueueMultiplexer::get_instance();
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
   return KqueueMultiplexer::get_instance();
 #elif defined(HAS_POLL)
