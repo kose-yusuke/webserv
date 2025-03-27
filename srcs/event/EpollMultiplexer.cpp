@@ -5,15 +5,14 @@
 
 Multiplexer &EpollMultiplexer::get_instance() {
   if (!Multiplexer::instance) {
+    log(LOG_INFO, "EpollMultiplexer::get_instance()");
     Multiplexer::instance = new EpollMultiplexer();
     std::atexit(Multiplexer::delete_instance);
   }
   return *Multiplexer::instance;
 }
 
-void EpollMultiplexer::run() {
-  LOG_DEBUG_FUNC();
-}
+void EpollMultiplexer::run() { LOG_DEBUG_FUNC(); }
 
 void EpollMultiplexer::add_to_read_fds(int fd) { (void)fd; }
 void EpollMultiplexer::remove_from_read_fds(int fd) { (void)fd; }

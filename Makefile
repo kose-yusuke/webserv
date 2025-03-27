@@ -5,15 +5,24 @@ SRCDIR   := srcs
 OBJDIR   := objs
 SRCS     := $(SRCDIR)/main.cpp $(SRCDIR)/server/Server.cpp $(SRCDIR)/Utils.cpp \
             $(SRCDIR)/config/ConfigParse.cpp \
-            $(SRCDIR)/event/EpollMultiplexer.cpp \
 			$(SRCDIR)/event/Multiplexer.cpp \
 			$(SRCDIR)/event/SelectMultiplexer.cpp \
-			$(SRCDIR)/event/KqueueMultiplexer.cpp \
 			$(SRCDIR)/event/PollMultiplexer.cpp \
 			$(SRCDIR)/http/HttpRequest.cpp \
 			$(SRCDIR)/http/HttpResponse.cpp \
 			$(SRCDIR)/client/Client.cpp \
 			$(SRCDIR)/http/HttpRequestParser.cpp
+
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
+  SRCS += srcs/event/KqueueMultiplexer.cpp
+endif
+
+ifeq ($(UNAME_S),Linux)
+  SRCS += srcs/event/EpollMultiplexer.cpp
+endif
+
 OBJS     := $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 DEPS     := $(OBJS:.o=.d)
 

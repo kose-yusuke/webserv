@@ -8,6 +8,7 @@
 
 Multiplexer &KqueueMultiplexer::get_instance() {
   if (!Multiplexer::instance) {
+    log(LOG_INFO, "KqueueMultiplexer::get_instance()");
     Multiplexer::instance = new KqueueMultiplexer();
     std::atexit(Multiplexer::delete_instance);
   }

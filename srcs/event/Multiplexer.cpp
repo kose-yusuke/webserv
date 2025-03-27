@@ -15,7 +15,6 @@
 Multiplexer *Multiplexer::instance = 0;
 
 Multiplexer &Multiplexer::get_instance() {
-  return KqueueMultiplexer::get_instance();
 #if defined(__linux__)
   return EpollMultiplexer::get_instance();
 #elif defined(__APPLE__) || defined(__MACH__)
