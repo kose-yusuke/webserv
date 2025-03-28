@@ -143,6 +143,7 @@ Everything in C++ 98.
 ### nginx
 - [nginx Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html)
 - [nginx.confの解説、書き方](https://qiita.com/ponponnsan/items/23e1aa6f7dd4eadde5df)
+- [max body sizeのdefault](https://qiita.com/roytiger/items/97c549a5627c229c7de2)
 
 ### 42 推奨資料
 - [RFC](https://triple-underscore.github.io/http1-ja.html)

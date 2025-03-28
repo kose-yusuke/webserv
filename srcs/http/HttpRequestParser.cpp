@@ -162,7 +162,7 @@ bool HttpRequestParser::parse_request_line(std::string &line) {
   }
 
   log(LOG_DEBUG, "Parsed Request - Method: " + request.method + ", Path: " +
-                     request.path + ", Version: " + request.version);
+                      request.path + ", Version: " + request.version);
   return true;
 }
 
