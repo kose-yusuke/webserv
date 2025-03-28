@@ -18,3 +18,6 @@ typedef ConfigMap::iterator ConfigIt;
 typedef ConfigMap::const_iterator ConstConfigIt;
 typedef LocationMap::iterator LocationIt;
 typedef LocationMap::const_iterator ConstLocationIt;
+
+typedef StrToStrMap::iterator StrToStrMapIt;
+typedef StrToStrMap::const_iterator ConstStrToStrMapIt;

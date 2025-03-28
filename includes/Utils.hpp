@@ -87,3 +87,7 @@ void logfd(LogLevel level, const std::string &prefix, int fd);
 std::string trim_left(const std::string &s);
 std::string trim_right(const std::string &s);
 std::string trim(const std::string &s);
+
+// convert string to number
+size_t convert_str_to_size(const std::string &num_str);
+size_t parse_hex(const std::string &s);

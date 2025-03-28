@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 16:04:48 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/24 15:51:48 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,20 +16,40 @@
 #include "Server.hpp"
 #include "Utils.hpp"
 
+const size_t HttpRequest::k_default_max_body = 104857600;
+
 // server fd 経由で, server_config, locations_configs を取得
 HttpRequest::HttpRequest(int server_fd, HttpResponse &httpResponse)
-    : response(httpResponse), status_code(0) {
+    : response(httpResponse), status_code(0),
+      max_body_size(k_default_max_body) {
   Server *server = Multiplexer::get_instance().get_server_from_map(server_fd);
   if (!server) {
     throw std::runtime_error("server not found by HttpRequest");
   }
   this->server_config = server->get_config();
   this->location_configs = server->get_locations();
+
+  // TODO: configの不正値検出は最初のconfig読み込みにうつすかも（一旦ここ）
+  try {
+    load_max_body_size();
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+  }
 }
 
 HttpRequest::~HttpRequest() {}
 
-// HttpRequest::HttpRequest(const std::map<std::string, std::vector<std::string>
+void HttpRequest::load_max_body_size() {
+  ConstConfigIt it = server_config.find("client_max_body_size");
+  if (it != server_config.end()) {
+    std::string max_size_str = it->second.front();
+    max_body_size = convert_str_to_size(max_size_str);
+  }
+  logfd(LOG_DEBUG, "client_max_body_size loaded: ", max_body_size);
+}
+
+// HttpRequest::HttpRequest(const std::map<std::string,
+// std::vector<std::string>
 // >& config, const std::map<std::string, std::map<std::string,
 // std::vector<std::string> > >&  location_config) {
 //     this->server_configs = config;
@@ -38,6 +58,10 @@ HttpRequest::~HttpRequest() {}
 
 void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
+  if (status_code != 0) {
+    response.generate_error_response(status_code);
+    return;
+  }
 
   // std::string method, path, version;
   // if (!parse_http_request(buffer, method, path, version)) {
@@ -110,7 +134,8 @@ ConfigMap HttpRequest::get_location_config(const std::string &path) {
   // 最もマッチする `location` を探す
   std::string best_match = "/";
   //   std::map<std::string,
-  //            std::map<std::string, std::vector<std::string>>>::const_iterator
+  //            std::map<std::string,
+  //            std::vector<std::string>>>::const_iterator
 
   ConstLocationIt best_match_it = location_configs.find("/");
 
@@ -191,7 +216,8 @@ void HttpRequest::handle_file_request(const std::string &file_path) {
   std::ostringstream buffer;
   buffer << file.rdbuf();
   std::string file_content = buffer.str();
-  // HttpResponse::send_response(client_socket, 200, file_content, "text/html");
+  // HttpResponse::send_response(client_socket, 200, file_content,
+  // "text/html");
   response.generate_response(200, file_content, "text/html");
 }
 
@@ -295,7 +321,8 @@ void HttpRequest::handle_post_request(const std::string &request,
     // HttpResponse::send_response(client_socket, 201, body, "text/plain");
     response.generate_response(201, body, "text/plain");
   } else {
-    // アップロードできない場合は通常のresource取得になるらしい (GETと同様処理)
+    // アップロードできない場合は通常のresource取得になるらしい
+    // (GETと同様処理)
     handle_get_request(path);
   }
 }
@@ -379,8 +406,8 @@ bool HttpRequest::is_cgi_request(const std::string &path) {
     }
   }
   return false;
-  // return (extension == ".cgi" || extension == ".php" || extension == ".py" ||
-  // extension == ".pl"); → confファイルで指示あり？
+  // return (extension == ".cgi" || extension == ".php" || extension == ".py"
+  // || extension == ".pl"); → confファイルで指示あり？
 }
 
 void HttpRequest::handle_cgi_request(const std::string &cgi_path) {
@@ -457,6 +484,20 @@ void HttpRequest::set_status_code(int status) { status_code = status; }
 
 int HttpRequest::get_status_code() const { return status_code; }
 
+size_t HttpRequest::get_max_body_size() const { return max_body_size; }
+
+bool HttpRequest::is_in_headers(const std::string &key) const {
+  return (headers.find(key) != headers.end());
+}
+
+std::string HttpRequest::get_value_from_headers(const std::string &key) const {
+  ConstStrToStrMapIt it = headers.find(key);
+  if (it != headers.end()) {
+    return it->second;
+  }
+  return "";
+}
+
 bool HttpRequest::add_header(std::string &key, std::string &value) {
   if (headers.find(key) != headers.end()) {
     return false;
@@ -480,8 +521,8 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &other) {
 }
 
 // bool HttpRequest::parse_http_request(const std::string &request,
-//                                      std::string &method, std::string &path,
-//                                      std::string &version) {
+//                                      std::string &method, std::string
+//                                      &path, std::string &version) {
 //   std::istringstream request_stream(request);
 //   if (!(request_stream >> method >> path >> version)) {
 //     return false;

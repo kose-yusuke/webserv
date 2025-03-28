@@ -6,11 +6,12 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 15:22:42 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/26 02:06:36 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Utils.hpp"
+#include <limits>
 
 int print_error_message(const std::string &message) {
   std::cerr << "Error: " << message << std::endl;
@@ -81,7 +82,7 @@ std::string read_file(const std::string &file_path) {
 //     return "application/octet-stream";
 // }
 
-LogLevel current_log_level = LOG_FUNC;
+LogLevel current_log_level = LOG_INFO;
 std::ofstream debug_log("debug.log");
 
 void log(LogLevel level, const std::string &message) {
@@ -131,4 +132,35 @@ std::string trim_right(const std::string &s) {
 std::string trim(const std::string &s) {
   std::string trimmed = trim_right(s);
   return trim_left(trimmed);
+}
+
+size_t convert_str_to_size(const std::string &s) {
+  char *endptr;
+  errno = 0;
+
+  unsigned long val = std::strtoul(s.c_str(), &endptr, 10);
+  if (errno != 0 || endptr == s.c_str()) {
+    throw std::runtime_error("Invalid string to convert to number: " + s);
+  }
+  if (*endptr == '\0') {
+    return val;
+  }
+  if ((endptr[0] == 'M' || endptr[0] == 'm') && endptr[1] == '\0') {
+    if (val > std::numeric_limits<std::size_t>::max() / 1048576) {
+      throw std::runtime_error("Overflow during conversion: " + s);
+    }
+    return val * 1048576;
+  }
+  throw std::runtime_error("Invalid suffix in number: " + s);
+}
+
+size_t parse_hex(const std::string &s) {
+  char *endptr;
+  errno = 0;
+
+  unsigned long val = std::strtoul(s.c_str(), &endptr, 16);
+  if (errno != 0 || endptr == s.c_str() || *endptr != '\0') {
+    throw std::runtime_error("Invalid chunk-size: " + s);
+  }
+  return val;
 }

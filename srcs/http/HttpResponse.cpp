@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 16:04:38 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/22 16:45:31 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,6 @@ std::string HttpResponse::get_next_response() {
 
 void HttpResponse::pop_response() {
   LOG_DEBUG_FUNC();
-
   response_queue.pop();
 }
 
@@ -103,6 +102,18 @@ void HttpResponse::generate_error_response(int status_code,
 
   push_response(response.str());
   // send(client_socket, response.str().c_str(), response.str().size(), 0);
+}
+
+void HttpResponse::generate_error_response(int status_code) {
+  LOG_DEBUG_FUNC();
+  std::ostringstream response;
+  const std::string &message = get_status_message(status_code);
+  response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
+  response << "Content-Length: " << message.size() << "\r\n";
+  response << "Content-Type: text/plain\r\n\r\n";
+  response << message;
+
+  push_response(response.str());
 }
 
 // 未実装

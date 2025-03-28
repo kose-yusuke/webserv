@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 16:02:54 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/03/26 03:20:39 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,8 +55,12 @@ public:
 
   void set_status_code(int status);
   int get_status_code() const;
+  void load_max_body_size();
+  size_t get_max_body_size() const;
 
   bool add_header(std::string &key, std::string &value);
+  bool is_in_headers(const std::string &key) const;
+  std::string get_value_from_headers(const std::string &key) const;
 
   // リクエストの解析
   // bool parse_http_request(const std::string &request, std::string &method,
@@ -79,14 +83,15 @@ public:
   // autoindex (directory listing)
   std::string generate_directory_listing(const std::string &dir_path);
 
-  // TODO: 未作成の関数群
-  size_t get_content_length() const { return 0; }
   void clear();
 
 private:
   HttpResponse &response;
   int status_code;
   std::string _root;
+  size_t max_body_size;
+
+  static const size_t k_default_max_body;
 
   std::string get_requested_resource(const std::string &path);
   void handle_file_request(const std::string &file_path);
