@@ -9,6 +9,7 @@
 
 Multiplexer &SelectMultiplexer::get_instance() {
   if (!Multiplexer::instance) {
+    log(LOG_INFO, "SelectMultiplexer::get_instance()");
     Multiplexer::instance = new SelectMultiplexer();
     std::atexit(Multiplexer::delete_instance);
   }

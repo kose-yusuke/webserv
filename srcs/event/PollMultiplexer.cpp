@@ -9,6 +9,7 @@
 
 Multiplexer &PollMultiplexer::get_instance() {
   if (!Multiplexer::instance) {
+    log(LOG_INFO, "PollMultiplexer::get_instance()");
     Multiplexer::instance = new PollMultiplexer();
     std::atexit(Multiplexer::delete_instance);
   }

@@ -20,7 +20,6 @@ jobs:
       - name: Debug file structure
         run: |
           ls -R
-          echo "CXX is set to: $CXX"
 
       - name: Clean build artifacts
         run: |
