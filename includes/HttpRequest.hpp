@@ -6,13 +6,14 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/28 17:04:34 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/29 20:29:31 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include "types.hpp"
+#include <regex.h>
 #include <algorithm>
 #include <dirent.h>
 #include <fstream>
@@ -45,8 +46,7 @@ public:
 
     ConfigMap server_config;
     LocationMap location_configs;
-    ConfigMap best_match_location_config;
-    // std::map<std::string, std::vector<std::string>> best_match_location_config;
+    ConfigMap best_match_config;
 
     HttpRequest(int server_fd, HttpResponse &httpResponse);
     ~HttpRequest();
@@ -64,7 +64,7 @@ public:
     // リクエストの解析
     bool parse_http_request(const std::string &request, std::string &method,
                             std::string &path, std::string &version);
-    ConfigMap get_location_config(const std::string &path);
+    ConfigMap get_best_match_config(const std::string &path);
 
   void clear();
 
@@ -75,6 +75,9 @@ private:
     size_t max_body_size;
 
     static const size_t k_default_max_body;
+
+    void conf_init();
+    void merge_config(ConfigMap &base, const ConfigMap &override);
     // GETの処理
     ResourceType get_resource_type(const std::string &path);
     void handle_get_request(std::string path);
@@ -99,13 +102,5 @@ private:
     HttpRequest(const HttpRequest &other);
     HttpRequest &operator=(const HttpRequest &other);
 
-  // HttpRequest(const std::map<std::string, std::vector<std::string>> &config,
-  //             const std::map<std::string,
-  //                            std::map<std::string, std::vector<std::string>>>
-  //                 &location_config);
-
-  // std::map<std::string, std::vector<std::string> >  server_configs;
-  // std::map<std::string, std::map<std::string, std::vector<std::string>>>
-  // location_configs;
-  // std::map<std::string, std::vector<std::string>> best_match_location_config;
+    void print_best_match_config() const;
 };

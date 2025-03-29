@@ -80,7 +80,7 @@ HttpRequestParser::ParseState HttpRequestParser::next_parse_state() const {
   if (request.is_in_headers("Transfer-Encoding")) {
     return PARSE_CHUNK;
   }
-  if (request.is_in_headers("Content-length")) {
+  if (request.is_in_headers("Content-Length")) {
     return PARSE_BODY;
   }
   return PARSE_DONE;
@@ -95,6 +95,7 @@ HttpRequestParser::ParseState HttpRequestParser::parse_body() {
     return PARSE_BODY; // body未受信
   }
   request.body.append(buffer.substr(0, body_size));
+  std::cout << request.body << std::endl;
   buffer.erase(0, body_size);
   return PARSE_DONE; // body受信完了
 }
@@ -249,7 +250,7 @@ bool HttpRequestParser::validate_headers_content() {
 
   // Transfer-Encoding も Content-length もない POST
   if (!request.is_in_headers("Transfer-Encoding") &&
-      !request.is_in_headers("Content-length")) {
+      !request.is_in_headers("Content-Length")) {
     request.set_status_code(400);
     return false;
   }
@@ -257,15 +258,15 @@ bool HttpRequestParser::validate_headers_content() {
   // TODO: status code 確認
   // Transfer-Encoding も Content-length ON (両立しない)
   if (request.is_in_headers("Transfer-Encoding") &&
-      request.is_in_headers("Content-length")) {
+      request.is_in_headers("Content-Length")) {
     request.set_status_code(400);
     return false;
   }
 
   // Request body larger than client max body size defined in server config
-  if (request.is_in_headers("Content-length")) {
+  if (request.is_in_headers("Content-Length")) {
     size_t client_max_body_size = request.get_max_body_size();
-    std::string str = request.get_value_from_headers("Content-length");
+    std::string str = request.get_value_from_headers("Content-Length");
     try {
       body_size = convert_str_to_size(str);
     } catch (const std::exception &e) {

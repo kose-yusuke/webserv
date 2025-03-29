@@ -135,6 +135,7 @@ Everything in C++ 98.
 ### 雰囲気を掴む
 - [HTTPサーバーの実装 | 42Tokyo Webserv](https://qiita.com/ryhara/items/c46fe320332b237b5c0d)
 - [Webサーバの動作を理解するための事前知識とC++によるフルスクラッチで実装して理解を深めよう](https://qiita.com/hayashier/items/73168c08451896914da5)
+- [C++でHTTPサーバーを作った](https://jun-networks.hatenablog.com/entry/2022/12/05/234522)
 
 ### 通信
 - [Socket()とかBind()とかを理解する](https://qiita.com/Michinosuke/items/0778a5344bdf81488114)

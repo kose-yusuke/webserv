@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/28 17:08:30 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/29 21:52:11 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,77 +21,36 @@ const size_t HttpRequest::k_default_max_body = 104857600;
 // server fd 経由で, server_config, locations_configs を取得
 HttpRequest::HttpRequest(int server_fd, HttpResponse &httpResponse)
     : response(httpResponse), status_code(0),
-      max_body_size(k_default_max_body) {
-  Server *server = Multiplexer::get_instance().get_server_from_map(server_fd);
-  if (!server) {
-    throw std::runtime_error("server not found by HttpRequest");
-  }
-  this->server_config = server->get_config();
-  this->location_configs = server->get_locations();
+        max_body_size(k_default_max_body) {
+    Server *server = Multiplexer::get_instance().get_server_from_map(server_fd);
+    if (!server) {
+        throw std::runtime_error("server not found by HttpRequest");
+    }
+    this->server_config = server->get_config();
+    this->location_configs = server->get_locations();
 }
 
 HttpRequest::~HttpRequest() {}
 
-void HttpRequest::load_max_body_size() {
-  ConstConfigIt it = server_config.find("client_max_body_size");
-  if (it != server_config.end()) {
-    std::string max_size_str = it->second.front();
-    max_body_size = convert_str_to_size(max_size_str);
-  }
-  logfd(LOG_DEBUG, "client_max_body_size loaded: ", max_body_size);
-}
-
-// HttpRequest::HttpRequest(const std::map<std::string,
-// std::vector<std::string>
-// >& config, const std::map<std::string, std::map<std::string,
-// std::vector<std::string> > >&  location_config) {
-//     this->server_configs = config;
-//     this->location_configs = location_config;
-// }
-
-void HttpRequest::handle_http_request() {
-  LOG_DEBUG_FUNC();
-
-  // std::string method, path, version;
-  // if (!parse_http_request(buffer, method, path, version)) {
-  //   HttpResponse::send_error_response(clientFd, 400, "Bad Request");
-  //   return;
-  // }
-    std::cout << "HTTP Method: " << method << ", Path: " << path << "\n";
-
-    // best matchなlocationのconfigを取得する
-    ConfigMap config = get_location_config(path);
-    this->best_match_location_config = config;
-
-    if (!best_match_location_config["root"].empty())
-        _root = best_match_location_config["root"][0];
+void HttpRequest::conf_init()
+{
+    is_autoindex_enabled = false;    
+    this->best_match_config = get_best_match_config(path);
+    if (!best_match_config["root"].empty())
+        _root = best_match_config["root"][0];
     else if (!server_config["root"].empty())
         _root = server_config["root"][0];
     else
-        print_error_message("No root defound in config file.");
+        print_error_message("No root found in config file.");
+}
 
-    // autoindex初期化
-    is_autoindex_enabled = false;
+void HttpRequest::handle_http_request() {
+    LOG_DEBUG_FUNC();
+    conf_init();
+    print_best_match_config();
 
-    // std::map<std::string, std::vector<std::string>>::const_iterator auto_it =
-    ConstConfigIt auto_it = config.find("autoindex");
-    if (auto_it != config.end() && !auto_it->second.empty() &&
-        auto_it->second[0] == "on") {
-        is_autoindex_enabled = true;
-    }
-
-    // cgi_extensions初期化
-    // std::vector<std::string> cgi_extensions = {".cgi", ".php", ".py", ".pl"};
-    // std::map<std::string, std::vector<std::string>>::const_iterator
-    ConstConfigIt cgi_it = config.find("cgi_extensions");
-    if (cgi_it != config.end()) {
-        cgi_extensions = cgi_it->second;
-    }
-
-    // allow_methods初期化
-    // std::map<std::string, std::vector<std::string>>::const_iterator
-    ConstConfigIt method_it = config.find("allow_methods");
-    if (method_it != config.end()) {
+    ConstConfigIt method_it = best_match_config.find("allow_methods");
+    if (method_it != best_match_config.end()) {
         allow_methods = method_it->second;
     } else {
         allow_methods.push_back("GET");
@@ -103,14 +62,13 @@ void HttpRequest::handle_http_request() {
         std::find(allow_methods.begin(), allow_methods.end(), method);
     if (it != allow_methods.end()) {
         if (method == "GET") {
-        handle_get_request(path);
+            handle_get_request(path);
         } else if (method == "POST") {
-        handle_post_request(body, path); // XXX: buffer -> body
+            handle_post_request(body, path);
         } else if (method == "DELETE") {
-        handle_delete_request(path);
+            handle_delete_request(path);
         }
     } else {
-        // HttpResponse::send_error_response(clientFd, 405, "Method Not Allowed");
         response.generate_error_response(405, "Method Not Allowed");
     }
 }
@@ -125,39 +83,107 @@ if (!(request_stream >> method >> path >> version)) {
 return true;
 }
 
-ConfigMap HttpRequest::get_location_config(const std::string &path) {
-    ConfigMap selected_config;
+void HttpRequest::merge_config(ConfigMap &base, const ConfigMap &override) {
+    for (std::map<std::string, std::vector<std::string> >::const_iterator it = override.begin(); it != override.end(); ++it) {
+        base[it->first] = it->second;
+    }
+}
 
-  // 最もマッチする `location` を探す
-  std::string best_match = "/";
-  //   std::map<std::string,
-  //            std::map<std::string, std::vector<std::string>>>::const_iterator
+bool regex_match_posix(const std::string& text, const std::string& pattern, bool ignore_case) {
+    regex_t regex;
+    int cflags = REG_EXTENDED;
+    if (ignore_case) cflags |= REG_ICASE;
 
-    ConstLocationIt best_match_it = location_configs.find("/");
+    if (regcomp(&regex, pattern.c_str(), cflags) != 0)
+        return false;
 
-    for (ConstLocationIt it = location_configs.begin();
-        it != location_configs.end(); ++it) {
-        if (path.find(it->first) == 0 && it->first.length() > best_match.length()) {
-        best_match = it->first;
-        best_match_it = it;
+    int result = regexec(&regex, text.c_str(), 0, NULL, 0);
+    regfree(&regex);
+    return result == 0;
+}
+
+ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
+    
+    ConfigMap best_config;
+    
+    // まず, best_configにserverconfigのdirectiveを代入
+    best_config = server_config;
+
+    // 最もマッチする `location` を探す旅にでます
+    std::string best_match = "/";
+    
+    // 1. 完全一致(= /path) を評価
+    for (ConstLocationIt it = location_configs.begin(); it != location_configs.end(); ++it) {
+        const std::string& loc = it->first;
+        if (loc.substr(0, 2) == "= ") {
+            if (loc.substr(2) == path) {
+                merge_config(best_config, it->second);
+                return best_config;
+            }
         }
     }
 
-    // `best_match` に対応する設定を取得
-    if (best_match_it != location_configs.end()) {
-        selected_config = best_match_it->second;
+    // 2. 最長前方一致を記録（^~ の有無も記録）
+    std::string longest_prefix = "/";
+    bool has_caret_tilde = false;
+    ConstLocationIt longest_prefix_it = location_configs.find("/");
+
+    for (ConstLocationIt it = location_configs.begin(); it != location_configs.end(); ++it) {
+        const std::string& loc = it->first;
+        if (loc.substr(0, 3) == "^~ ") {
+            std::string clean_loc = loc.substr(3);
+            if (path.find(clean_loc) == 0 && clean_loc.length() > longest_prefix.length()) {
+                longest_prefix = clean_loc;
+                longest_prefix_it = it;
+                has_caret_tilde = true;
+            }
+        } else if (loc[0] != '=' && loc[0] != '~' && path.find(loc) == 0 && loc.length() > longest_prefix.length()) {
+            longest_prefix = loc;
+            longest_prefix_it = it;
+        }
     }
 
-    return selected_config;
+    if (has_caret_tilde) {
+        merge_config(best_config, longest_prefix_it->second);
+        return best_config;
     }
+    
+    // 3. 正規表現マッチを探す
+    for (ConstLocationIt it = location_configs.begin(); it != location_configs.end(); ++it) {
+        const std::string& loc = it->first;
+        if (loc.substr(0, 2) == "~ " || loc.substr(0, 3) == "~* ") {
+            std::string pattern = loc.substr(loc[1] == '*' ? 3 : 2);
+            bool ignore_case = (loc[1] == '*');
+            if (regex_match_posix(path, pattern, ignore_case)) {
+                merge_config(best_config, it->second);
+                return best_config;
+            }
+        }
+    }
+
+    // 4. 正規表現マッチがなければ、記録した最長prefixマッチ（^~なし）を使う
+    if (longest_prefix_it != location_configs.end()) {
+        merge_config(best_config, longest_prefix_it->second);
+    }
+    
+    return (best_config);
+}
+
+void HttpRequest::load_max_body_size() {
+    ConstConfigIt it = server_config.find("client_max_body_size");
+    if (it != server_config.end()) {
+        std::string max_size_str = it->second.front();
+        max_body_size = convert_str_to_size(max_size_str);
+    }
+    logfd(LOG_DEBUG, "client_max_body_size loaded: ", max_body_size);
+}
+
 
     /*GET Request*/
-    void HttpRequest::handle_get_request(std::string path) {
+void HttpRequest::handle_get_request(std::string path) {
 
     std::string file_path = get_requested_resource(path);
-
     if (file_path.empty()) {
-        // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
         response.generate_custom_error_page(404, "404.html");
         return;
     }
@@ -168,11 +194,10 @@ ConfigMap HttpRequest::get_location_config(const std::string &path) {
         handle_directory_request(path);
     } else if (type == File) {
         if (is_cgi_request(file_path))
-        handle_cgi_request(file_path);
+            handle_cgi_request(file_path);
         else
-        handle_file_request(file_path);
+            handle_file_request(file_path);
     } else {
-        // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
         response.generate_custom_error_page(404, "404.html");
     }
         if (type == Directory) {
@@ -208,25 +233,23 @@ std::string HttpRequest::get_requested_resource(const std::string &path) {
 
 /*Requestがディレクトリかファイルかの分岐処理*/
 void HttpRequest::handle_file_request(const std::string &file_path) {
-  LOG_DEBUG_FUNC();
-  std::ifstream file(file_path.c_str(), std::ios::in);
-  if (!file.is_open()) {
-    // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
-    response.generate_custom_error_page(404, "404.html");
-    return;
-  }
-  std::ostringstream buffer;
-  buffer << file.rdbuf();
-  std::string file_content = buffer.str();
-  // HttpResponse::send_response(client_socket, 200, file_content, "text/html");
-  response.generate_response(200, file_content, "text/html");
+    LOG_DEBUG_FUNC();
+
+    std::ifstream file(file_path.c_str(), std::ios::in);
+    if (!file.is_open()) {
+        response.generate_custom_error_page(404, "404.html");
+        return;
+    }
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    std::string file_content = buffer.str();
+    response.generate_response(200, file_content, "text/html");
 }
 
 void HttpRequest::handle_directory_request(std::string path) {
     // URLの末尾に `/` がない場合、リダイレクト（301）
     if (!ends_with(path, "/")) {
         std::string new_location = path + "/";
-        // HttpResponse::send_redirect(client_socket, 301, new_location);
         response.generate_redirect(301, new_location);
         return;
     }
@@ -280,49 +303,51 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
                 return false;
             }
         }
-        
-        if (is_location_has_cgi() && is_cgi_request(path))
-        {
-            handle_cgi_request(file_path);
-            return false;
-        }
+
         return true;
 }
 
 void HttpRequest::handle_post_request(const std::string &request,
-                                      std::string path) {
+                                        std::string path) {
     std::string full_path = _root + path;
-    if (is_location_upload_file(full_path)) {
-        std::cout << "Received POST request for path: " << path << std::endl;
 
-        size_t body_start = request.find("\r\n\r\n");
-        if (body_start == std::string::npos) {
-        // コンテンツなくても特にすることはない？ (そのまま空のファイルを作る？)
-        // HttpResponse::send_error_response(client_socket, 204, "No Content");
-        // HttpResponse::send_error_response(client_socket, 400, "Bad Request");
-        // return;
-        }
+    if (is_location_has_cgi() && is_cgi_request(path)) {
+        handle_cgi_request(full_path);
+        return;
+    }
+    
+    if (!is_location_upload_file(full_path)) {
+        handle_get_request(path); // POSTが許されない場所ならGETにフォールバック
+        return;
+    }
+    
+    size_t body_start = request.find("\r\n\r\n");
+    if (body_start == std::string::npos) {
+        response.generate_error_response(400, "Bad Request: No Header-Body separator");
+        return;
+    }
 
-        std::string body = request.substr(body_start + 4);
-        std::cout << "Received POST body: " << body << "\n";
+    std::string body = request.substr(body_start + 4);
+    std::cout << "Received POST body: " << body << std::endl;
 
-        std::string full_path = "./public" + path;
-        std::ofstream ofs(full_path.c_str());
-        if (!ofs) {
-        // エラーコード確認
-            std::cout << "Failed to open file" << std::endl;
-            return;
-        
-            ofs << body;
-            std::cout << "File written successfully: " << path << std::endl;
-            ofs.close();
+    if (body.empty()) {
+        response.generate_response(204, "", "text/plain");
+        return;
+    }
 
-    // HttpResponse::send_response(client_socket, 201, body, "text/plain");
+    std::string upload_path = "./public" + path;
+    std::ofstream ofs(upload_path.c_str());
+    if (!ofs) {
+        std::cerr << "Failed to open file: " << upload_path << std::endl;
+        response.generate_error_response(500, "Internal Server Error: Failed to open file");
+        return;
+    }
+
+    ofs << body;
+    ofs.close();
+
+    std::cout << "File written successfully: " << path << std::endl;
     response.generate_response(201, body, "text/plain");
-  } else {
-    // アップロードできない場合は通常のresource取得になるらしい (GETと同様処理)
-    handle_get_request(path);
-  }
 }
 
 void HttpRequest::handle_delete_request(const std::string path) {
@@ -348,14 +373,11 @@ void HttpRequest::handle_delete_request(const std::string path) {
         handle_directory_delete(file_path);
     } else if (type == File) {
         if (is_cgi_request(file_path))
-        handle_cgi_request(file_path);
+            handle_cgi_request(file_path);
         else {
-        status = handle_file_delete(file_path);
-        if (status == -1) {
-            //       HttpResponse::send_custom_error_page(client_socket, 404,
-            //       "404.html");
+            status = handle_file_delete(file_path);
+        if (status == -1)
             response.generate_custom_error_page(404, "404.html");
-        }
         }
     } else {
         // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
@@ -406,29 +428,48 @@ bool HttpRequest::is_cgi_request(const std::string &path) {
         return false;
     }
 
-  std::string extension = path.substr(dot_pos);
-  for (size_t i = 0; i < cgi_extensions.size(); ++i) {
-    if (cgi_extensions[i] == extension) {
-      return true;
+    std::string extension = path.substr(dot_pos);
+    for (size_t i = 0; i < cgi_extensions.size(); ++i) {
+        if (cgi_extensions[i] == extension) {
+        return true;
+        }
     }
-  }
-  return false;
+    return false;
   // return (extension == ".cgi" || extension == ".php" || extension == ".py" ||
   // extension == ".pl"); → confファイルで指示あり？
 }
 
+void HttpRequest::print_best_match_config() const {
+    std::cout << "=== best_match_config ===" << std::endl;
+    for (std::map<std::string, std::vector<std::string> >::const_iterator it = best_match_config.begin();
+         it != best_match_config.end(); ++it) {
+        std::cout << "Key: " << it->first << std::endl;
+        std::cout << "Values:";
+        for (std::vector<std::string>::const_iterator vit = it->second.begin();
+             vit != it->second.end(); ++vit) {
+            std::cout << " " << *vit;
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "==================================" << std::endl;
+}
+
 bool HttpRequest::is_location_has_cgi() {
-    std::map<std::string, std::vector<std::string> >::const_iterator it = best_match_location_config.find("cgi_extensions");
-    if (it == best_match_location_config.end() || it->second.empty())
+    std::map<std::string, std::vector<std::string> >::const_iterator it = best_match_config.find("cgi_extensions");
+    if (it == best_match_config.end() || it->second.empty())
         return false;
     return true;
 }
 
-
-
 void HttpRequest::handle_cgi_request(const std::string& cgi_path) {
-    int pipefd[2];
-    if (pipe(pipefd) == -1)
+    int input_pipe[2], output_pipe[2];
+    if (pipe(input_pipe) == -1)
+    {
+        std::cerr << "pipe failed" << std::endl;
+        std::exit(1);
+    }
+    
+    if (pipe(output_pipe) == -1)
     {
         std::cerr << "pipe failed" << std::endl;
         std::exit(1);
@@ -436,38 +477,50 @@ void HttpRequest::handle_cgi_request(const std::string& cgi_path) {
 
     pid_t pid = fork();
     if (pid < 0) {
-        std::cerr << "pipe failed" << std::endl;
+        std::cerr << "fork failed" << std::endl;
         std::exit(1);
     }
-
+    
     if (pid == 0) {
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
+        dup2(input_pipe[0], STDIN_FILENO);
+        dup2(output_pipe[1], STDOUT_FILENO);
+        close(input_pipe[1]);
+        close(output_pipe[0]);
 
-        char *argv[2];
-        argv[0] = const_cast<char *>(cgi_path.c_str());
-        argv[1] = NULL;
-        char *envp[] = {NULL};
+        std::string contentLength = get_value_from_headers("Content-Length");;
+        std::string contentLengthStr = "CONTENT_LENGTH=" + contentLength;
+        std::string requestMethodStr = "REQUEST_METHOD=POST";
+        std::string contentTypeStr = "CONTENT_TYPE=application/x-www-form-urlencoded";
+
+        char *envp[] = {
+            const_cast<char *>(requestMethodStr.c_str()),
+            const_cast<char *>(contentLengthStr.c_str()),
+            const_cast<char *>(contentTypeStr.c_str()),
+            NULL
+        };
+        char *argv[] = { const_cast<char *>(cgi_path.c_str()), NULL };
+
         execve(cgi_path.c_str(), argv, envp);
+        perror("execve");
         std::exit(1);
+    } else {
+        close(input_pipe[0]);
+        write(input_pipe[1], body.c_str(), body.size());
+        close(input_pipe[1]);
+
+        close(output_pipe[1]);
+        std::string cgi_output;
+        char buffer[1024];
+        ssize_t bytes_read;
+        while ((bytes_read = read(output_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+            buffer[bytes_read] = '\0';
+            cgi_output += buffer;
+        }
+        close(output_pipe[0]);
+        waitpid(pid, NULL, 0);
+
+        response.generate_response(200, cgi_output, "text/html");
     }
-
-    close(pipefd[1]);
-    char buffer[1024];
-    std::string cgi_output;
-    ssize_t bytes_read;
-
-    while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-        buffer[bytes_read] = '\0';
-        cgi_output += buffer;
-    }
-
-    close(pipefd[0]);
-    waitpid(pid, NULL, 0);
-
-    // HttpResponse::send_response(client_socket, 200, cgi_output, "text/html");
-    response.generate_response(200, cgi_output, "text/html");
 }
 
 // autoindex
