@@ -22,6 +22,7 @@ protected:
 private:
   typedef std::vector<struct pollfd> PollFdVec;
   typedef std::vector<struct pollfd>::iterator PollFdIt;
+  typedef std::vector<struct pollfd>::const_iterator ConstPollFdIt;
 
   PollFdVec pfds;
 
