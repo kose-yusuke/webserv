@@ -44,7 +44,16 @@ std::vector<std::map<std::string, std::map<std::string, std::vector<std::string>
     - location
         - location / {...}とすればすべてのパスが一致. 完全一致が優先される.
 
+## locationの正規表現について
 
+
+| プレフィックス | 説明 |
+|---------|---------|
+| なし | 前方一致 |
+| ^~ | 前方一致. 一致したら正規表現の評価なし |
+| = | 完全一致 |
+| ~ | 正規表現(大文字・小文字を区別する) |
+| ~* | 正規表現(大文字・小文字を区別しない) |
 
 # NGINX Beginner’s Guideの内容を日本語訳して抜粋
 Link : https://nginx.org/en/docs/beginners_guide.html

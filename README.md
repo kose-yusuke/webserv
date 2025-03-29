@@ -135,6 +135,7 @@ Everything in C++ 98.
 ### 雰囲気を掴む
 - [HTTPサーバーの実装 | 42Tokyo Webserv](https://qiita.com/ryhara/items/c46fe320332b237b5c0d)
 - [Webサーバの動作を理解するための事前知識とC++によるフルスクラッチで実装して理解を深めよう](https://qiita.com/hayashier/items/73168c08451896914da5)
+- [C++でHTTPサーバーを作った](https://jun-networks.hatenablog.com/entry/2022/12/05/234522)
 
 ### 通信
 - [Socket()とかBind()とかを理解する](https://qiita.com/Michinosuke/items/0778a5344bdf81488114)
@@ -143,6 +144,7 @@ Everything in C++ 98.
 ### nginx
 - [nginx Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html)
 - [nginx.confの解説、書き方](https://qiita.com/ponponnsan/items/23e1aa6f7dd4eadde5df)
+- [max body sizeのdefault](https://qiita.com/roytiger/items/97c549a5627c229c7de2)
 
 ### 42 推奨資料
 - [RFC](https://triple-underscore.github.io/http1-ja.html)
