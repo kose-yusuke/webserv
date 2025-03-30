@@ -14,7 +14,6 @@ Multiplexer &EpollMultiplexer::get_instance() {
 
 void EpollMultiplexer::run() {
   LOG_DEBUG_FUNC();
-
   static const int max_user_watches = 3599293;
   int size = 16; // num of fd; expect to monitor; not upper limit
   epfd = epoll_create(size);
@@ -23,20 +22,20 @@ void EpollMultiplexer::run() {
   }
   std::vector<struct epoll_event> evlist;
   initialize_fds();
+
   while (true) {
     evlist.resize(size);
     int nfd = epoll_wait(epfd, evlist.data(), evlist.size(), 0);
     if (nfd == -1) {
-      if (errno == EINTR) { // (TLPI Section 21.5)
-        log(LOG_INFO, "epoll_wait() is stopped by a signal");
+      if (errno == EINTR) {
         continue;
       }
-      throw std::runtime_error("epoll_wait");
+      throw std::runtime_error("epoll_wait() failed");
     }
+
+    logfd(LOG_DEBUG, "epoll_wait() returned: ", nfd);
+
     for (int i = 0; i < nfd; ++i) {
-      // TODO: EPOLLIN, EPOLLOUT,  EPOLLHUP, EPOLLERR をcheckするべき?
-      // EPOLLERRはthe other end of a FIFOのcloseやterminal hangupで起きる
-      // EPOLLERR はwebservに関係あるか？
       process_event(evlist[i].data.fd, is_readable(evlist[i]),
                     is_writable(evlist[i]));
     }
@@ -146,12 +145,6 @@ bool EpollMultiplexer::is_in_read_fds(int fd) const {
 bool EpollMultiplexer::is_in_write_fds(int fd) const {
   return write_fds.find(fd) != write_fds.end();
 }
-
-// EPOLLIN ではなく、buf超過のときにはerror handling必要かも？
-// bool EpollMultiplexer::has_more_than_max_to_read(struct epoll_event &ev)
-// const {
-//   return ev.events & (EPOLLHUP | EPOLLERR);
-// }
 
 EpollMultiplexer::EpollMultiplexer() {}
 

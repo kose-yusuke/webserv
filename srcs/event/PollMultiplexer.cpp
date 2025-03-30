@@ -23,16 +23,18 @@ void PollMultiplexer::run() {
   if (pfds.empty()) {
     throw std::runtime_error("pollfd empty");
   }
+
   while (true) {
-    int ready;
-    do {
-      ready = poll(pfds.data(), pfds.size(), 0);
-    } while (ready == -1 && errno == EINTR);
-    if (ready == -1) {
-      std::ostringstream oss;
-      oss << "Error: poll failed with errno " << strerror(errno);
-      throw std::runtime_error(oss.str());
+    int nfd = poll(pfds.data(), pfds.size(), 0);
+    if (nfd == -1) {
+      if (errno == EINTR) {
+        continue;
+      }
+      throw std::runtime_error("poll() failed");
     }
+
+    logfd(LOG_DEBUG, "poll() returned: ", nfd);
+
     PollFdVec tmp = pfds;
     for (size_t i = 0; i < tmp.size(); ++i) {
       process_event(tmp[i].fd, is_readable(tmp[i]), is_writable(tmp[i]));
