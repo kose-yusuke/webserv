@@ -18,6 +18,7 @@ Multiplexer &PollMultiplexer::get_instance() {
 
 void PollMultiplexer::run() {
   LOG_DEBUG_FUNC();
+  static const int max_poll_events = 65536;
   pfds.reserve(get_num_servers());
   initialize_fds();
   if (pfds.empty()) {
@@ -25,6 +26,9 @@ void PollMultiplexer::run() {
   }
 
   while (true) {
+    if (pfds.size() >= max_poll_events) {
+      throw std::runtime_error("poll() fd count exceeds limit");
+    }
     int nfd = poll(pfds.data(), pfds.size(), 0);
     if (nfd == -1) {
       if (errno == EINTR) {

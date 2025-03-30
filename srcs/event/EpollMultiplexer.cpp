@@ -14,7 +14,7 @@ Multiplexer &EpollMultiplexer::get_instance() {
 
 void EpollMultiplexer::run() {
   LOG_DEBUG_FUNC();
-  static const int max_user_watches = 3599293;
+  static const int max_epoll_events = 3599293;
   int size = 16; // num of fd; expect to monitor; not upper limit
   epfd = epoll_create(size);
   if (epfd == -1) {
@@ -24,6 +24,9 @@ void EpollMultiplexer::run() {
   initialize_fds();
 
   while (true) {
+    if (size > max_epoll_events) {
+      throw std::runtime_error("epoll event list exceeds limit");
+    }
     evlist.resize(size);
     int nfd = epoll_wait(epfd, evlist.data(), evlist.size(), 0);
     if (nfd == -1) {
@@ -39,7 +42,7 @@ void EpollMultiplexer::run() {
       process_event(evlist[i].data.fd, is_readable(evlist[i]),
                     is_writable(evlist[i]));
     }
-    if (nfd == size && size * 2 < max_user_watches) {
+    if (nfd == size) {
       size *= 2;
     }
   }

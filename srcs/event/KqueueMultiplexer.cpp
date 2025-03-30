@@ -17,11 +17,15 @@ Multiplexer &KqueueMultiplexer::get_instance() {
 
 void KqueueMultiplexer::run() {
   LOG_DEBUG_FUNC();
+  static const int max_kqueue_events = 16384;
   int kq = kqueue();
   int size = 16;
   initialize_fds();
 
   while (true) {
+    if (size >= max_kqueue_events) {
+      throw std::runtime_error("kqueue event list exceeds limit");
+    }
     event_list.resize(size);
     int nfd = kevent(kq, change_list.data(), change_list.size(),
                      event_list.data(), event_list.size(), 0);

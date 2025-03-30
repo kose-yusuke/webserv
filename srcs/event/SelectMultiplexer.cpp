@@ -21,6 +21,9 @@ void SelectMultiplexer::run() {
   initialize_fds();
 
   while (true) {
+    if (max_fd >= FD_SETSIZE) {
+      throw std::runtime_error("select() fd exceeds FD_SETSIZE");
+    }
     active_read_fds = read_fds;
     active_write_fds = write_fds;
     int nfd = select(max_fd + 1, &active_read_fds, &active_write_fds, 0, 0);
