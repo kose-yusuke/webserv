@@ -13,10 +13,10 @@ public:
   void run();
 
 protected:
-  void add_to_read_fds(int fd);
-  void remove_from_read_fds(int fd);
-  void add_to_write_fds(int fd);
-  void remove_from_write_fds(int fd);
+  void monitor_read(int fd);
+  void monitor_write(int fd);
+  void unmonitor_write(int fd);
+  void unmonitor(int fd);
 
 private:
   fd_set read_fds;  // 常時監視

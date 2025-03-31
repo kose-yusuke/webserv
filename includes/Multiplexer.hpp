@@ -41,10 +41,10 @@ protected:
   void process_event(int fd, bool readable, bool writable);
 
   // 監視fd管理用の純粋仮想関数
-  virtual void add_to_read_fds(int fd) = 0;
-  virtual void remove_from_read_fds(int fd) = 0;
-  virtual void add_to_write_fds(int fd) = 0;
-  virtual void remove_from_write_fds(int fd) = 0;
+  virtual void monitor_read(int fd) = 0;
+  virtual void monitor_write(int fd) = 0;
+  virtual void unmonitor_write(int fd) = 0;
+  virtual void unmonitor(int fd) = 0;
 
   // 解放処理（fd close & clientのみインスタンス削除）
   void free_all_fds();
