@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/29 21:52:11 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/01 00:36:26 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ HttpRequest::~HttpRequest() {}
 
 void HttpRequest::conf_init()
 {
-    is_autoindex_enabled = false;    
+    is_autoindex_enabled = false;
     this->best_match_config = get_best_match_config(path);
     if (!best_match_config["root"].empty())
         _root = best_match_config["root"][0];
@@ -64,7 +64,7 @@ void HttpRequest::handle_http_request() {
         if (method == "GET") {
             handle_get_request(path);
         } else if (method == "POST") {
-            handle_post_request(body, path);
+            handle_post_request();
         } else if (method == "DELETE") {
             handle_delete_request(path);
         }
@@ -103,15 +103,15 @@ bool regex_match_posix(const std::string& text, const std::string& pattern, bool
 }
 
 ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
-    
+
     ConfigMap best_config;
-    
+
     // まず, best_configにserverconfigのdirectiveを代入
     best_config = server_config;
 
     // 最もマッチする `location` を探す旅にでます
     std::string best_match = "/";
-    
+
     // 1. 完全一致(= /path) を評価
     for (ConstLocationIt it = location_configs.begin(); it != location_configs.end(); ++it) {
         const std::string& loc = it->first;
@@ -147,7 +147,7 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
         merge_config(best_config, longest_prefix_it->second);
         return best_config;
     }
-    
+
     // 3. 正規表現マッチを探す
     for (ConstLocationIt it = location_configs.begin(); it != location_configs.end(); ++it) {
         const std::string& loc = it->first;
@@ -165,7 +165,7 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
     if (longest_prefix_it != location_configs.end()) {
         merge_config(best_config, longest_prefix_it->second);
     }
-    
+
     return (best_config);
 }
 
@@ -296,7 +296,7 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
             response.generate_error_response(403, "Forbidden");
             return false;
         }
-        
+
         if (file_exists(file_path)) {
             if (access(file_path.c_str(), W_OK) != 0) {
                 response.generate_error_response(403, "Forbidden");
@@ -307,27 +307,31 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
         return true;
 }
 
-void HttpRequest::handle_post_request(const std::string &request,
-                                        std::string path) {
+void HttpRequest::handle_post_request() {
     std::string full_path = _root + path;
 
     if (is_location_has_cgi() && is_cgi_request(path)) {
         handle_cgi_request(full_path);
         return;
     }
-    
+
     if (!is_location_upload_file(full_path)) {
         handle_get_request(path); // POSTが許されない場所ならGETにフォールバック
         return;
     }
-    
-    size_t body_start = request.find("\r\n\r\n");
-    if (body_start == std::string::npos) {
-        response.generate_error_response(400, "Bad Request: No Header-Body separator");
-        return;
-    }
 
-    std::string body = request.substr(body_start + 4);
+    // すでに HttpRequestParserがbodyをrequestから分離済みのため, コメントアウト
+    // size_t body_start = request.find("\r\n\r\n");
+    // if (body_start == std::string::npos) {
+    //     response.generate_error_response(400, "Bad Request: No Header-Body separator");
+    //     return;
+    // }
+
+    // TODO:
+    // 変更を最小限にするため、一旦 stringに変換している
+    // バイナリをbodyで受け取る必要があると思うので、要修正
+    // std::string body = request.substr(body_start + 4);
+    std::string body(body_data.begin(), body_data.end());
     std::cout << "Received POST body: " << body << std::endl;
 
     if (body.empty()) {
@@ -412,7 +416,7 @@ int HttpRequest::handle_directory_delete(const std::string& dir_path) {
         response.generate_error_response(409, "Conflict");
         return -1;
     }
-    
+
     std::string html = dir_path;
     return 0;
 }
@@ -468,7 +472,7 @@ void HttpRequest::handle_cgi_request(const std::string& cgi_path) {
         std::cerr << "pipe failed" << std::endl;
         std::exit(1);
     }
-    
+
     if (pipe(output_pipe) == -1)
     {
         std::cerr << "pipe failed" << std::endl;
@@ -480,7 +484,7 @@ void HttpRequest::handle_cgi_request(const std::string& cgi_path) {
         std::cerr << "fork failed" << std::endl;
         std::exit(1);
     }
-    
+
     if (pid == 0) {
         dup2(input_pipe[0], STDIN_FILENO);
         dup2(output_pipe[1], STDOUT_FILENO);
@@ -505,6 +509,9 @@ void HttpRequest::handle_cgi_request(const std::string& cgi_path) {
         std::exit(1);
     } else {
         close(input_pipe[0]);
+        // TODO: String body -> Vecotr int body_dataのため
+        // 応急処置としてここでstringにしている
+        std::string body(body_data.begin(), body_data.end());
         write(input_pipe[1], body.c_str(), body.size());
         close(input_pipe[1]);
 
@@ -580,7 +587,7 @@ void HttpRequest::clear() {
     method.clear();
     path.clear();
     version.clear();
-    body.clear();
+    body_data.clear();
     headers.clear();
     status_code = 0;
 }
