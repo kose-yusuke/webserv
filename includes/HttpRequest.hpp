@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/01 00:37:53 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/01 15:26:11 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,6 +78,7 @@ private:
     static const size_t k_default_max_body;
 
     void conf_init();
+    void init_cgi_extensions();
     void merge_config(ConfigMap &base, const ConfigMap &override);
     // GETの処理
     ResourceType get_resource_type(const std::string &path);

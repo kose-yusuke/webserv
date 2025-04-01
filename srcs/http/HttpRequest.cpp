@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/01 00:36:26 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/01 15:27:51 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,13 @@ HttpRequest::HttpRequest(int server_fd, HttpResponse &httpResponse)
 
 HttpRequest::~HttpRequest() {}
 
+void HttpRequest::init_cgi_extensions() {
+    std::map<std::string, std::vector<std::string> >::const_iterator it = best_match_config.find("cgi_extensions");
+    if (it != best_match_config.end() && !it->second.empty()) {
+        cgi_extensions = it->second;
+    }
+}
+
 void HttpRequest::conf_init()
 {
     is_autoindex_enabled = false;
@@ -42,6 +49,7 @@ void HttpRequest::conf_init()
         _root = server_config["root"][0];
     else
         print_error_message("No root found in config file.");
+    init_cgi_extensions();
 }
 
 void HttpRequest::handle_http_request() {
@@ -310,7 +318,12 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
 void HttpRequest::handle_post_request() {
     std::string full_path = _root + path;
 
+    std::cout << path  << std::endl;
+    std::cout << is_location_has_cgi()  << std::endl;
+    std::cout << is_cgi_request(path) << std::endl;
+
     if (is_location_has_cgi() && is_cgi_request(path)) {
+        std::cout << "test  - test"  << std::endl;
         handle_cgi_request(full_path);
         return;
     }
@@ -331,6 +344,7 @@ void HttpRequest::handle_post_request() {
     // 変更を最小限にするため、一旦 stringに変換している
     // バイナリをbodyで受け取る必要があると思うので、要修正
     // std::string body = request.substr(body_start + 4);
+    
     std::string body(body_data.begin(), body_data.end());
     std::cout << "Received POST body: " << body << std::endl;
 
@@ -435,7 +449,7 @@ bool HttpRequest::is_cgi_request(const std::string &path) {
     std::string extension = path.substr(dot_pos);
     for (size_t i = 0; i < cgi_extensions.size(); ++i) {
         if (cgi_extensions[i] == extension) {
-        return true;
+            return true;
         }
     }
     return false;
@@ -494,14 +508,29 @@ void HttpRequest::handle_cgi_request(const std::string& cgi_path) {
         std::string contentLength = get_value_from_headers("Content-Length");;
         std::string contentLengthStr = "CONTENT_LENGTH=" + contentLength;
         std::string requestMethodStr = "REQUEST_METHOD=POST";
-        std::string contentTypeStr = "CONTENT_TYPE=application/x-www-form-urlencoded";
+        std::string contentTypeStr = "CONTENT_TYPE="+ get_value_from_headers("Content-Type");
+        std::string queryString = "QUERY_STRING=";
+
+        if (method == "POST") {
+            std::string body(body_data.begin(), body_data.end());
+            queryString += body;
+        }
+        else if (method == "GET") {
+            size_t pos = path.find('?');
+            if (pos != std::string::npos) {
+                queryString += path.substr(pos + 1);
+            }
+        }
+        (void)cgi_path;
 
         char *envp[] = {
             const_cast<char *>(requestMethodStr.c_str()),
             const_cast<char *>(contentLengthStr.c_str()),
             const_cast<char *>(contentTypeStr.c_str()),
+            const_cast<char *>(queryString.c_str()),
             NULL
         };
+        
         char *argv[] = { const_cast<char *>(cgi_path.c_str()), NULL };
 
         execve(cgi_path.c_str(), argv, envp);
@@ -524,9 +553,14 @@ void HttpRequest::handle_cgi_request(const std::string& cgi_path) {
             cgi_output += buffer;
         }
         close(output_pipe[0]);
-        waitpid(pid, NULL, 0);
+        int status;
+        waitpid(pid, &status, 0);
 
-        response.generate_response(200, cgi_output, "text/html");
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            response.generate_response(200, cgi_output, "text/html");
+        } else {
+            response.generate_error_response(500, "CGI Execution Failed");
+        }
     }
 }
 
