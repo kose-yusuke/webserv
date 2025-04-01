@@ -28,6 +28,7 @@ void EpollMultiplexer::run() {
       throw std::runtime_error("epoll event list exceeds limit");
     }
     evlist.resize(size);
+    errno = 0;
     int nfd = epoll_wait(epfd, evlist.data(), evlist.size(), 0);
     if (nfd == -1) {
       if (errno == EINTR) {
@@ -35,8 +36,6 @@ void EpollMultiplexer::run() {
       }
       throw std::runtime_error("epoll_wait() failed");
     }
-
-    logfd(LOG_DEBUG, "epoll_wait() returned: ", nfd);
 
     for (int i = 0; i < nfd; ++i) {
       process_event(evlist[i].data.fd, is_readable(evlist[i]),
@@ -48,7 +47,7 @@ void EpollMultiplexer::run() {
   }
 }
 
-void EpollMultiplexer::add_to_read_fds(int fd) {
+void EpollMultiplexer::monitor_read(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
 
   struct epoll_event ev;
@@ -69,25 +68,7 @@ void EpollMultiplexer::add_to_read_fds(int fd) {
   read_fds.insert(fd);
 }
 
-void EpollMultiplexer::remove_from_read_fds(int fd) {
-  LOG_DEBUG_FUNC_FD(fd);
-
-  struct epoll_event ev;
-  ev.events = 0;
-  ev.data.fd = fd;
-
-  if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &ev) == -1) {
-    if (errno != ENOENT) {
-      logfd(LOG_ERROR, "failed to delete fd: ", fd);
-      return;
-    }
-    logfd(LOG_WARNING, "fd already erased: ", fd);
-  }
-  read_fds.erase(fd);
-  write_fds.erase(fd);
-}
-
-void EpollMultiplexer::add_to_write_fds(int fd) {
+void EpollMultiplexer::monitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
 
   struct epoll_event ev;
@@ -110,7 +91,7 @@ void EpollMultiplexer::add_to_write_fds(int fd) {
   write_fds.insert(fd);
 }
 
-void EpollMultiplexer::remove_from_write_fds(int fd) {
+void EpollMultiplexer::unmonitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
 
   struct epoll_event ev;
@@ -130,6 +111,24 @@ void EpollMultiplexer::remove_from_write_fds(int fd) {
     }
     read_fds.insert(fd);
   }
+  write_fds.erase(fd);
+}
+
+void EpollMultiplexer::unmonitor(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+
+  struct epoll_event ev;
+  ev.events = 0;
+  ev.data.fd = fd;
+
+  if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &ev) == -1) {
+    if (errno != ENOENT) {
+      logfd(LOG_ERROR, "failed to delete fd: ", fd);
+      return;
+    }
+    logfd(LOG_WARNING, "fd already erased: ", fd);
+  }
+  read_fds.erase(fd);
   write_fds.erase(fd);
 }
 

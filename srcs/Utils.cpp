@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   utils.cpp                                          :+:      :+:    :+:   */
+/*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/28 17:04:55 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/03/31 18:48:19 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,26 +82,31 @@ std::string read_file(const std::string &file_path) {
 //     return "application/octet-stream";
 // }
 
-LogLevel current_log_level = LOG_INFO;
+#ifndef LOG_LEVEL
+#define LOG_LEVEL LOG_INFO
+#endif
+
+LogLevel current_log_level = static_cast<LogLevel>(LOG_LEVEL);
+
 std::ofstream debug_log("debug.log");
 
 void log(LogLevel level, const std::string &message) {
   if (level >= current_log_level) {
     switch (level) {
     case LOG_FUNC:
-      std::cout << "[FUNC] " << message << std::endl;
+      std::cout << CYAN << "[FUNC] " << RESET << message << std::endl;
       break;
     case LOG_INFO:
-      std::cout << "[INFO] " << message << std::endl;
+      std::cout << GREEN << "[INFO] " << RESET << message << std::endl;
       break;
     case LOG_DEBUG:
       debug_log << "[DEBUG] " << message << std::endl;
       break;
     case LOG_WARNING:
-      std::cerr << "[WARNING] " << message << std::endl;
+      std::cerr << YELLOW << "[WARNING] " << RESET << message << std::endl;
       break;
     case LOG_ERROR:
-      std::cerr << "[ERROR] " << message;
+      std::cerr << RED << "[ERROR] " << RESET << message;
       if (errno != 0) {
         int err = errno;
         errno = 0;
@@ -109,6 +114,8 @@ void log(LogLevel level, const std::string &message) {
       }
       std::cerr << std::endl;
       break;
+    default:
+      std::cerr << "[UNKNOWN] " << message << std::endl;
     }
   }
 }

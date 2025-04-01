@@ -79,7 +79,11 @@ void Multiplexer::add_to_client_map(int fd, Client *client) {
 void Multiplexer::remove_from_client_map(int fd) {
   ClientIt it = client_map.find(fd);
   if (it != client_map.end()) {
-    close(it->first);
+    if (close(it->first) == -1) {
+      logfd(LOG_ERROR, "Failed to close client fd: ", fd);
+    } else {
+      logfd(LOG_DEBUG, "Closed client fd: ", fd);
+    }
     delete it->second;
     client_map.erase(fd);
   }
@@ -107,7 +111,7 @@ void Multiplexer::initialize_fds() {
     throw std::runtime_error("Error: No servers available.");
   }
   for (ServerIt it = server_map.begin(); it != server_map.end(); ++it) {
-    add_to_read_fds(it->first);
+    monitor_read(it->first);
   }
 }
 
@@ -115,16 +119,17 @@ void Multiplexer::process_event(int fd, bool readable, bool writable) {
   if (!readable && !writable) {
     return;
   }
-  if (is_in_server_map(fd) && readable) {
-    accept_client(fd);
+  if (is_in_server_map(fd)) {
+    if (readable) {
+      accept_client(fd);
+    }
     return;
   }
-  if (is_in_client_map(fd)) {
-    if (readable) {
-      read_from_client(fd);
-    } else if (writable) {
-      write_to_client(fd);
-    }
+  if (is_in_client_map(fd) && readable) {
+    read_from_client(fd);
+  }
+  if (is_in_client_map(fd) && writable) {
+    write_to_client(fd);
   }
 }
 
@@ -162,15 +167,23 @@ void Multiplexer::accept_client(int server_fd) {
     close(client_fd);
     return;
   }
-  try {
-    add_to_client_map(client_fd, new Client(client_fd, server_fd));
-  } catch (const std::exception &e) {
-    std::cerr << "Error: " << e.what() << "\n";
+  int optval = 1;
+  if (setsockopt(client_fd, SOL_SOCKET, SO_REUSEADDR, &optval,
+                 sizeof(optval)) == -1) {
+    logfd(LOG_ERROR, "Failed to set SO_REUSEADDR on client fd: ", client_fd);
     close(client_fd);
     return;
   }
-  add_to_read_fds(client_fd);
-  logfd(LOG_INFO, "New connection on client fd: ", client_fd);
+
+  try {
+    add_to_client_map(client_fd, new Client(client_fd, server_fd));
+  } catch (const std::exception &e) {
+    logfd(LOG_ERROR, e.what(), client_fd);
+    close(client_fd);
+    return;
+  }
+  monitor_read(client_fd);
+  logfd(LOG_DEBUG, "New connection on client fd: ", client_fd);
 }
 
 void Multiplexer::read_from_client(int client_fd) {
@@ -179,18 +192,14 @@ void Multiplexer::read_from_client(int client_fd) {
 
   switch (client->on_read()) {
   case IO_SUCCESS:
-    logfd(LOG_DEBUG, "Read successful: ", client_fd);
-    add_to_write_fds(client_fd);
+    monitor_write(client_fd);
     break;
   case IO_CONTINUE:
-    logfd(LOG_DEBUG, "Read pending: ", client_fd);
     break;
   case IO_CLOSED:
-    logfd(LOG_DEBUG, "Client disconnected: ", client_fd);
     remove_client(client_fd);
     break;
   case IO_ERROR:
-    logfd(LOG_ERROR, "Read failed: ", client_fd);
     remove_client(client_fd);
     break;
   default:
@@ -205,18 +214,14 @@ void Multiplexer::write_to_client(int client_fd) {
 
   switch (client->on_write()) {
   case IO_SUCCESS:
-    logfd(LOG_DEBUG, "Write successful: ", client_fd);
-    remove_from_write_fds(client_fd);
+    unmonitor_write(client_fd);
     break;
   case IO_CONTINUE:
-    logfd(LOG_DEBUG, "Write pending: ", client_fd);
     break;
   case IO_CLOSED:
-    logfd(LOG_DEBUG, "Nothing to send: ", client_fd);
-    remove_from_write_fds(client_fd);
+    unmonitor_write(client_fd);
     break;
   case IO_ERROR:
-    logfd(LOG_DEBUG, "Write failed: ", client_fd);
     remove_client(client_fd);
     break;
   default:
@@ -227,8 +232,7 @@ void Multiplexer::write_to_client(int client_fd) {
 
 void Multiplexer::remove_client(int client_fd) {
   LOG_DEBUG_FUNC_FD(client_fd);
-  remove_from_write_fds(client_fd);
-  remove_from_read_fds(client_fd);
+  unmonitor(client_fd);
   remove_from_client_map(client_fd); // close, delete もこの中
 }
 

@@ -26,6 +26,7 @@ void SelectMultiplexer::run() {
     }
     active_read_fds = read_fds;
     active_write_fds = write_fds;
+    errno = 0;
     int nfd = select(max_fd + 1, &active_read_fds, &active_write_fds, 0, 0);
     if (nfd == -1) {
       if (errno == EINTR) {
@@ -34,23 +35,32 @@ void SelectMultiplexer::run() {
       throw std::runtime_error("select() failed");
     }
 
-    logfd(LOG_DEBUG, "select() returned: ", nfd);
-
     for (int fd = 0; fd <= max_fd; ++fd) {
       process_event(fd, is_readable(fd), is_writable(fd));
     }
   }
 }
 
-void SelectMultiplexer::add_to_read_fds(int fd) {
+void SelectMultiplexer::monitor_read(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   FD_SET(fd, &read_fds);
   max_fd = std::max(fd, max_fd);
 }
 
-void SelectMultiplexer::remove_from_read_fds(int fd) {
+void SelectMultiplexer::monitor_write(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  FD_SET(fd, &write_fds);
+}
+
+void SelectMultiplexer::unmonitor_write(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  FD_CLR(fd, &write_fds);
+}
+
+void SelectMultiplexer::unmonitor(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   FD_CLR(fd, &read_fds);
+  FD_CLR(fd, &write_fds);
   if (fd != max_fd) {
     return;
   }
@@ -60,16 +70,6 @@ void SelectMultiplexer::remove_from_read_fds(int fd) {
       break;
     }
   }
-}
-
-void SelectMultiplexer::add_to_write_fds(int fd) {
-  LOG_DEBUG_FUNC_FD(fd);
-  FD_SET(fd, &write_fds);
-}
-
-void SelectMultiplexer::remove_from_write_fds(int fd) {
-  LOG_DEBUG_FUNC_FD(fd);
-  FD_CLR(fd, &write_fds);
 }
 
 bool SelectMultiplexer::is_readable(int fd) {

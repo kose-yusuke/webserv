@@ -29,6 +29,9 @@ DEPS     := $(OBJS:.o=.d)
 RM = rm -rf
 INCLUDES := -I./includes
 
+LOG_LEVEL ?= 1  # デフォルト LOG_INFO
+CXXFLAGS += -DLOG_LEVEL=$(LOG_LEVEL)
+
 all: $(NAME)
 
 $(NAME): $(OBJS)
@@ -56,8 +59,16 @@ run: $(NAME)
 	./$(NAME) config/valid/multiple_servers.conf
 	@echo "== Tests Completed =="
 
+debug: fclean
+	$(MAKE) LOG_LEVEL=2
+	$(MAKE) run
+
+quiet: fclean
+	$(MAKE) LOG_LEVEL=4
+	$(MAKE) run
+
 test:
-	@echo "== Running Tests  =="
+	@echo "==  Performance Tests  =="
 	siege -c 10 -r 5 --time=10S --log=/tmp/siege.log http://localhost:8080
 	@echo "== Tests Completed =="
 

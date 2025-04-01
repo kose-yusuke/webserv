@@ -17,10 +17,10 @@ public:
   void run();
 
 protected:
-  void add_to_read_fds(int fd);
-  void remove_from_read_fds(int fd);
-  void add_to_write_fds(int fd);
-  void remove_from_write_fds(int fd);
+  void monitor_read(int fd);
+  void monitor_write(int fd);
+  void unmonitor_write(int fd);
+  void unmonitor(int fd);
 
 private:
   typedef std::set<int> FdBackup;
@@ -33,7 +33,6 @@ private:
 
   bool is_readable(struct epoll_event &ev) const;
   bool is_writable(struct epoll_event &ev) const;
-  // bool has_more_than_max_to_read(struct epoll_event &ev) const;
 
   bool is_in_read_fds(int fd) const;
   bool is_in_write_fds(int fd) const;

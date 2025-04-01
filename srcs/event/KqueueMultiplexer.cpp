@@ -27,6 +27,7 @@ void KqueueMultiplexer::run() {
       throw std::runtime_error("kqueue event list exceeds limit");
     }
     event_list.resize(size);
+    errno = 0;
     int nfd = kevent(kq, change_list.data(), change_list.size(),
                      event_list.data(), event_list.size(), 0);
     if (nfd == -1) {
@@ -35,8 +36,6 @@ void KqueueMultiplexer::run() {
       }
       throw std::runtime_error("kqueue() failed");
     }
-
-    logfd(LOG_DEBUG, "kqueue() returned: ", nfd);
 
     change_list.clear();
     for (int i = 0; i < nfd; ++i) {
@@ -49,32 +48,35 @@ void KqueueMultiplexer::run() {
   }
 }
 
-void KqueueMultiplexer::add_to_read_fds(int fd) {
+void KqueueMultiplexer::monitor_read(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   struct kevent ev;
   EV_SET(&ev, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
   change_list.push_back(ev);
 }
 
-void KqueueMultiplexer::remove_from_read_fds(int fd) {
-  LOG_DEBUG_FUNC_FD(fd);
-  struct kevent ev;
-  EV_SET(&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
-  change_list.push_back(ev);
-}
-
-void KqueueMultiplexer::add_to_write_fds(int fd) {
+void KqueueMultiplexer::monitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   struct kevent ev;
   EV_SET(&ev, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, 0);
   change_list.push_back(ev);
 }
 
-void KqueueMultiplexer::remove_from_write_fds(int fd) {
+void KqueueMultiplexer::unmonitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   struct kevent ev;
   EV_SET(&ev, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
   change_list.push_back(ev);
+}
+
+void KqueueMultiplexer::unmonitor(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  struct kevent ev_read;
+  struct kevent ev_write;
+  EV_SET(&ev_read, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
+  EV_SET(&ev_write, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
+  change_list.push_back(ev_read);
+  change_list.push_back(ev_write);
 }
 
 bool KqueueMultiplexer::is_readable(struct kevent &ev) const {

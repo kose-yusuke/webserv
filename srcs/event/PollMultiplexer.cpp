@@ -29,6 +29,7 @@ void PollMultiplexer::run() {
     if (pfds.size() >= max_poll_events) {
       throw std::runtime_error("poll() fd count exceeds limit");
     }
+    errno = 0;
     int nfd = poll(pfds.data(), pfds.size(), 0);
     if (nfd == -1) {
       if (errno == EINTR) {
@@ -37,8 +38,6 @@ void PollMultiplexer::run() {
       throw std::runtime_error("poll() failed");
     }
 
-    logfd(LOG_DEBUG, "poll() returned: ", nfd);
-
     PollFdVec tmp = pfds;
     for (size_t i = 0; i < tmp.size(); ++i) {
       process_event(tmp[i].fd, is_readable(tmp[i]), is_writable(tmp[i]));
@@ -46,11 +45,14 @@ void PollMultiplexer::run() {
   }
 }
 
-void PollMultiplexer::add_to_read_fds(int fd) {
+void PollMultiplexer::monitor_read(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   PollFdIt it = find_pollfd(fd);
   if (it != pfds.end()) {
-    logfd(LOG_WARNING, "fd already registered: ", fd);
+    if (it->events & POLLIN) {
+      return;
+    }
+    logfd(LOG_WARNING, "fd found, adding missing read event (POLLIN): ", fd);
     it->events |= POLLIN;
     return;
   }
@@ -61,35 +63,24 @@ void PollMultiplexer::add_to_read_fds(int fd) {
   pfds.push_back(pfd);
 }
 
-void PollMultiplexer::remove_from_read_fds(int fd) {
+void PollMultiplexer::monitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   PollFdIt it = find_pollfd(fd);
-  if (it == pfds.end()) {
-    logfd(LOG_WARNING, "fd already erased: ", fd);
+  if (it != pfds.end()) {
+    if (it->events & POLLOUT) {
+      return;
+    }
+    it->events |= POLLOUT;
     return;
   }
-  pfds.erase(it);
+  logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
+  struct pollfd pfd;
+  pfd.fd = fd;
+  pfd.events = POLLIN | POLLOUT;
+  pfds.push_back(pfd);
 }
 
-void PollMultiplexer::add_to_write_fds(int fd) {
-  LOG_DEBUG_FUNC_FD(fd);
-  PollFdIt it = find_pollfd(fd);
-  if (it == pfds.end()) {
-    logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
-    struct pollfd pfd;
-    pfd.fd = fd;
-    pfd.events = POLLIN | POLLOUT;
-    pfds.push_back(pfd);
-    return;
-  }
-  if (it->events & POLLOUT) {
-    logfd(LOG_WARNING, "fd already registered for write monitor: ", fd);
-    return;
-  }
-  it->events |= POLLOUT;
-}
-
-void PollMultiplexer::remove_from_write_fds(int fd) {
+void PollMultiplexer::unmonitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
@@ -97,10 +88,29 @@ void PollMultiplexer::remove_from_write_fds(int fd) {
     return;
   }
   if (!(it->events & POLLOUT)) {
-    logfd(LOG_WARNING, "fd is already in write monitor: ", fd);
+    logfd(LOG_WARNING, "fd is already delisted from write monitor: ", fd);
     return;
   }
   it->events &= ~POLLOUT;
+}
+
+void PollMultiplexer::unmonitor(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+
+  for (size_t i = 0; i < pfds.size(); ++i) {
+    for (size_t j = i + 1; j < pfds.size(); ++j) {
+      if (pfds[i].fd == pfds[j].fd) {
+        logfd(LOG_ERROR, "Duplicate fd in pfds: ", pfds[i].fd);
+      }
+    }
+  }
+
+  PollFdIt it = find_pollfd(fd);
+  if (it == pfds.end()) {
+    logfd(LOG_WARNING, "fd already erased: ", fd);
+    return;
+  }
+  pfds.erase(it);
 }
 
 bool PollMultiplexer::is_readable(struct pollfd pfd) const {
