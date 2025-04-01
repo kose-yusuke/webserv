@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/29 20:29:31 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/01 00:37:53 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,8 @@ public:
     std::string method;
     std::string path;
     std::string version;
-    std::string body;
+    // std::string body;
+    std::vector<char> body_data;
     std::map<std::string, std::string> headers;
 
     bool is_autoindex_enabled;
@@ -85,7 +86,7 @@ private:
     bool is_cgi_request(const std::string &path);
     void handle_cgi_request(const std::string &cgi_path);
     // POSTの処理
-    void handle_post_request(const std::string &request, std::string path);
+    void handle_post_request();
     bool is_location_upload_file(const std::string file_path);
     bool is_location_has_cgi();
     // DELETEの処理
@@ -104,3 +105,4 @@ private:
 
     void print_best_match_config() const;
 };
+

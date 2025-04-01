@@ -1,5 +1,6 @@
 #include "HttpRequestParser.hpp"
 #include "Utils.hpp"
+#include <algorithm>
 #include <set>
 
 static const char *unreserved_chars = "-._~";
@@ -21,7 +22,7 @@ HttpRequestParser::~HttpRequestParser() {}
 
 bool HttpRequestParser::parse() {
   LOG_DEBUG_FUNC();
-  if (buffer.empty()) {
+  if (recv_buffer.empty()) {
     return parse_state;
   }
   if (parse_state == PARSE_HEADER) {
@@ -42,20 +43,26 @@ void HttpRequestParser::clear() {
 
 void HttpRequestParser::append_data(const char *data, size_t length) {
   LOG_DEBUG_FUNC();
-  buffer.append(data, length);
+  recv_buffer.insert(recv_buffer.end(), data, data + length);
 }
 
 HttpRequestParser::ParseState HttpRequestParser::parse_header() {
   LOG_DEBUG_FUNC();
-  size_t end = buffer.find("\r\n\r\n");
-  if (end == std::string::npos) {
+  static const char kCRLFCRLF[] = "\r\n\r\n";
+
+  std::vector<char>::iterator it = std::search(
+      recv_buffer.begin(), recv_buffer.end(), kCRLFCRLF, kCRLFCRLF + 4);
+  if (it == recv_buffer.end()) {
     return PARSE_HEADER; // header未受信
   }
+  size_t header_end = std::distance(recv_buffer.begin(), it);
+  std::string header_text(recv_buffer.begin(),
+                          recv_buffer.begin() + header_end);
 
-  std::istringstream iss(buffer.substr(0, end));
+  std::istringstream iss(header_text);
   std::string line;
 
-  buffer.erase(0, end + 4);
+  recv_buffer.erase(recv_buffer.begin(), it + 4); // "\r\n\r\n"まで削除
   if (!std::getline(iss, line) || !parse_request_line(line)) {
     request.set_status_code(400);
     return PARSE_ERROR;
@@ -91,25 +98,36 @@ HttpRequestParser::ParseState HttpRequestParser::parse_body() {
   if (body_size == 0) {
     return PARSE_DONE; // bodyなし
   }
-  if (body_size > 0 && buffer.size() < body_size) {
+  if (body_size > 0 && recv_buffer.size() < body_size) {
     return PARSE_BODY; // body未受信
   }
-  request.body.append(buffer.substr(0, body_size));
-  std::cout << request.body << std::endl;
-  buffer.erase(0, body_size);
+  request.body_data.insert(request.body_data.end(), recv_buffer.begin(),
+                           recv_buffer.begin() + body_size);
+  recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + body_size);
+  // request.body.append(buffer.substr(0, body_size));
+  // buffer.erase(0, body_size);
   return PARSE_DONE; // body受信完了
 }
 
 HttpRequestParser::ParseState HttpRequestParser::parse_chunked_body() {
   LOG_DEBUG_FUNC();
   size_t chunk_size = 0;
+  static const char kCRLF[] = "\r\n";
+
   while (true) {
-    size_t pos = buffer.find("\r\n");
-    if (pos == std::string::npos) {
+    std::vector<char>::iterator it_size =
+        std::search(recv_buffer.begin(), recv_buffer.end(), kCRLF, kCRLF + 2);
+    if (it_size == recv_buffer.end()) {
       return PARSE_CHUNK;
     }
+    size_t end_pos = std::distance(recv_buffer.begin(), it_size);
+    std::string size_str(recv_buffer.begin(), recv_buffer.begin() + end_pos);
 
-    std::string size_str = buffer.substr(0, pos);
+    // size_t pos = buffer.find("\r\n");
+    // if (pos == std::string::npos) {
+    //   return PARSE_CHUNK;
+    // }
+    // std::string size_str = buffer.substr(0, pos);
     try {
       chunk_size = parse_hex(size_str);
     } catch (const std::exception &e) {
@@ -120,25 +138,39 @@ HttpRequestParser::ParseState HttpRequestParser::parse_chunked_body() {
       break;
     }
 
-    size_t chunk_start = pos + 2;
+    size_t chunk_start = end_pos + 2;
     size_t chunk_end = chunk_start + chunk_size + 2;
-    if (buffer.size() < chunk_end) {
+    if (recv_buffer.size() < chunk_end) {
       return PARSE_CHUNK;
     }
 
-    std::string chunk = buffer.substr(chunk_start, chunk_size);
-    request.body.append(chunk);
-    buffer.erase(0, chunk_end);
+    std::vector<char> chunk(recv_buffer.begin() + chunk_start,
+                            recv_buffer.begin() + chunk_end);
+    request.body_data.insert(request.body_data.end(), chunk.begin(),
+                             chunk.end());
+    recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + chunk_end);
+    // std::string chunk = buffer.substr(chunk_start, chunk_size);
+    // request.body.append(chunk);
+    // buffer.erase(0, chunk_end);
   }
 
-  if (buffer.size() < 5) {
+  static const char kFinalChunk[] = "0\r\n\r\n";
+
+  if (recv_buffer.size() < 5) {
     return PARSE_CHUNK;
   }
-  if (buffer.substr(0, 5) != "0\r\n\r\n") {
+
+  if (!std::equal(kFinalChunk, kFinalChunk + 5, recv_buffer.begin())) {
     request.set_status_code(400);
     return PARSE_ERROR;
   }
-  buffer.erase(0, 5);
+  recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + 5);
+
+  // if (buffer.substr(0, 5) != "0\r\n\r\n") {
+  //   request.set_status_code(400);
+  //   return PARSE_ERROR;
+  // }
+  // buffer.erase(0, 5);
   return PARSE_DONE;
 }
 
@@ -163,7 +195,7 @@ bool HttpRequestParser::parse_request_line(std::string &line) {
   }
 
   log(LOG_DEBUG, "Parsed Request - Method: " + request.method + ", Path: " +
-                      request.path + ", Version: " + request.version);
+                     request.path + ", Version: " + request.version);
   return true;
 }
 
