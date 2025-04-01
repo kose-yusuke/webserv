@@ -176,27 +176,51 @@ void Multiplexer::accept_client(int server_fd) {
 void Multiplexer::read_from_client(int client_fd) {
   LOG_DEBUG_FUNC_FD(client_fd);
   Client *client = get_client_from_map(client_fd);
-  IOStatus status = client->on_read();
-  if (status == IO_SUCCESS) {
-    log(LOG_DEBUG, std::string(__func__) + "() success");
+
+  switch (client->on_read()) {
+  case IO_SUCCESS:
+    logfd(LOG_DEBUG, "Read successful: ", client_fd);
     add_to_write_fds(client_fd);
-  } else if (status == IO_FAILED) {
-    log(LOG_DEBUG, std::string(__func__) + "() failed");
+    break;
+  case IO_CONTINUE:
+    logfd(LOG_DEBUG, "Read pending: ", client_fd);
+    break;
+  case IO_CLOSED:
+    logfd(LOG_DEBUG, "Client disconnected: ", client_fd);
     remove_client(client_fd);
-  } else {
-    log(LOG_DEBUG, std::string(__func__) + "() continue");
+    break;
+  case IO_ERROR:
+    logfd(LOG_ERROR, "Read failed: ", client_fd);
+    remove_client(client_fd);
+    break;
+  default:
+    logfd(LOG_ERROR, "Unhandled IOStatus: ", client_fd);
+    remove_client(client_fd);
   }
 }
 
 void Multiplexer::write_to_client(int client_fd) {
   LOG_DEBUG_FUNC_FD(client_fd);
   Client *client = get_client_from_map(client_fd);
-  IOStatus status = client->on_write();
-  if (status == IO_SUCCESS) {
-    log(LOG_DEBUG, "write success");
+
+  switch (client->on_write()) {
+  case IO_SUCCESS:
+    logfd(LOG_DEBUG, "Write successful: ", client_fd);
     remove_from_write_fds(client_fd);
-  } else if (status == IO_FAILED) {
-    log(LOG_DEBUG, "write failed");
+    break;
+  case IO_CONTINUE:
+    logfd(LOG_DEBUG, "Write pending: ", client_fd);
+    break;
+  case IO_CLOSED:
+    logfd(LOG_DEBUG, "Nothing to send: ", client_fd);
+    remove_from_write_fds(client_fd);
+    break;
+  case IO_ERROR:
+    logfd(LOG_DEBUG, "Write failed: ", client_fd);
+    remove_client(client_fd);
+    break;
+  default:
+    logfd(LOG_ERROR, "Unhandled IOStatus: ", client_fd);
     remove_client(client_fd);
   }
 }

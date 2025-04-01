@@ -56,4 +56,9 @@ run: $(NAME)
 	./$(NAME) config/valid/multiple_servers.conf
 	@echo "== Tests Completed =="
 
-.PHONY: all clean fclean re run
+test:
+	@echo "== Running Tests  =="
+	siege -c 10 -r 5 --time=10S --log=/tmp/siege.log http://localhost:8080
+	@echo "== Tests Completed =="
+
+.PHONY: all clean fclean re run test

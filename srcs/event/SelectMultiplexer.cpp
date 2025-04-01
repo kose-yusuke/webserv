@@ -19,15 +19,23 @@ Multiplexer &SelectMultiplexer::get_instance() {
 void SelectMultiplexer::run() {
   LOG_DEBUG_FUNC();
   initialize_fds();
+
   while (true) {
+    if (max_fd >= FD_SETSIZE) {
+      throw std::runtime_error("select() fd exceeds FD_SETSIZE");
+    }
     active_read_fds = read_fds;
     active_write_fds = write_fds;
-    int ret = select(max_fd + 1, &active_read_fds, &active_write_fds, 0, 0);
-    std::cout << "Select returned: " << ret << "\n";
-    if (ret < 0 && errno != EINTR) {
-      log(LOG_ERROR, "select() failed: ");
-      continue;
+    int nfd = select(max_fd + 1, &active_read_fds, &active_write_fds, 0, 0);
+    if (nfd == -1) {
+      if (errno == EINTR) {
+        continue;
+      }
+      throw std::runtime_error("select() failed");
     }
+
+    logfd(LOG_DEBUG, "select() returned: ", nfd);
+
     for (int fd = 0; fd <= max_fd; ++fd) {
       process_event(fd, is_readable(fd), is_writable(fd));
     }

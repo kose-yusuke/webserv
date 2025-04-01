@@ -18,21 +18,27 @@ Multiplexer &PollMultiplexer::get_instance() {
 
 void PollMultiplexer::run() {
   LOG_DEBUG_FUNC();
+  static const int max_poll_events = 65536;
   pfds.reserve(get_num_servers());
   initialize_fds();
   if (pfds.empty()) {
     throw std::runtime_error("pollfd empty");
   }
+
   while (true) {
-    int ready;
-    do {
-      ready = poll(pfds.data(), pfds.size(), 0);
-    } while (ready == -1 && errno == EINTR);
-    if (ready == -1) {
-      std::ostringstream oss;
-      oss << "Error: poll failed with errno " << strerror(errno);
-      throw std::runtime_error(oss.str());
+    if (pfds.size() >= max_poll_events) {
+      throw std::runtime_error("poll() fd count exceeds limit");
     }
+    int nfd = poll(pfds.data(), pfds.size(), 0);
+    if (nfd == -1) {
+      if (errno == EINTR) {
+        continue;
+      }
+      throw std::runtime_error("poll() failed");
+    }
+
+    logfd(LOG_DEBUG, "poll() returned: ", nfd);
+
     PollFdVec tmp = pfds;
     for (size_t i = 0; i < tmp.size(); ++i) {
       process_event(tmp[i].fd, is_readable(tmp[i]), is_writable(tmp[i]));

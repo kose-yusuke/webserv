@@ -2,8 +2,10 @@
 
 #include "Multiplexer.hpp"
 #include <set>
-#include <sys/epoll.h>
 #include <vector>
+#ifdef __linux__
+#include <sys/epoll.h>
+#endif
 
 /**
  * epoll を用いたI/Oの多重化
