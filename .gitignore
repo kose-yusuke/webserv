@@ -37,3 +37,7 @@ objs/*
 webserv
 *.pdf
 ReadingList.md
+
+# Test用
+!tests/
+!tests/**
