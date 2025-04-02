@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 16:45:31 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/02 14:12:46 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,14 +116,11 @@ void HttpResponse::generate_error_response(int status_code) {
   push_response(response.str());
 }
 
-// 未実装
 void HttpResponse::generate_redirect(int status_code,
                                      const std::string &new_location) {
-  // std::cout << client_socket << std::endl;
-  // std::cout << status_code << std::endl;
-  // std::cout << new_location << std::endl;
+
   LOG_DEBUG_FUNC();
-  std::ostringstream response; // TODO: 仮の状態
+  std::ostringstream response;
   response << "HTTP/1.1 " << status_code << " ";
   response << HttpResponse::get_status_message(status_code) << "\r\n";
   response << "Location: " << new_location << "\r\n";
@@ -140,6 +137,12 @@ std::string HttpResponse::get_status_message(int status_code) {
     return "Moved Permanently";
   case 302:
     return "Found";
+  case 303:
+    return "See Other";
+  case 307:
+    return "Temporary Redirect";
+  case 308:
+    return "Permanent Redirect";
   case 403:
     return "Forbidden";
   case 404:
@@ -149,7 +152,7 @@ std::string HttpResponse::get_status_message(int status_code) {
   case 500:
     return "Internal Server Error";
   default:
-    return "Internal Server Error";
+    return "Status Not Defined";
   }
 }
 

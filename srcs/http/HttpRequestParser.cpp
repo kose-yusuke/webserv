@@ -300,7 +300,7 @@ bool HttpRequestParser::validate_headers_content() {
     size_t client_max_body_size = request.get_max_body_size();
     std::string str = request.get_value_from_headers("Content-Length");
     try {
-      body_size = convert_str_to_size(str);
+      body_size = str_to_size(str);
     } catch (const std::exception &e) {
       request.set_status_code(400); // TODO: check
       return false;
