@@ -24,12 +24,13 @@ private:
   typedef std::vector<struct pollfd>::iterator PollFdIt;
   typedef std::vector<struct pollfd>::const_iterator ConstPollFdIt;
 
-  PollFdVec pfds;
+  static const int max_poll_events = 256;
+  std::vector<struct pollfd> pfds;
 
   bool is_readable(struct pollfd fd) const;
   bool is_writable(struct pollfd fd) const;
 
-  PollFdIt find_pollfd(int fd);
+  void sanitize_resized_pfds(size_t old_size);
 
   PollMultiplexer();
   PollMultiplexer(const PollMultiplexer &other);

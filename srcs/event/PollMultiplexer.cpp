@@ -18,7 +18,6 @@ Multiplexer &PollMultiplexer::get_instance() {
 
 void PollMultiplexer::run() {
   LOG_DEBUG_FUNC();
-  static const int max_poll_events = 65536;
   pfds.reserve(get_num_servers());
   initialize_fds();
   if (pfds.empty()) {
@@ -26,91 +25,124 @@ void PollMultiplexer::run() {
   }
 
   while (true) {
-    if (pfds.size() >= max_poll_events) {
-      throw std::runtime_error("poll() fd count exceeds limit");
+    if (pfds.size() > max_poll_events) {
+      throw std::runtime_error("poll event list exceeds limit");
     }
     errno = 0;
-    int nfd = poll(pfds.data(), pfds.size(), 0);
+    int nfd = poll(pfds.data(), pfds.size(), 10);
     if (nfd == -1) {
       if (errno == EINTR) {
         continue;
       }
       throw std::runtime_error("poll() failed");
     }
-
-    PollFdVec tmp = pfds;
-    for (size_t i = 0; i < tmp.size(); ++i) {
-      process_event(tmp[i].fd, is_readable(tmp[i]), is_writable(tmp[i]));
+    for (size_t i = 0; i < pfds.size() && nfd > 0; ++i) {
+      if (pfds[i].fd == -1 || pfds[i].revents == 0) {
+        continue;
+      }
+      process_event(pfds[i].fd, is_readable(pfds[i]), is_writable(pfds[i]));
+      pfds[i].revents = 0;
+      nfd--;
     }
   }
 }
 
 void PollMultiplexer::monitor_read(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
-  PollFdIt it = find_pollfd(fd);
-  if (it != pfds.end()) {
-    if (it->events & POLLIN) {
-      return;
-    }
-    logfd(LOG_WARNING, "fd found, adding missing read event (POLLIN): ", fd);
-    it->events |= POLLIN;
+
+  if (fd >= max_poll_events) {
+    logfd(LOG_ERROR, "fd exceeds poll limit (max_poll_events): ", fd);
     return;
   }
-  struct pollfd pfd;
-  pfd.fd = fd;
-  pfd.events = POLLIN;
-  pfd.revents = 0;
-  pfds.push_back(pfd);
+
+  if (static_cast<size_t>(fd) >= pfds.size()) {
+    size_t old_size = pfds.size();
+    pfds.resize(fd + 1);
+    sanitize_resized_pfds(old_size);
+  }
+
+  if (pfds[fd].fd == fd && (pfds[fd].events & POLLIN)) {
+    logfd(LOG_DEBUG, "fd is already monitored for read: ", fd);
+    return;
+  }
+
+  if (pfds[fd].fd != -1 && pfds[fd].fd != fd) {
+    logfd(LOG_WARNING, "Unexpected state: pfds[fd].fd != fd: ", fd);
+  }
+
+  pfds[fd].fd = fd;
+  pfds[fd].events |= POLLIN;
 }
 
 void PollMultiplexer::monitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
-  PollFdIt it = find_pollfd(fd);
-  if (it != pfds.end()) {
-    if (it->events & POLLOUT) {
-      return;
-    }
-    it->events |= POLLOUT;
-    return;
+
+  if (static_cast<size_t>(fd) >= pfds.size()) {
+    size_t old_size = pfds.size();
+    pfds.resize(fd + 1);
+    sanitize_resized_pfds(old_size);
   }
-  logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
-  struct pollfd pfd;
-  pfd.fd = fd;
-  pfd.events = POLLIN | POLLOUT;
-  pfds.push_back(pfd);
+
+  if (pfds[fd].fd == -1 || pfds[fd].fd != fd) {
+    logfd(LOG_WARNING, "Unexpected state: pfds[fd].fd != fd: ", fd);
+    pfds[fd].fd = fd;
+  }
+
+  pfds[fd].events = POLLIN | POLLOUT;
 }
 
 void PollMultiplexer::unmonitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
-  PollFdIt it = find_pollfd(fd);
-  if (it == pfds.end()) {
-    logfd(LOG_WARNING, "fd doesn't exist in pfds vector: ", fd);
+
+  if (fd >= max_poll_events) {
+    logfd(LOG_ERROR, "fd exceeds poll limit (max_poll_events): ", fd);
     return;
   }
-  if (!(it->events & POLLOUT)) {
-    logfd(LOG_WARNING, "fd is already delisted from write monitor: ", fd);
+
+  if (static_cast<size_t>(fd) >= pfds.size()) {
+    size_t old_size = pfds.size();
+    pfds.resize(fd + 1);
+    sanitize_resized_pfds(old_size);
+  }
+
+  if (pfds[fd].fd == -1) {
+    logfd(LOG_WARNING, "fd is already fully unmonitored: ", fd);
     return;
   }
-  it->events &= ~POLLOUT;
+
+  if (pfds[fd].fd != fd) {
+    logfd(LOG_WARNING, "Unexpected state: pfds[fd].fd != fd: ", fd);
+    pfds[fd].fd = fd;
+  }
+
+  if (!(pfds[fd].events & POLLOUT)) {
+    logfd(LOG_WARNING, "fd is not monitored for write (already removed): ", fd);
+    return;
+  }
+  pfds[fd].events &= ~POLLOUT;
 }
 
 void PollMultiplexer::unmonitor(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
 
-  for (size_t i = 0; i < pfds.size(); ++i) {
-    for (size_t j = i + 1; j < pfds.size(); ++j) {
-      if (pfds[i].fd == pfds[j].fd) {
-        logfd(LOG_ERROR, "Duplicate fd in pfds: ", pfds[i].fd);
-      }
-    }
+  if (static_cast<size_t>(fd) >= pfds.size()) {
+    size_t old_size = pfds.size();
+    pfds.resize(fd + 1);
+    sanitize_resized_pfds(old_size);
   }
 
-  PollFdIt it = find_pollfd(fd);
-  if (it == pfds.end()) {
-    logfd(LOG_WARNING, "fd already erased: ", fd);
+  if (pfds[fd].fd == -1) {
+    logfd(LOG_WARNING, "fd is already fully unmonitored: ", fd);
     return;
   }
-  pfds.erase(it);
+
+  if (pfds[fd].fd != fd) {
+    logfd(LOG_WARNING, "Unexpected state: pfds[fd].fd != fd: ", fd);
+  }
+
+  pfds[fd].fd = -1;
+  pfds[fd].events = 0;
+  pfds[fd].revents = 0;
 }
 
 bool PollMultiplexer::is_readable(struct pollfd pfd) const {
@@ -121,13 +153,12 @@ bool PollMultiplexer::is_writable(struct pollfd pfd) const {
   return (pfd.revents & POLLOUT) != 0;
 }
 
-PollMultiplexer::PollFdIt PollMultiplexer::find_pollfd(int fd) {
-  for (PollFdIt it = pfds.begin(); it != pfds.end(); ++it) {
-    if (it->fd == fd) {
-      return it;
+void PollMultiplexer::sanitize_resized_pfds(size_t old_size) {
+  for (size_t i = old_size; i < pfds.size(); ++i) {
+    if (pfds[i].fd == 0) {
+      pfds[i].fd = -1;
     }
   }
-  return pfds.end();
 }
 
 PollMultiplexer::PollMultiplexer() : Multiplexer(), pfds() {}
