@@ -59,6 +59,11 @@ run: $(NAME)
 	./$(NAME) config/valid/multiple_servers.conf
 	@echo "== Tests Completed =="
 
+redir: $(NAME)
+	@echo "== Running Tests  =="
+	./$(NAME) config/valid/redir_practice.conf
+	@echo "== Tests Completed =="
+
 debug: fclean
 	$(MAKE) LOG_LEVEL=2
 	$(MAKE) run
@@ -67,9 +72,12 @@ quiet: fclean
 	$(MAKE) LOG_LEVEL=4
 	$(MAKE) run
 
-test:
+siegetest:
 	@echo "==  Performance Tests  =="
 	siege -c 10 -r 5 --time=10S --log=/tmp/siege.log http://localhost:8080
 	@echo "== Tests Completed =="
 
-.PHONY: all clean fclean re run test
+redirtest:
+	@bash tests/test_redirects.sh
+
+.PHONY: all clean fclean re run redir debug quiet test redirtest

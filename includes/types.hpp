@@ -10,7 +10,8 @@ typedef std::map<std::string, std::string> StrToStrMap;
 
 // config
 typedef std::map<std::string, std::vector<std::string> > ConfigMap;
-typedef std::map<std::string, std::map<std::string, std::vector<std::string > > > LocationMap;
+typedef std::map<std::string, std::map<std::string, std::vector<std::string> > >
+    LocationMap;
 typedef std::vector<std::pair<ConfigMap, LocationMap> > ServerAndLocationConfigs;
 
 // iterator

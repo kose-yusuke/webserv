@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/31 18:48:19 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/02 13:01:43 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,7 +141,25 @@ std::string trim(const std::string &s) {
   return trim_left(trimmed);
 }
 
-size_t convert_str_to_size(const std::string &s) {
+int str_to_int(const std::string &s) {
+  char *endptr;
+  errno = 0;
+
+  long val = std::strtol(s.c_str(), &endptr, 10);
+  if (errno != 0 || endptr == s.c_str()) {
+    throw std::runtime_error("Invalid string to convert to number: " + s);
+  }
+  if (*endptr != '\0') {
+    throw std::runtime_error("Invalid suffix in number: " + s);
+  }
+  if (val < std::numeric_limits<int>::min() ||
+      val > std::numeric_limits<int>::max()) {
+    throw std::runtime_error("Value out of range for int: " + s);
+  }
+  return val;
+}
+
+size_t str_to_size(const std::string &s) {
   char *endptr;
   errno = 0;
 
