@@ -8,8 +8,8 @@
 class Server;
 
 enum IOStatus {
-  IO_SUCCESS,  // 処理完了
   IO_CONTINUE, // 作業継続
+  IO_DONE,     // 処理完了: recv 次のrequest待ち, write 監視解除
   IO_CLOSED,   // client disconnectd (recv == 0)
   IO_ERROR     // I/O system call 失敗 (recv/send == -1)
 };

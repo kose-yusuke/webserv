@@ -191,14 +191,13 @@ void Multiplexer::read_from_client(int client_fd) {
   Client *client = get_client_from_map(client_fd);
 
   switch (client->on_read()) {
-  case IO_SUCCESS:
-    monitor_write(client_fd);
-    break;
+
   case IO_CONTINUE:
     break;
-  case IO_CLOSED:
-    remove_client(client_fd);
+  case IO_DONE:
+    monitor_write(client_fd);
     break;
+  case IO_CLOSED:
   case IO_ERROR:
     remove_client(client_fd);
     break;
@@ -213,12 +212,9 @@ void Multiplexer::write_to_client(int client_fd) {
   Client *client = get_client_from_map(client_fd);
 
   switch (client->on_write()) {
-  case IO_SUCCESS:
-    unmonitor_write(client_fd);
-    break;
   case IO_CONTINUE:
     break;
-  case IO_CLOSED:
+  case IO_DONE:
     unmonitor_write(client_fd);
     break;
   case IO_ERROR:

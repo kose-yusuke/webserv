@@ -19,20 +19,20 @@ IOStatus Client::on_read() {
   char buffer[buf_size];
   ssize_t bytes_read = recv(fd, buffer, sizeof(buffer), 0);
   if (bytes_read == -1) {
-    return IO_ERROR; // 異常終了
+    return IO_ERROR; // 異常終了: client側でのexitを含む
   }
   if (bytes_read == 0) {
-    return IO_CLOSED; // 正常終了（切断）
+    return IO_CLOSED; // 正常終了: client側でのclose()
   }
   parser.append_data(buffer, bytes_read);
-  // parse 成功時, write fd監視開始
-  return on_parse() ? IO_SUCCESS : IO_CONTINUE;
+  // parse 成功時 (IO_DONE) は write fd の監視開始
+  return on_parse() ? IO_DONE : IO_CONTINUE;
 }
 
 IOStatus Client::on_write() {
   LOG_DEBUG_FUNC();
   if (!has_response()) {
-    return IO_CLOSED; // 送信可能なresponseがない
+    return IO_DONE; // 送信可能なresponseがない
   }
   if (response_buffer.empty()) {
     response_buffer = response.get_next_response();
@@ -41,11 +41,8 @@ IOStatus Client::on_write() {
 
   ssize_t bytes_sent = send(fd, response_buffer.c_str() + response_sent,
                             response_buffer.size() - response_sent, 0);
-  if (bytes_sent == -1) {
-    return IO_ERROR; // 異常終了
-  }
-  if (bytes_sent == 0) {
-    return IO_CONTINUE; // 相手のshutdownかも？ retry
+  if (bytes_sent == -1 || bytes_sent == 0) {
+    return IO_ERROR; // 異常終了 send() 失敗
   }
 
   response_sent += bytes_sent;
@@ -53,8 +50,8 @@ IOStatus Client::on_write() {
     response_buffer.clear();
     response.pop_response();
   }
-  // continue: write続行, success: write完了
-  return has_response() ? IO_CONTINUE : IO_SUCCESS;
+  // continue: write続行, done: write完了
+  return has_response() ? IO_CONTINUE : IO_DONE;
 }
 
 bool Client::on_parse() {
