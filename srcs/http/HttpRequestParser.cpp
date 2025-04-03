@@ -53,8 +53,13 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
   std::vector<char>::iterator it = std::search(
       recv_buffer.begin(), recv_buffer.end(), kCRLFCRLF, kCRLFCRLF + 4);
   if (it == recv_buffer.end()) {
-    return PARSE_HEADER; // header未受信
+    if (recv_buffer.size() >= k_max_request_line) {
+      request.set_status_code(431); // Header Fields Too Large
+      return PARSE_ERROR;
+    }
+    return PARSE_HEADER;
   }
+
   size_t header_end = std::distance(recv_buffer.begin(), it);
   std::string header_text(recv_buffer.begin(),
                           recv_buffer.begin() + header_end);
@@ -76,7 +81,7 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
       return PARSE_ERROR;
     }
   }
-  if (!validate_headers_content()) {
+  if (request.method == "POST" && !validate_headers_content()) {
     return PARSE_ERROR;
   }
   log(LOG_DEBUG, "Parse Success !!");
@@ -84,6 +89,9 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
 }
 
 HttpRequestParser::ParseState HttpRequestParser::next_parse_state() const {
+  if (request.method == "GET" || request.method == "DELETE") {
+    return PARSE_DONE;
+  }
   if (request.is_in_headers("Transfer-Encoding")) {
     return PARSE_CHUNK;
   }
@@ -269,9 +277,6 @@ bool HttpRequestParser::validate_request_content() {
 
 bool HttpRequestParser::validate_headers_content() {
   LOG_DEBUG_FUNC();
-  if (request.method != "POST") {
-    return false;
-  }
 
   // Transfer-Encoding  あり. but not chunked
   if (request.is_in_headers("Transfer-Encoding") &&

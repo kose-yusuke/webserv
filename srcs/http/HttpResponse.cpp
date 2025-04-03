@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/02 14:12:46 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/03 17:04:12 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -149,9 +149,20 @@ std::string HttpResponse::get_status_message(int status_code) {
     return "Not Found";
   case 405:
     return "Method Not Allowed";
+  case 413:
+    return "Payload Too Large";
+  case 414:
+    return "URI Too Long";
+  case 431:
+    return "Request Header Fields Too Large";
   case 500:
     return "Internal Server Error";
+  case 501:
+    return "Not Implemented";
+  case 505:
+    return "HTTP Version Not Supported";
   default:
+    logfd(LOG_ERROR, "Undefined status code detected: ", status_code);
     return "Status Not Defined";
   }
 }
