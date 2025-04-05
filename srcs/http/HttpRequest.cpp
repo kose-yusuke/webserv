@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/02 14:05:17 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/05 20:32:27 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -326,12 +326,7 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
 void HttpRequest::handle_post_request() {
   std::string full_path = _root + path;
 
-  std::cout << path << std::endl;
-  std::cout << is_location_has_cgi() << std::endl;
-  std::cout << is_cgi_request(path) << std::endl;
-
   if (is_location_has_cgi() && is_cgi_request(path)) {
-    std::cout << "test  - test" << std::endl;
     handle_cgi_request(full_path);
     return;
   }
@@ -379,9 +374,9 @@ void HttpRequest::handle_post_request() {
 
 void HttpRequest::handle_delete_request(const std::string path) {
   std::string file_path = get_requested_resource(path);
+  std::cout << file_path << std::endl;
 
   if (file_path.empty()) {
-    // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
     response.generate_custom_error_page(404, "404.html");
     return;
   }
@@ -390,14 +385,13 @@ void HttpRequest::handle_delete_request(const std::string path) {
 
   // 書き込み権限
   if (access(file_path.c_str(), W_OK) != 0) {
-    // HttpResponse::send_error_response(client_socket, 403, "Forbidden");
     response.generate_error_response(403, "Forbidden");
     return;
   }
 
   int status = -1;
   if (type == Directory) {
-    handle_directory_delete(file_path);
+    status = handle_directory_delete(file_path);
   } else if (type == File) {
     if (is_cgi_request(file_path))
       handle_cgi_request(file_path);
@@ -407,17 +401,12 @@ void HttpRequest::handle_delete_request(const std::string path) {
         response.generate_custom_error_page(404, "404.html");
     }
   } else {
-    // HttpResponse::send_custom_error_page(client_socket, 404, "404.html");
     response.generate_custom_error_page(404, "404.html");
   }
 
   if (status == 0) {
-    // HttpResponse::send_response(client_socket, 204, "", "text/plain");
-    response.generate_response(204, "", "text/plain"); // 成功
+    response.generate_response(204, "", "text/plain");
   } else {
-    // HttpResponse::send_error_response(client_socket, 500,
-    //                              "Internal Server Error");
-    // 失敗
     response.generate_error_response(500, "Internal Server Error");
   }
 }
@@ -440,11 +429,65 @@ int HttpRequest::handle_directory_delete(const std::string &dir_path) {
     return -1;
   }
 
+  // if (is_location_has_cgi() && is_cgi_request(dir_path)) {
+  //   handle_cgi_request(dir_path);
+  //   return 0;
+  // }
+
+  if (has_index_file(dir_path)) {
+    response.generate_error_response(403, "Forbidden");
+    return -1;
+  }
+
+  if (delete_all_directory_content(dir_path) != 0) {
+    response.generate_error_response(500, "Internal Server Error");
+    return -1;
+  }
+  
   std::string html = dir_path;
   return 0;
 }
 
-int HttpRequest::delete_all_directory_content() { return 1; }
+int HttpRequest::delete_all_directory_content(const std::string &dir_path) { 
+  DIR *dir = opendir(dir_path.c_str());
+  if (!dir) 
+    return -1;
+
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+    std::string name = entry->d_name;
+    if (name == "." || name == "..")
+      continue;
+
+    std::string full_path = dir_path + name;
+
+    struct stat st;
+    if (stat(full_path.c_str(), &st) == -1) {
+      closedir(dir);
+      return -1;
+    }
+
+    if (S_ISDIR(st.st_mode)) {
+      full_path += "/";
+      if (delete_all_directory_content(full_path) != 0) {
+        closedir(dir);
+        return -1;
+      }
+      if (rmdir(full_path.c_str()) != 0) {
+        closedir(dir);
+        return -1;
+      }
+    } else {
+      if (std::remove(full_path.c_str()) != 0) {
+        closedir(dir);
+        return -1;
+      }
+    }
+  }
+
+  closedir(dir);
+  return 0;
+}
 
 /*Cgi関連の処理*/
 bool HttpRequest::is_cgi_request(const std::string &path) {
@@ -460,8 +503,6 @@ bool HttpRequest::is_cgi_request(const std::string &path) {
     }
   }
   return false;
-  // return (extension == ".cgi" || extension == ".php" || extension == ".py" ||
-  // extension == ".pl"); → confファイルで指示あり？
 }
 
 void HttpRequest::print_best_match_config() const {
@@ -487,16 +528,39 @@ bool HttpRequest::is_location_has_cgi() {
 }
 
 void HttpRequest::handle_cgi_request(const std::string &cgi_path) {
-  int input_pipe[2], output_pipe[2];
-  if (pipe(input_pipe) == -1) {
-    std::cerr << "pipe failed" << std::endl;
-    std::exit(1);
-  }
-
+  int output_pipe[2];
+  
   if (pipe(output_pipe) == -1) {
     std::cerr << "pipe failed" << std::endl;
     std::exit(1);
   }
+
+  // TODO: String body -> Vector int body_dataのため
+  // 応急処置としてここでstringにしている
+  std::string body(body_data.begin(), body_data.end());
+
+  std::string tmp_path;
+  int tmp_fd = -1;
+  for (int i = 0; i < 10; ++i) {
+    tmp_path = "/tmp/cgi_tmp_" + make_unique_filename();
+    tmp_fd = open(tmp_path.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0600);
+    if (tmp_fd != -1)
+      break;
+  }
+  if (tmp_fd == -1) {
+    std::cerr << "Failed to create temp file: " << strerror(errno) << std::endl;
+    std::exit(1);
+  }
+
+  std::ofstream ofs(tmp_path.c_str());
+  if (!ofs) {
+    std::cerr << "Failed to open temp file for writing" << std::endl;
+    close(tmp_fd);
+    std::exit(1);
+  }
+  ofs << body;
+  ofs.close();
+  close(tmp_fd);
 
   pid_t pid = fork();
   if (pid < 0) {
@@ -505,13 +569,18 @@ void HttpRequest::handle_cgi_request(const std::string &cgi_path) {
   }
 
   if (pid == 0) {
-    dup2(input_pipe[0], STDIN_FILENO);
+    int in_fd = open(tmp_path.c_str(), O_RDONLY);
+    if (in_fd == -1) {
+      std::cerr << "open temp file failed: " << strerror(errno) << std::endl;
+      std::exit(1);
+    }
+
+    dup2(in_fd, STDIN_FILENO);
     dup2(output_pipe[1], STDOUT_FILENO);
-    close(input_pipe[1]);
+    close(in_fd);
     close(output_pipe[0]);
 
     std::string contentLength = get_value_from_headers("Content-Length");
-    ;
     std::string contentLengthStr = "CONTENT_LENGTH=" + contentLength;
     std::string requestMethodStr = "REQUEST_METHOD=POST";
     std::string contentTypeStr =
@@ -540,25 +609,21 @@ void HttpRequest::handle_cgi_request(const std::string &cgi_path) {
     perror("execve");
     std::exit(1);
   } else {
-    close(input_pipe[0]);
-    // TODO: String body -> Vecotr int body_dataのため
-    // 応急処置としてここでstringにしている
-    std::string body(body_data.begin(), body_data.end());
-    write(input_pipe[1], body.c_str(), body.size());
-    close(input_pipe[1]);
-
     close(output_pipe[1]);
+    
     std::string cgi_output;
     char buffer[1024];
     ssize_t bytes_read;
     while ((bytes_read = read(output_pipe[0], buffer, sizeof(buffer) - 1)) >
-           0) {
+            0) {
       buffer[bytes_read] = '\0';
       cgi_output += buffer;
     }
     close(output_pipe[0]);
     int status;
     waitpid(pid, &status, 0);
+
+    std::remove(tmp_path.c_str());
 
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
       response.generate_response(200, cgi_output, "text/html");

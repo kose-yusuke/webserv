@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/01 14:19:17 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/05 16:08:13 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     multiplexer = &Multiplexer::get_instance();
     for (size_t i = 0; i < server_location_configs.size(); i++)
       servers.push_back(new Server(server_location_configs[i].first,
-                                   server_location_configs[i].second));
+                                    server_location_configs[i].second));
     for (size_t i = 0; i < servers.size(); i++)
       servers[i]->createSockets();
 
