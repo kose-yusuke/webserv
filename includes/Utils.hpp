@@ -81,6 +81,7 @@ bool file_exists(const std::string &path);
 bool ends_with(const std::string &str, const std::string &suffix);
 bool has_index_file(const std::string &dir_path);
 bool is_directory(const std::string &path);
+std::string make_unique_filename();
 
 // log
 enum LogLevel { LOG_FUNC, LOG_INFO, LOG_DEBUG, LOG_WARNING, LOG_ERROR };

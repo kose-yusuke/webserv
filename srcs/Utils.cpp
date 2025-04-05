@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Utils.cpp                                          :+:      :+:    :+:   */
+/*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/02 13:01:43 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/05 19:30:00 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,6 +51,12 @@ std::string read_file(const std::string &file_path) {
   std::ostringstream buffer;
   buffer << file.rdbuf();
   return buffer.str();
+}
+
+std::string make_unique_filename() {
+  std::stringstream ss;
+  ss << getpid() << "_" << std::rand();
+  return ss.str();
 }
 
 // 拡張子に基づいてMIMEタイプを返す関数
