@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 18:41:07 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 18:55:16 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,7 +82,7 @@ std::map<int, std::string> HttpRequest::extract_error_page_map(const std::vector
   while (i < tokens.size()) {
       std::vector<int> codes;
 
-      while (i < tokens.size() && std::all_of(tokens[i].begin(), tokens[i].end(), ::isdigit)) {
+      while (i < tokens.size() && is_all_digits(tokens[i])) {
           codes.push_back(std::atoi(tokens[i].c_str()));
           ++i;
       }

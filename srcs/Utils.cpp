@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 18:40:11 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 18:54:39 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,14 @@ std::string make_unique_filename() {
   std::stringstream ss;
   ss << getpid() << "_" << std::rand();
   return ss.str();
+}
+
+bool is_all_digits(const std::string& str) {
+  for (size_t i = 0; i < str.size(); ++i) {
+      if (!std::isdigit(str[i]))
+          return false;
+  }
+  return true;
 }
 
 // 拡張子に基づいてMIMEタイプを返す関数

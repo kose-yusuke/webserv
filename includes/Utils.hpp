@@ -101,3 +101,5 @@ std::string trim(const std::string &s);
 int str_to_int(const std::string &s);
 size_t str_to_size(const std::string &s);
 size_t parse_hex(const std::string &s);
+
+bool is_all_digits(const std::string& str);
