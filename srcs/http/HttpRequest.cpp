@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 17:29:35 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 17:43:32 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,9 +39,18 @@ void HttpRequest::init_cgi_extensions() {
   }
 }
 
+void HttpRequest::init_autoindex() {
+  ConstConfigIt it = best_match_config.find("autoindex");
+  if (it != best_match_config.end() && !it->second.empty()) {
+    is_autoindex_enabled = (it->second[0] == "on");
+  } else {
+    is_autoindex_enabled = false;
+  }
+}
+
 void HttpRequest::conf_init() {
-  is_autoindex_enabled = false;
   this->best_match_config = get_best_match_config(path);
+  
   if (!best_match_config["root"].empty())
     _root = best_match_config["root"][0];
   else if (!server_config["root"].empty())
@@ -49,6 +58,7 @@ void HttpRequest::conf_init() {
   else
     print_error_message("No root found in config file.");
   init_cgi_extensions();
+  init_autoindex();
   if (best_match_config.count("error_page")) {
     error_page_map = extract_error_page_map(best_match_config["error_page"]);
   }

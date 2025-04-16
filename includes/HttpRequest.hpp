@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 17:24:35 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 17:43:16 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -100,6 +100,7 @@ private:
   int delete_all_directory_content(const std::string &dir_path);
   int handle_file_delete(const std::string &file_path);
   // autoindex (directory listing)
+  void init_autoindex();
   std::string generate_directory_listing(const std::string &dir_path);
   // Utils
   std::string get_requested_resource(const std::string &path);
