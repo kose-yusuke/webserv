@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 17:26:28 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 17:29:35 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -736,7 +736,7 @@ RedirStatus HttpRequest::handle_redirection() {
   }
   // return があるが、empty() または `status_code path` 形式でない
   if (return_it->second.empty() || return_it->second.size() != 2) {
-    response.generate_error_response(400); // TODO: status 要確認
+    handle_error(400); // TODO: status 要確認
     return REDIR_FAILED;
   }
   int redir_status_code;
@@ -744,12 +744,12 @@ RedirStatus HttpRequest::handle_redirection() {
     redir_status_code = str_to_int(return_it->second.at(0));
   } catch (const std::exception &e) {
     log(LOG_ERROR, e.what());
-    response.generate_error_response(400); // TODO: status 要確認
+    handle_error(400); // TODO: status 要確認
     return REDIR_FAILED;
   }
   std::string new_location = return_it->second.at(1);
   if (new_location.size() == 0) {
-    response.generate_error_response(400); // TODO: status 要確認
+    handle_error(400); // TODO: status 要確認
     return REDIR_FAILED;
   }
   response.generate_redirect(redir_status_code, new_location);
