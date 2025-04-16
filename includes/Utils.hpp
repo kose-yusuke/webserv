@@ -79,7 +79,7 @@ int print_error_message(const std::string &message);
 // utils
 bool file_exists(const std::string &path);
 bool ends_with(const std::string &str, const std::string &suffix);
-bool has_index_file(const std::string &dir_path);
+bool has_index_file(const std::string &dir_path,std::string index_file_name);
 bool is_directory(const std::string &path);
 std::string make_unique_filename();
 

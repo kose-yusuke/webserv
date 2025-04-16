@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 17:52:07 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 18:41:07 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -322,14 +322,12 @@ void HttpRequest::handle_directory_request(std::string path) {
 
   // `index.html` が存在するか確認 - 本当はこの辺の　public
   // になっているところはrootとかで置き換える必要あり
-  if (has_index_file(_root + path)) {
+  if (has_index_file(_root + path, index_file_name)) {
     handle_file_request(_root + path + index_file_name);
   } else {
     // autoindexがONの場合、ディレクトリリストを生成する
     if (is_autoindex_enabled) {
       std::string dir_listing = generate_directory_listing(_root + path);
-      // HttpResponse::send_response(client_socket, 200, dir_listing,
-      // "text/html");
       response.generate_response(200, dir_listing, "text/html");
     } else {
       // 403 forbidden
@@ -472,7 +470,7 @@ int HttpRequest::handle_directory_delete(const std::string &dir_path) {
   //   return 0;
   // }
 
-  if (has_index_file(dir_path)) {
+  if (has_index_file(dir_path,index_file_name)) {
     response.generate_error_response(403, "Forbidden");
     return -1;
   }
