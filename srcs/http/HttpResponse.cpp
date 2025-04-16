@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/03 17:04:12 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/16 17:26:41 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,10 +55,10 @@ void HttpResponse::generate_response(int status_code,
 }
 
 void HttpResponse::generate_custom_error_page(int status_code,
-                                              const std::string &error_page) {
+                                              const std::string &error_page, std::string _root) {
   LOG_DEBUG_FUNC();
   try {
-    std::string file_content = read_file("./public/" + error_page);
+    std::string file_content = read_file(_root + error_page);
 
     std::ostringstream response;
     response << "HTTP/1.1 " << status_code << " ";

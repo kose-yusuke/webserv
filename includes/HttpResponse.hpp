@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:51 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/22 16:44:05 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/16 15:11:16 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@ public:
   void pop_response();
 
   void generate_custom_error_page(int status_code,
-                                  const std::string &error_page);
+                                  const std::string &error_page, std::string _root);
   void generate_error_response(int status_code, const std::string &message);
   void generate_error_response(int status_code);
   void generate_response(int status_code, const std::string &content,

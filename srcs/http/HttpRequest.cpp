@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/05 20:32:27 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 17:26:28 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,6 +49,34 @@ void HttpRequest::conf_init() {
   else
     print_error_message("No root found in config file.");
   init_cgi_extensions();
+  if (best_match_config.count("error_page")) {
+    error_page_map = extract_error_page_map(best_match_config["error_page"]);
+  }
+}
+
+std::map<int, std::string> HttpRequest::extract_error_page_map(const std::vector<std::string>& tokens) {
+  std::map<int, std::string> result;
+  size_t i = 0;
+
+  while (i < tokens.size()) {
+      std::vector<int> codes;
+
+      while (i < tokens.size() && std::all_of(tokens[i].begin(), tokens[i].end(), ::isdigit)) {
+          codes.push_back(std::atoi(tokens[i].c_str()));
+          ++i;
+      }
+
+      if (i >= tokens.size()) {
+          throw std::runtime_error("error_page parse error: missing path after status codes");
+      }
+
+      std::string path = tokens[i++];
+      for (size_t j = 0; j < codes.size(); ++j) {
+          result[codes[j]] = path;
+      }
+  }
+
+  return result;
 }
 
 void HttpRequest::handle_http_request() {
@@ -201,7 +229,7 @@ void HttpRequest::handle_get_request(std::string path) {
 
   std::string file_path = get_requested_resource(path);
   if (file_path.empty()) {
-    response.generate_custom_error_page(404, "404.html");
+    handle_error(404);
     return;
   }
 
@@ -215,8 +243,9 @@ void HttpRequest::handle_get_request(std::string path) {
     else
       handle_file_request(file_path);
   } else {
-    response.generate_custom_error_page(404, "404.html");
+    handle_error(404);
   }
+  
   if (type == Directory) {
     handle_directory_request(path);
   } else if (type == File) {
@@ -225,7 +254,7 @@ void HttpRequest::handle_get_request(std::string path) {
     else
       handle_file_request(file_path);
   } else {
-    response.generate_custom_error_page(404, "404.html");
+    handle_error(404);
   }
 }
 
@@ -253,7 +282,7 @@ void HttpRequest::handle_file_request(const std::string &file_path) {
 
   std::ifstream file(file_path.c_str(), std::ios::in);
   if (!file.is_open()) {
-    response.generate_custom_error_page(404, "404.html");
+    handle_error(404);
     return;
   }
   std::ostringstream buffer;
@@ -284,7 +313,7 @@ void HttpRequest::handle_directory_request(std::string path) {
     } else {
       // 403 forbidden
       // HttpResponse::send_custom_error_page(client_socket, 403, "403.html");
-      response.generate_custom_error_page(403, "403.html");
+      handle_error(403);
     }
   }
 }
@@ -336,18 +365,6 @@ void HttpRequest::handle_post_request() {
     return;
   }
 
-  // すでに HttpRequestParserがbodyをrequestから分離済みのため, コメントアウト
-  // size_t body_start = request.find("\r\n\r\n");
-  // if (body_start == std::string::npos) {
-  //     response.generate_error_response(400, "Bad Request: No Header-Body
-  //     separator"); return;
-  // }
-
-  // TODO:
-  // 変更を最小限にするため、一旦 stringに変換している
-  // バイナリをbodyで受け取る必要があると思うので、要修正
-  // std::string body = request.substr(body_start + 4);
-
   std::string body(body_data.begin(), body_data.end());
   std::cout << "Received POST body: " << body << std::endl;
 
@@ -356,7 +373,7 @@ void HttpRequest::handle_post_request() {
     return;
   }
 
-  std::string upload_path = "./public" + path;
+  std::string upload_path = _root + path;
   std::ofstream ofs(upload_path.c_str());
   if (!ofs) {
     std::cerr << "Failed to open file: " << upload_path << std::endl;
@@ -377,7 +394,7 @@ void HttpRequest::handle_delete_request(const std::string path) {
   std::cout << file_path << std::endl;
 
   if (file_path.empty()) {
-    response.generate_custom_error_page(404, "404.html");
+    handle_error(404);
     return;
   }
 
@@ -398,10 +415,10 @@ void HttpRequest::handle_delete_request(const std::string path) {
     else {
       status = handle_file_delete(file_path);
       if (status == -1)
-        response.generate_custom_error_page(404, "404.html");
+        handle_error(404);
     }
   } else {
-    response.generate_custom_error_page(404, "404.html");
+    handle_error(404);
   }
 
   if (status == 0) {
@@ -737,4 +754,13 @@ RedirStatus HttpRequest::handle_redirection() {
   }
   response.generate_redirect(redir_status_code, new_location);
   return REDIR_SUCCESS;
+}
+
+void HttpRequest::handle_error(int status_code) {
+  if (error_page_map.count(status_code)) {
+      const std::string& path = error_page_map[status_code];
+      response.generate_custom_error_page(status_code, path, _root);
+  } else {
+      response.generate_error_response(status_code);
+  }
 }

@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/05 20:19:12 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 17:24:35 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,7 @@ public:
   bool is_autoindex_enabled;
   std::vector<std::string> cgi_extensions;
   std::vector<std::string> allow_methods;
+  std::map<int, std::string> error_page_map;
 
   ConfigMap server_config;
   LocationMap location_configs;
@@ -80,6 +81,7 @@ private:
   static const size_t k_default_max_body;
 
   void conf_init();
+  std::map<int, std::string> extract_error_page_map(const std::vector<std::string>& tokens);
   void init_cgi_extensions();
   void merge_config(ConfigMap &base, const ConfigMap &override);
   // GETの処理
@@ -109,4 +111,6 @@ private:
   HttpRequest &operator=(const HttpRequest &other);
 
   void print_best_match_config() const;
+
+  void handle_error(int status_code);
 };
