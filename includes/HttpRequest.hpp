@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 17:43:16 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 17:49:01 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,7 @@ public:
   std::map<std::string, std::string> headers;
 
   bool is_autoindex_enabled;
+  std::string index_file_name;
   std::vector<std::string> cgi_extensions;
   std::vector<std::string> allow_methods;
   std::map<int, std::string> error_page_map;
@@ -83,6 +84,7 @@ private:
   void conf_init();
   std::map<int, std::string> extract_error_page_map(const std::vector<std::string>& tokens);
   void init_cgi_extensions();
+  void init_file_index();
   void merge_config(ConfigMap &base, const ConfigMap &override);
   // GETの処理
   ResourceType get_resource_type(const std::string &path);

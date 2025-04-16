@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 17:43:32 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 17:52:07 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,6 +48,16 @@ void HttpRequest::init_autoindex() {
   }
 }
 
+void HttpRequest::init_file_index() {
+  ConstConfigIt index_it = best_match_config.find("index");
+  if (index_it != best_match_config.end() && !index_it->second.empty()) {
+      index_file_name = index_it->second[0];
+  } else {
+      index_file_name = "index.html";  // デフォルト
+}
+}
+
+
 void HttpRequest::conf_init() {
   this->best_match_config = get_best_match_config(path);
   
@@ -59,6 +69,7 @@ void HttpRequest::conf_init() {
     print_error_message("No root found in config file.");
   init_cgi_extensions();
   init_autoindex();
+  init_file_index();
   if (best_match_config.count("error_page")) {
     error_page_map = extract_error_page_map(best_match_config["error_page"]);
   }
@@ -312,7 +323,7 @@ void HttpRequest::handle_directory_request(std::string path) {
   // `index.html` が存在するか確認 - 本当はこの辺の　public
   // になっているところはrootとかで置き換える必要あり
   if (has_index_file(_root + path)) {
-    handle_file_request(_root + path + "index.html");
+    handle_file_request(_root + path + index_file_name);
   } else {
     // autoindexがONの場合、ディレクトリリストを生成する
     if (is_autoindex_enabled) {
