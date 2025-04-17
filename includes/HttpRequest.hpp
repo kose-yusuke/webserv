@@ -3,18 +3,20 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/05 20:19:12 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/17 16:52:55 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include "ResponseTypes.hpp"
 #include "types.hpp"
 #include <algorithm>
 #include <dirent.h>
+#include <fcntl.h>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -26,7 +28,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
-#include <fcntl.h> 
 
 class HttpResponse;
 
@@ -55,6 +56,9 @@ public:
   ~HttpRequest();
   void handle_http_request();
 
+  ConnectionPolicy get_connection_policy() const;
+  void set_connection_policy(ConnectionPolicy policy);
+
   void set_status_code(int status);
   int get_status_code() const;
   void load_max_body_size();
@@ -73,6 +77,7 @@ public:
 
 private:
   HttpResponse &response;
+  ConnectionPolicy connection_policy;
   int status_code;
   std::string _root;
   size_t max_body_size;
