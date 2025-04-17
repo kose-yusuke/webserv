@@ -34,6 +34,7 @@ void KqueueMultiplexer::run() {
       if (errno == EINTR) {
         continue;
       }
+      log(LOG_ERROR, "kqueue() is not working: "); // errno出す
       throw std::runtime_error("kqueue() failed");
     }
 
@@ -71,12 +72,7 @@ void KqueueMultiplexer::unmonitor_write(int fd) {
 
 void KqueueMultiplexer::unmonitor(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
-  struct kevent ev_read;
-  struct kevent ev_write;
-  EV_SET(&ev_read, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
-  EV_SET(&ev_write, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-  change_list.push_back(ev_read);
-  change_list.push_back(ev_write);
+  // do nothing here for kqueue
 }
 
 bool KqueueMultiplexer::is_readable(struct kevent &ev) const {
