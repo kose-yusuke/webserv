@@ -232,14 +232,16 @@ bool HttpRequestParser::parse_header_line(std::string &line) {
 
   std::string key = line.substr(0, pos); // keyはtrimしない
   std::string value = trim(line.substr(pos + 1));
-  if (!request.add_header(key, value)) {
-    log(LOG_ERROR, "Duplicate header found: " + key);
-    // TODO: issue #59 あとで
-    // TODO: exceptionあるので注意 ex. CSV, or known exception
-    return false;
-  }
+  // if (!request.add_header(key, value)) {
+  //   log(LOG_ERROR, "Duplicate header found: " + key);
+  //   // TODO: issue #59 あとで
+  //   // TODO: exceptionあるので注意 ex. CSV, or known exception
+  //   return false;
+  // }
+  // TODO: singleton fields, list-based fields の確認
+  request.add_header(key, value);
 
-  log(LOG_DEBUG, "Parsed - Key: " + key + ": " + request.headers[key]);
+  log(LOG_DEBUG, "Parsed - Key: " + key + ": " + request.get_header_value(key));
   return true;
 }
 
@@ -287,7 +289,7 @@ bool HttpRequestParser::validate_headers_content() {
 
   // Transfer-Encoding  あり. but not chunked
   if (request.is_in_headers("Transfer-Encoding") &&
-      request.get_value_from_headers("Transfer-Encoding") != "chunked") {
+      request.get_header_value("Transfer-Encoding") != "chunked") {
     request.set_status_code(501);
     return false;
   }
@@ -310,7 +312,7 @@ bool HttpRequestParser::validate_headers_content() {
   // Request body larger than client max body size defined in server config
   if (request.is_in_headers("Content-Length")) {
     size_t client_max_body_size = request.get_max_body_size();
-    std::string str = request.get_value_from_headers("Content-Length");
+    std::string str = request.get_header_value("Content-Length");
     try {
       body_size = str_to_size(str);
     } catch (const std::exception &e) {
@@ -331,7 +333,7 @@ void HttpRequestParser::determine_connection_policy() {
     return;
   }
 
-  const std::string conn_header = request.get_value_from_headers("Connection");
+  const std::string conn_header = request.get_header_value("Connection");
   if (conn_header == "close") {
     request.set_connection_policy(CP_WILL_CLOSE);
   } else if (request.version == "HTTP/1.1") {

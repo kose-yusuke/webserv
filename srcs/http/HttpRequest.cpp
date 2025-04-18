@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/17 17:57:49 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/19 03:18:08 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -585,11 +585,11 @@ void HttpRequest::handle_cgi_request(const std::string &cgi_path) {
     close(in_fd);
     close(output_pipe[0]);
 
-    std::string contentLength = get_value_from_headers("Content-Length");
+    std::string contentLength = get_header_value("Content-Length");
     std::string contentLengthStr = "CONTENT_LENGTH=" + contentLength;
     std::string requestMethodStr = "REQUEST_METHOD=POST";
     std::string contentTypeStr =
-        "CONTENT_TYPE=" + get_value_from_headers("Content-Type");
+        "CONTENT_TYPE=" + get_header_value("Content-Type");
     std::string queryString = "QUERY_STRING=";
 
     if (method == "POST") {
@@ -681,24 +681,30 @@ int HttpRequest::get_status_code() const { return status_code; }
 
 size_t HttpRequest::get_max_body_size() const { return max_body_size; }
 
-bool HttpRequest::is_in_headers(const std::string &key) const {
-  return (headers.find(key) != headers.end());
+const std::string &HttpRequest::get_header_value(const std::string &key) const {
+  static const std::string k_empty_string;
+  ConstHeaderMapIt it = headers.find(key);
+  if (it != headers.end() && !it->second.empty()) {
+    return it->second.at(0);
+  }
+  return k_empty_string;
 }
 
-std::string HttpRequest::get_value_from_headers(const std::string &key) const {
-  ConstStrToStrMapIt it = headers.find(key);
+const std::vector<std::string> &HttpRequest::get_header_values(const std::string &key) const {
+  static const std::vector<std::string> k_empty_vector;
+  ConstHeaderMapIt it = headers.find(key);
   if (it != headers.end()) {
     return it->second;
   }
-  return "";
+  return k_empty_vector;
 }
 
-bool HttpRequest::add_header(std::string &key, std::string &value) {
-  if (headers.find(key) != headers.end()) {
-    return false;
-  }
-  headers[key] = value;
-  return true;
+void HttpRequest::add_header(const std::string &key, const std::string &value) {
+  headers[key].push_back(value);
+}
+
+bool HttpRequest::is_in_headers(const std::string &key) const {
+  return (headers.find(key) != headers.end());
 }
 
 void HttpRequest::clear() {
