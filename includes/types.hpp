@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -23,7 +24,6 @@ typedef LocationMap::const_iterator ConstLocationIt;
 typedef StrToStrMap::iterator StrToStrMapIt;
 typedef StrToStrMap::const_iterator ConstStrToStrMapIt;
 
-
 // HeaderMap
 
 struct CaseInsensitiveLess {
@@ -36,12 +36,8 @@ struct CaseInsensitiveLess {
   }
 };
 
-typedef std::map<std::string, std::vector<std::string>, CaseInsensitiveLess> HeaderMap;
+typedef std::map<std::string, std::vector<std::string>, CaseInsensitiveLess>
+    HeaderMap;
 
 typedef HeaderMap::iterator HeaderMapIt;
 typedef HeaderMap::const_iterator ConstHeaderMapIt;
-
-
-
-
-
