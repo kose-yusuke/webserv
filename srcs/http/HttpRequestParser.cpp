@@ -233,13 +233,7 @@ bool HttpRequestParser::parse_header_line(std::string &line) {
   }
 
   std::string key = line.substr(0, pos); // keyはtrimしない
-  std::string value = trim(line.substr(pos + 1));
-  // if (!request.add_header(key, value)) {
-  //   log(LOG_ERROR, "Duplicate header found: " + key);
-  //   // TODO: issue #59 あとで
-  //   // TODO: exceptionあるので注意 ex. CSV, or known exception
-  //   return false;
-  // }
+  std::string value = line.substr(pos + 1); // add_header() でtrim
   // TODO: singleton fields, list-based fields の確認
   request.add_header(key, value);
 
