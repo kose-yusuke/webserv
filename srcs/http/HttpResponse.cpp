@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/18 00:14:28 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/19 21:56:54 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -160,6 +160,8 @@ const char *HttpResponse::get_status_message(int status_code) {
     return "Temporary Redirect";
   case 308:
     return "Permanent Redirect";
+  case 400:
+    return "Bad Request";
   case 403:
     return "Forbidden";
   case 404:
