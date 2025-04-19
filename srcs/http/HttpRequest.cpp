@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/19 03:18:08 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/19 21:32:45 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -690,7 +690,8 @@ const std::string &HttpRequest::get_header_value(const std::string &key) const {
   return k_empty_string;
 }
 
-const std::vector<std::string> &HttpRequest::get_header_values(const std::string &key) const {
+const std::vector<std::string> &
+HttpRequest::get_header_values(const std::string &key) const {
   static const std::vector<std::string> k_empty_vector;
   ConstHeaderMapIt it = headers.find(key);
   if (it != headers.end()) {
@@ -700,6 +701,7 @@ const std::vector<std::string> &HttpRequest::get_header_values(const std::string
 }
 
 void HttpRequest::add_header(const std::string &key, const std::string &value) {
+  // TODO: valueが空 ("") の時や、CSV形式の時の処理
   headers[key].push_back(value);
 }
 

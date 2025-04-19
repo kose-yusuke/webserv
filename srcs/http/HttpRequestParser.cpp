@@ -298,7 +298,7 @@ bool HttpRequestParser::validate_headers_content() {
   }
 
   // HTTP/1.0 かつ Transfer-Encoding ヘッダーあり
-  // TODO: 現在 HTTP/1.0 対応はないが 後方互換性が必要になる可能性を考慮して記述
+  // 現在 HTTP/1.0 対応はないが 後方互換性が必要になる可能性を考慮して記述
   if (request.version == "HTTP/1.0" &&
       request.is_in_headers("Transfer-Encoding")) {
     request.set_status_code(400);
@@ -306,11 +306,16 @@ bool HttpRequestParser::validate_headers_content() {
     return false;
   }
 
-  // Transfer-Encoding  あり. but not chunked
-  if (request.is_in_headers("Transfer-Encoding") &&
-      request.get_header_value("Transfer-Encoding") != "chunked") {
-    request.set_status_code(501);
-    return false;
+  // Transfer-Encoding あり chunked が最後のエンコーディングでない
+  // header valueには空の値（""）はないものとする
+  if (request.is_in_headers("Transfer-Encoding")) {
+    StrVector values = request.get_header_values("Transfer-Encoding");
+    if (values.empty() || values.back() != "chunked") {
+      // request.set_status_code(501);
+      request.set_status_code(400);
+      request.set_connection_policy(CP_MUST_CLOSE);
+      return false;
+    }
   }
 
   // Transfer-Encoding も Content-length もない POST
