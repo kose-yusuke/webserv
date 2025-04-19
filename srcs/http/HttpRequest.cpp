@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/19 21:32:45 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/19 21:54:51 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,6 +55,12 @@ void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
   conf_init();
   print_best_match_config();
+
+  if(status_code != 0) {
+    // TODO: kosekiさんが実装済みの、custom error pageの呼び出しを反映させる
+    response.generate_error_response(status_code, connection_policy);
+    return;
+  }
 
   if (handle_redirection() != REDIR_NONE) {
     return;
