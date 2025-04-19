@@ -20,6 +20,7 @@ HttpRequestParser::HttpRequestParser(HttpRequest &http_request)
 
 HttpRequestParser::~HttpRequestParser() {}
 
+// TODO: non-framing errorの時に、bodyを読み終えてから parse を終了する
 bool HttpRequestParser::parse() {
   LOG_DEBUG_FUNC();
   if (recv_buffer.empty()) {
@@ -73,6 +74,7 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
   recv_buffer.erase(recv_buffer.begin(), it + 4); // "\r\n\r\n"まで削除
   if (!std::getline(iss, line) || !parse_request_line(line)) {
     request.set_status_code(400);
+    request.set_connection_policy(CP_MUST_CLOSE);
     return PARSE_ERROR;
   }
   if (!validate_request_content()) {
