@@ -101,3 +101,5 @@ std::string trim(const std::string &s);
 int str_to_int(const std::string &s);
 size_t str_to_size(const std::string &s);
 size_t parse_hex(const std::string &s);
+std::vector<std::string> split_csv(const std::string &value);
+std::string to_lower(const std::string &s);

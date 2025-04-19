@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/19 21:54:51 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/19 22:59:59 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,7 +56,7 @@ void HttpRequest::handle_http_request() {
   conf_init();
   print_best_match_config();
 
-  if(status_code != 0) {
+  if (status_code != 0) {
     // TODO: kosekiさんが実装済みの、custom error pageの呼び出しを反映させる
     response.generate_error_response(status_code, connection_policy);
     return;
@@ -707,8 +707,22 @@ HttpRequest::get_header_values(const std::string &key) const {
 }
 
 void HttpRequest::add_header(const std::string &key, const std::string &value) {
-  // TODO: valueが空 ("") の時や、CSV形式の時の処理
-  headers[key].push_back(value);
+
+  if (value.empty()) {
+    return;
+  }
+
+  std::string lower_key = to_lower(key);
+
+  if (lower_key == "date" || key == "set-cookie") {
+    headers[lower_key].push_back(trim(value));
+    return;
+  }
+
+  std::vector<std::string> values = split_csv(value);
+  for (size_t i = 0; i < values.size(); ++i) {
+    headers[lower_key].push_back(trim(values[i]));
+  }
 }
 
 bool HttpRequest::is_in_headers(const std::string &key) const {
