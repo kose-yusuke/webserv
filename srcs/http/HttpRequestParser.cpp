@@ -232,7 +232,7 @@ bool HttpRequestParser::parse_header_line(std::string &line) {
     return false;
   }
 
-  std::string key = line.substr(0, pos); // keyはtrimしない
+  std::string key = line.substr(0, pos);    // keyはtrimしない
   std::string value = line.substr(pos + 1); // add_header() でtrim
   // TODO: singleton fields, list-based fields の確認
   request.add_header(key, value);
@@ -312,6 +312,40 @@ bool HttpRequestParser::validate_headers_content() {
     }
   }
 
+  // Content-Length のに指定される値が不正または異なる値が複数指定される
+  // Request body larger than client max body size defined in server config
+  if (request.is_in_headers("Content-Length")) {
+
+    StrVector num_values = request.get_header_values("Content-Length");
+
+    if (num_values.empty()) {
+      request.set_status_code(400);
+      request.set_connection_policy(CP_MUST_CLOSE);
+      return false;
+    }
+
+    try {
+      body_size = str_to_size(num_values[0]);
+    } catch (const std::exception &e) {
+      request.set_status_code(400);
+      request.set_connection_policy(CP_MUST_CLOSE);
+      return false;
+    }
+
+    for (size_t i = 1; i < num_values.size(); ++i) {
+      if (num_values[i] != num_values[0]) {
+        request.set_status_code(400);
+        request.set_connection_policy(CP_MUST_CLOSE);
+        return false;
+      }
+    }
+
+    if (body_size > request.get_max_body_size()) {
+      request.set_status_code(413);
+      return false;
+    }
+  }
+
   // Transfer-Encoding も Content-length もない POST
   if (!request.is_in_headers("Transfer-Encoding") &&
       !request.is_in_headers("Content-Length")) {
@@ -319,21 +353,6 @@ bool HttpRequestParser::validate_headers_content() {
     return false;
   }
 
-  // Request body larger than client max body size defined in server config
-  if (request.is_in_headers("Content-Length")) {
-    size_t client_max_body_size = request.get_max_body_size();
-    std::string str = request.get_header_value("Content-Length");
-    try {
-      body_size = str_to_size(str);
-    } catch (const std::exception &e) {
-      request.set_status_code(400); // TODO: check
-      return false;
-    }
-    if (body_size > client_max_body_size) {
-      request.set_status_code(413);
-      return false;
-    }
-  }
   return true;
 }
 
