@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/03 17:04:12 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/18 00:14:28 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,14 +17,9 @@ HttpResponse::HttpResponse() {}
 
 HttpResponse::~HttpResponse() {}
 
-bool HttpResponse::has_next_response() const { return !response_queue.empty(); }
-
-std::string HttpResponse::get_next_response() {
+ResponseEntry *HttpResponse::get_next_response() {
   LOG_DEBUG_FUNC();
-  if (response_queue.empty()) {
-    return "";
-  }
-  return response_queue.front();
+  return &response_queue.front();
 }
 
 void HttpResponse::pop_response() {
@@ -32,30 +27,42 @@ void HttpResponse::pop_response() {
   response_queue.pop();
 }
 
-void HttpResponse::push_response(const std::string &response) {
+bool HttpResponse::has_next_response() const {
+  return (!response_queue.empty() && response_queue.front().is_ready);
+}
+
+void HttpResponse::push_response(ConnectionPolicy conn,
+                                 const std::string &response) {
   LOG_DEBUG_FUNC();
   if (response.empty()) {
     return;
   }
-  response_queue.push(response);
+  struct ResponseEntry entry;
+  entry.is_ready = true;
+  entry.conn = conn;
+  entry.buffer = response;
+  response_queue.push(entry);
 }
 
 void HttpResponse::generate_response(int status_code,
                                      const std::string &content,
-                                     const std::string &content_type) {
+                                     const std::string &content_type,
+                                     ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
   std::ostringstream response;
   response << "HTTP/1.1 " << status_code << " OK\r\n";
   response << "Content-Length: " << content.size() << "\r\n";
-  response << "Content-Type: " << content_type << "\r\n\r\n";
+  response << "Content-Type: " << content_type << "\r\n";
+  response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << content;
 
-  push_response(response.str());
+  push_response(conn, response.str());
   // send(client_socket, response.str().c_str(), response.str().size(), 0);
 }
 
 void HttpResponse::generate_custom_error_page(int status_code,
-                                              const std::string &error_page) {
+                                              const std::string &error_page,
+                                              ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
   try {
     std::string file_content = read_file("./public/" + error_page);
@@ -71,10 +78,11 @@ void HttpResponse::generate_custom_error_page(int status_code,
     }
     response << "\r\n";
     response << "Content-Length: " << file_content.size() << "\r\n";
-    response << "Content-Type: text/html\r\n\r\n";
+    response << "Content-Type: text/html\r\n";
+    response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     response << file_content;
 
-    push_response(response.str());
+    push_response(conn, response.str());
     // send(client_socket, response.str().c_str(), response.str().size(), 0);
   } catch (const std::exception &e) {
     std::ostringstream fallback;
@@ -84,52 +92,61 @@ void HttpResponse::generate_custom_error_page(int status_code,
     } else if (status_code == 405) {
       fallback << "Method Not Allowed";
     }
-    fallback << "\r\nContent-Length: 9\r\n\r\nNot Found";
+    // fallback << "\r\nContent-Length: 9\r\n\r\nNot Found";
+    fallback << "Content-Length: 9\r\n";
+    fallback << "Content-Type: text/plain\r\n";
+    fallback << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
+    fallback << "Not Found";
 
-    push_response(fallback.str());
+    push_response(conn, fallback.str());
     // send(client_socket, fallback.str().c_str(), fallback.str().size(), 0);
   }
 }
 
 void HttpResponse::generate_error_response(int status_code,
-                                           const std::string &message) {
+                                           const std::string &message,
+                                           ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
   std::ostringstream response;
   response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
   response << "Content-Length: " << message.size() << "\r\n";
-  response << "Content-Type: text/plain\r\n\r\n";
+  response << "Content-Type: text/plain\r\n";
+  response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
-  push_response(response.str());
+  push_response(conn, response.str());
   // send(client_socket, response.str().c_str(), response.str().size(), 0);
 }
 
-void HttpResponse::generate_error_response(int status_code) {
+void HttpResponse::generate_error_response(int status_code,
+                                           ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
   std::ostringstream response;
   const std::string &message = get_status_message(status_code);
   response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
   response << "Content-Length: " << message.size() << "\r\n";
-  response << "Content-Type: text/plain\r\n\r\n";
+  response << "Content-Type: text/plain\r\n";
+  response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
-  push_response(response.str());
+  push_response(conn, response.str());
 }
 
 void HttpResponse::generate_redirect(int status_code,
-                                     const std::string &new_location) {
+                                     const std::string &new_location,
+                                     ConnectionPolicy conn) {
 
   LOG_DEBUG_FUNC();
   std::ostringstream response;
   response << "HTTP/1.1 " << status_code << " ";
   response << HttpResponse::get_status_message(status_code) << "\r\n";
   response << "Location: " << new_location << "\r\n";
-  response << "Content-Length: 0\r\n\r\n";
-
-  push_response(response.str());
+  response << "Content-Length: 0\r\n";
+  response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
+  push_response(conn, response.str());
 }
 
-std::string HttpResponse::get_status_message(int status_code) {
+const char *HttpResponse::get_status_message(int status_code) {
   switch (status_code) {
   case 200:
     return "OK";
@@ -165,6 +182,10 @@ std::string HttpResponse::get_status_message(int status_code) {
     logfd(LOG_ERROR, "Undefined status code detected: ", status_code);
     return "Status Not Defined";
   }
+}
+
+const char *HttpResponse::to_connection_value(ConnectionPolicy conn) const {
+  return conn == CP_KEEP_ALIVE ? "keep-alive" : "close";
 }
 
 HttpResponse::HttpResponse(const HttpResponse &other) { (void)other; }

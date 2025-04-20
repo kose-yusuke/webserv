@@ -44,6 +44,8 @@ private:
   bool validate_request_content();
   bool validate_headers_content();
 
+  void determine_connection_policy();
+
   HttpRequestParser(const HttpRequestParser &other);
   HttpRequestParser &operator=(const HttpRequestParser &other);
 };
