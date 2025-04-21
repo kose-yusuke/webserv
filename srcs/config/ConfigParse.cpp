@@ -38,7 +38,7 @@ Parse& Parse::operator=(const Parse &src)
 
 /* Validateに関するコード*/
 const char* Parse::valid_keys[] = {
-    "listen", "root", "index", "error_page", "autoindex", "server_name", "allow_methods", "client_max_body_size", "return", "cgi_extensions", "upload_path", "alias"
+    "listen", "root", "index", "error_page", "autoindex", "server_name", "allow_methods", "client_max_body_size", "return", "cgi_extensions", "upload_path", "alias", "cgi-bin"
 };
 
 
@@ -158,7 +158,6 @@ void Parse::validate_listen_ip(const std::map<std::string, std::vector<std::stri
     }
 }
 
-
 void Parse::validate_listen_port(const std::map<std::string, std::vector<std::string> >& config)
 {
     std::map<std::string, std::vector<std::string> >::const_iterator it = config.find("listen");
@@ -198,8 +197,8 @@ bool Parse::is_location_end(const std::string& line, bool in_location_block) {
     return line == "}" && in_location_block;
 }
 
-void Parse::check_duplicate_key(const std::string& key, const std::map<std::string, std::vector<std::string> >& config) {
-    if (config.find(key) != config.end())
+void Parse::check_duplicate_key(const std::string& key, std::map<std::string, std::vector<std::string> >& config) {
+    if ((config.find(key) != config.end()) && key != "error_page")
         throw std::runtime_error("Duplicate key found: " + key);
 }
 
@@ -306,14 +305,24 @@ void Parse::handle_server_block(const std::string& line, std::map<std::string, s
     // values = space_outer_trim(value);
 
     if (in_location_block) {
-        check_duplicate_key(key, location_configs[current_location_path]);
-        location_configs[current_location_path][key] = values;
+        if (key == "error_page") 
+            merge_error_page(location_configs[current_location_path], values);
+        else {
+            check_duplicate_key(key, location_configs[current_location_path]);
+            location_configs[current_location_path][key] = values;
+        }
     } else {
         if (key == "root" && server_root_seen)
             throw std::runtime_error("Duplicate root directive found in server block.");
         else if (key == "root")
             server_root_seen = true;
-        current_config[key] = values;
+        
+        if (key == "error_page") {
+            merge_error_page(current_config, values);
+        } else {
+            check_duplicate_key(key, current_config);
+            current_config[key] = values;
+        }
     }
     std::cout << "Parsed config: key='" << key << "', values=[";
     for (size_t i = 0; i < values.size(); ++i) {
@@ -361,4 +370,8 @@ std::string Parse::space_outer_trim(const std::string& str)
         return "";
     size_t last = str.find_last_not_of(" \t");
     return str.substr(first, last - first + 1);
+}
+
+void Parse::merge_error_page(std::map<std::string, std::vector<std::string> >& config, const std::vector<std::string>& values) {
+    config["error_page"].insert(config["error_page"].end(), values.begin(), values.end());
 }

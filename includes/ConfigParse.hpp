@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/19 19:24:27 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/03/11 22:35:08 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 16:41:17 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,7 @@ class Parse{
         bool is_location_start(const std::string& line);
         bool is_location_end(const std::string& line, bool in_location_block);
         void parse_key_value(const std::string& line, std::string& key, std::vector<std::string>& values);
-        void check_duplicate_key(const std::string& key, const std::map<std::string, std::vector<std::string> >& config);
+        void check_duplicate_key(const std::string& key, std::map<std::string, std::vector<std::string> >& config);
         std::string space_outer_trim(const std::string& str);
+        void merge_error_page(std::map<std::string, std::vector<std::string> >& config, const std::vector<std::string>& values);
 };
