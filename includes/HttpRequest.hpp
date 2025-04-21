@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/17 16:52:55 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/21 13:18:02 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,8 +45,10 @@ public:
   std::map<std::string, std::string> headers;
 
   bool is_autoindex_enabled;
+  std::string index_file_name;
   std::vector<std::string> cgi_extensions;
   std::vector<std::string> allow_methods;
+  std::map<int, std::string> error_page_map;
 
   ConfigMap server_config;
   LocationMap location_configs;
@@ -85,7 +87,9 @@ private:
   static const size_t k_default_max_body;
 
   void conf_init();
+  std::map<int, std::string> extract_error_page_map(const std::vector<std::string>& tokens);
   void init_cgi_extensions();
+  void init_file_index();
   void merge_config(ConfigMap &base, const ConfigMap &override);
   // GETの処理
   ResourceType get_resource_type(const std::string &path);
@@ -103,6 +107,7 @@ private:
   int delete_all_directory_content(const std::string &dir_path);
   int handle_file_delete(const std::string &file_path);
   // autoindex (directory listing)
+  void init_autoindex();
   std::string generate_directory_listing(const std::string &dir_path);
   // Utils
   std::string get_requested_resource(const std::string &path);
@@ -114,4 +119,6 @@ private:
   HttpRequest &operator=(const HttpRequest &other);
 
   void print_best_match_config() const;
+
+  void handle_error(int status_code);
 };

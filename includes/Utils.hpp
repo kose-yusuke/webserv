@@ -79,7 +79,7 @@ int print_error_message(const std::string &message);
 // utils
 bool file_exists(const std::string &path);
 bool ends_with(const std::string &str, const std::string &suffix);
-bool has_index_file(const std::string &dir_path);
+bool has_index_file(const std::string &dir_path,std::string index_file_name);
 bool is_directory(const std::string &path);
 std::string make_unique_filename();
 
@@ -101,3 +101,5 @@ std::string trim(const std::string &s);
 int str_to_int(const std::string &s);
 size_t str_to_size(const std::string &s);
 size_t parse_hex(const std::string &s);
+
+bool is_all_digits(const std::string& str);

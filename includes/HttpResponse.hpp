@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:51 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/18 00:33:32 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/21 13:23:17 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ public:
 
   void generate_custom_error_page(int status_code,
                                   const std::string &error_page,
+                                  std::string _root,
                                   ConnectionPolicy connection_policy);
   void generate_error_response(int status_code, const std::string &message,
                                ConnectionPolicy connection_policy);

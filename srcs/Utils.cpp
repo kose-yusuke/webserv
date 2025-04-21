@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   utils.cpp                                          :+:      :+:    :+:   */
+/*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/05 19:30:00 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/16 18:54:39 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,8 +30,8 @@ bool file_exists(const std::string &path) {
   return (access(path.c_str(), F_OK) == 0);
 }
 
-bool has_index_file(const std::string &dir_path) {
-  std::string index_file = dir_path + "/index.html";
+bool has_index_file(const std::string &dir_path, std::string index_file_name) {
+  std::string index_file = dir_path + index_file_name;
   return file_exists(index_file);
 }
 
@@ -57,6 +57,14 @@ std::string make_unique_filename() {
   std::stringstream ss;
   ss << getpid() << "_" << std::rand();
   return ss.str();
+}
+
+bool is_all_digits(const std::string& str) {
+  for (size_t i = 0; i < str.size(); ++i) {
+      if (!std::isdigit(str[i]))
+          return false;
+  }
+  return true;
 }
 
 // 拡張子に基づいてMIMEタイプを返す関数
