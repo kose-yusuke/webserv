@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 17:26:41 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/19 17:55:19 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,7 +92,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
 }
 
 void HttpResponse::generate_error_response(int status_code,
-                                           const std::string &message) {
+                                          const std::string &message) {
   LOG_DEBUG_FUNC();
   std::ostringstream response;
   response << "HTTP/1.1 " << status_code << " " << message << "\r\n";

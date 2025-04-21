@@ -158,7 +158,6 @@ void Parse::validate_listen_ip(const std::map<std::string, std::vector<std::stri
     }
 }
 
-
 void Parse::validate_listen_port(const std::map<std::string, std::vector<std::string> >& config)
 {
     std::map<std::string, std::vector<std::string> >::const_iterator it = config.find("listen");
