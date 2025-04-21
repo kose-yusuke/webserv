@@ -68,6 +68,7 @@ private:
   void accept_client(int server_fd);
   void read_from_client(int client_fd);
   void write_to_client(int client_fd);
+  void shutdown_write(int client_fd);
   void remove_client(int client_fd);
 
   // 代入禁止

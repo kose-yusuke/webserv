@@ -31,6 +31,9 @@ bool HttpRequestParser::parse() {
   if (parse_state == PARSE_BODY) {
     parse_state = parse_body();
   }
+  if (parse_state == PARSE_CHUNK) {
+    parse_state = parse_chunked_body();
+  }
   return (parse_state == PARSE_DONE || parse_state == PARSE_ERROR);
 }
 
@@ -85,6 +88,7 @@ HttpRequestParser::ParseState HttpRequestParser::parse_header() {
     return PARSE_ERROR;
   }
   log(LOG_DEBUG, "Parse Success !!");
+  determine_connection_policy();
   return next_parse_state();
 }
 
@@ -103,6 +107,7 @@ HttpRequestParser::ParseState HttpRequestParser::next_parse_state() const {
 
 HttpRequestParser::ParseState HttpRequestParser::parse_body() {
   LOG_DEBUG_FUNC();
+  // TODO: timeout 処理
   if (body_size == 0) {
     return PARSE_DONE; // bodyなし
   }
@@ -119,6 +124,7 @@ HttpRequestParser::ParseState HttpRequestParser::parse_body() {
 
 HttpRequestParser::ParseState HttpRequestParser::parse_chunked_body() {
   LOG_DEBUG_FUNC();
+  // TODO: chunked終端が届かない時の処理
   size_t chunk_size = 0;
   static const char kCRLF[] = "\r\n";
 
@@ -228,6 +234,7 @@ bool HttpRequestParser::parse_header_line(std::string &line) {
   std::string value = trim(line.substr(pos + 1));
   if (!request.add_header(key, value)) {
     log(LOG_ERROR, "Duplicate header found: " + key);
+    // TODO: issue #59 あとで
     // TODO: exceptionあるので注意 ex. CSV, or known exception
     return false;
   }
@@ -318,35 +325,26 @@ bool HttpRequestParser::validate_headers_content() {
   return true;
 }
 
+void HttpRequestParser::determine_connection_policy() {
+  if (request.get_connection_policy() == CP_MUST_CLOSE) {
+    // parse中に、framing errorを見つけてある
+    return;
+  }
+
+  const std::string conn_header = request.get_value_from_headers("Connection");
+  if (conn_header == "close") {
+    request.set_connection_policy(CP_WILL_CLOSE);
+  } else if (request.version == "HTTP/1.1") {
+    request.set_connection_policy(CP_KEEP_ALIVE);
+  } else if (request.version == "HTTP/1.0" && conn_header == "keep-alive") {
+    request.set_connection_policy(CP_KEEP_ALIVE);
+  } else {
+    request.set_connection_policy(CP_WILL_CLOSE);
+  }
+}
+
 HttpRequestParser &
 HttpRequestParser::operator=(const HttpRequestParser &other) {
   (void)other;
   return *this;
 }
-
-/*
-3.2.2.  Field Orderより note
-A sender MUST NOT generate multiple header fields with the same field
-   name in a message unless either the entire field value for that
-   header field is defined as a comma-separated list [i.e., #(values)]
-   or the header field is a well-known exception (as noted below).
-
-A recipient MAY combine multiple header fields with the same field
-   name into one "field-name: field-value" pair, without changing the
-   semantics of the message, by appending each subsequent field value to
-   the combined field value in order, separated by a comma.  The order
-   in which header fields with the same field name are received is
-   therefore significant to the interpretation of the combined field
-   value; a proxy MUST NOT change the order of these field values when
-   forwarding a message.
-
-        Note: In practice, the "Set-Cookie" header field ([RFC6265]) often
-      appears multiple times in a response message and does not use the
-      list syntax, violating the above requirements on multiple header
-      fields with the same name.  Since it cannot be combined into a
-      single field-value, recipients ought to handle "Set-Cookie" as a
-      special case while processing header fields.  (See Appendix A.2.3
-      of [Kri2001] for details.)
-
-      // Cookieには今のところ未対応のつもりだから関係ない　
-*/
