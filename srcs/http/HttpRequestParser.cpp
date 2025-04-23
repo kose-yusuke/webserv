@@ -264,6 +264,14 @@ void HttpRequestParser::validate_request_content() {
 bool HttpRequestParser::check_framing_error() {
   LOG_DEBUG_FUNC();
 
+  // Hostヘッダが存在しない or 重複する
+  if (!request.is_in_headers("Host") ||
+      request.get_header_value("Host").empty() ||
+      request.get_header_values("Host").size() > 1) {
+    log(LOG_ERROR, "Invalid Host header");
+    return false;
+  }
+
   // Transfer-Encoding と Content-Length の併存
   if (request.is_in_headers("Transfer-Encoding") &&
       request.is_in_headers("Content-Length")) {
