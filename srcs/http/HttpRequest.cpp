@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/21 22:43:41 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/23 13:46:45 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,12 +51,11 @@ void HttpRequest::init_autoindex() {
 void HttpRequest::init_file_index() {
   ConstConfigIt index_it = best_match_config.find("index");
   if (index_it != best_match_config.end() && !index_it->second.empty()) {
-      index_file_name = index_it->second[0];
+    index_file_name = index_it->second[0];
   } else {
-      index_file_name = "index.html";  // デフォルト
+    index_file_name = "index.html"; // デフォルト
+  }
 }
-}
-
 
 void HttpRequest::conf_init() {
   this->best_match_config = get_best_match_config(path);
@@ -75,26 +74,28 @@ void HttpRequest::conf_init() {
   }
 }
 
-std::map<int, std::string> HttpRequest::extract_error_page_map(const std::vector<std::string>& tokens) {
+std::map<int, std::string>
+HttpRequest::extract_error_page_map(const std::vector<std::string> &tokens) {
   std::map<int, std::string> result;
   size_t i = 0;
 
   while (i < tokens.size()) {
-      std::vector<int> codes;
+    std::vector<int> codes;
 
-      while (i < tokens.size() && is_all_digits(tokens[i])) {
-          codes.push_back(std::atoi(tokens[i].c_str()));
-          ++i;
-      }
+    while (i < tokens.size() && is_all_digits(tokens[i])) {
+      codes.push_back(std::atoi(tokens[i].c_str()));
+      ++i;
+    }
 
-      if (i >= tokens.size()) {
-          throw std::runtime_error("error_page parse error: missing path after status codes");
-      }
+    if (i >= tokens.size()) {
+      throw std::runtime_error(
+          "error_page parse error: missing path after status codes");
+    }
 
-      std::string path = tokens[i++];
-      for (size_t j = 0; j < codes.size(); ++j) {
-          result[codes[j]] = path;
-      }
+    std::string path = tokens[i++];
+    for (size_t j = 0; j < codes.size(); ++j) {
+      result[codes[j]] = path;
+    }
   }
 
   return result;
@@ -480,7 +481,7 @@ int HttpRequest::handle_directory_delete(const std::string &dir_path) {
   //   return 0;
   // }
 
-  if (has_index_file(dir_path,index_file_name)) {
+  if (has_index_file(dir_path, index_file_name)) {
     response.generate_error_response(403, "Forbidden", connection_policy);
     return -1;
   }
@@ -717,7 +718,12 @@ void HttpRequest::set_connection_policy(ConnectionPolicy policy) {
   connection_policy = policy;
 }
 
-void HttpRequest::set_status_code(int status) { status_code = status; }
+void HttpRequest::set_status_code(int status) {
+  if (status_code != 0 && status != 400) {
+    return;
+  }
+  status_code = status;
+}
 
 int HttpRequest::get_status_code() const { return status_code; }
 
@@ -822,9 +828,10 @@ RedirStatus HttpRequest::handle_redirection() {
 
 void HttpRequest::handle_error(int status_code) {
   if (error_page_map.count(status_code)) {
-      const std::string& path = error_page_map[status_code];
-      response.generate_custom_error_page(status_code, path, _root, connection_policy);
+    const std::string &path = error_page_map[status_code];
+    response.generate_custom_error_page(status_code, path, _root,
+                                        connection_policy);
   } else {
-      response.generate_error_response(status_code, connection_policy);
+    response.generate_error_response(status_code, connection_policy);
   }
 }
