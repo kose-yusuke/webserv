@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/21 13:27:00 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/23 13:46:45 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,16 +51,15 @@ void HttpRequest::init_autoindex() {
 void HttpRequest::init_file_index() {
   ConstConfigIt index_it = best_match_config.find("index");
   if (index_it != best_match_config.end() && !index_it->second.empty()) {
-      index_file_name = index_it->second[0];
+    index_file_name = index_it->second[0];
   } else {
-      index_file_name = "index.html";  // デフォルト
+    index_file_name = "index.html"; // デフォルト
+  }
 }
-}
-
 
 void HttpRequest::conf_init() {
   this->best_match_config = get_best_match_config(path);
-  
+
   if (!best_match_config["root"].empty())
     _root = best_match_config["root"][0];
   else if (!server_config["root"].empty())
@@ -75,26 +74,28 @@ void HttpRequest::conf_init() {
   }
 }
 
-std::map<int, std::string> HttpRequest::extract_error_page_map(const std::vector<std::string>& tokens) {
+std::map<int, std::string>
+HttpRequest::extract_error_page_map(const std::vector<std::string> &tokens) {
   std::map<int, std::string> result;
   size_t i = 0;
 
   while (i < tokens.size()) {
-      std::vector<int> codes;
+    std::vector<int> codes;
 
-      while (i < tokens.size() && is_all_digits(tokens[i])) {
-          codes.push_back(std::atoi(tokens[i].c_str()));
-          ++i;
-      }
+    while (i < tokens.size() && is_all_digits(tokens[i])) {
+      codes.push_back(std::atoi(tokens[i].c_str()));
+      ++i;
+    }
 
-      if (i >= tokens.size()) {
-          throw std::runtime_error("error_page parse error: missing path after status codes");
-      }
+    if (i >= tokens.size()) {
+      throw std::runtime_error(
+          "error_page parse error: missing path after status codes");
+    }
 
-      std::string path = tokens[i++];
-      for (size_t j = 0; j < codes.size(); ++j) {
-          result[codes[j]] = path;
-      }
+    std::string path = tokens[i++];
+    for (size_t j = 0; j < codes.size(); ++j) {
+      result[codes[j]] = path;
+    }
   }
 
   return result;
@@ -104,6 +105,12 @@ void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
   conf_init();
   print_best_match_config();
+
+  if (status_code != 0) {
+    // TODO: kosekiさんが実装済みの、custom error pageの呼び出しを反映させる
+    response.generate_error_response(status_code, connection_policy);
+    return;
+  }
 
   if (handle_redirection() != REDIR_NONE) {
     return;
@@ -267,7 +274,7 @@ void HttpRequest::handle_get_request(std::string path) {
   } else {
     handle_error(404);
   }
-  
+
   if (type == Directory) {
     handle_directory_request(path);
   } else if (type == File) {
@@ -474,7 +481,7 @@ int HttpRequest::handle_directory_delete(const std::string &dir_path) {
   //   return 0;
   // }
 
-  if (has_index_file(dir_path,index_file_name)) {
+  if (has_index_file(dir_path, index_file_name)) {
     response.generate_error_response(403, "Forbidden", connection_policy);
     return -1;
   }
@@ -621,11 +628,11 @@ void HttpRequest::handle_cgi_request(const std::string &cgi_path) {
     close(in_fd);
     close(output_pipe[0]);
 
-    std::string contentLength = get_value_from_headers("Content-Length");
+    std::string contentLength = get_header_value("Content-Length");
     std::string contentLengthStr = "CONTENT_LENGTH=" + contentLength;
     std::string requestMethodStr = "REQUEST_METHOD=POST";
     std::string contentTypeStr =
-        "CONTENT_TYPE=" + get_value_from_headers("Content-Type");
+        "CONTENT_TYPE=" + get_header_value("Content-Type");
     std::string queryString = "QUERY_STRING=";
 
     if (method == "POST") {
@@ -711,30 +718,57 @@ void HttpRequest::set_connection_policy(ConnectionPolicy policy) {
   connection_policy = policy;
 }
 
-void HttpRequest::set_status_code(int status) { status_code = status; }
+void HttpRequest::set_status_code(int status) {
+  if (status_code != 0 && status != 400) {
+    return;
+  }
+  status_code = status;
+}
 
 int HttpRequest::get_status_code() const { return status_code; }
 
 size_t HttpRequest::get_max_body_size() const { return max_body_size; }
 
-bool HttpRequest::is_in_headers(const std::string &key) const {
-  return (headers.find(key) != headers.end());
+const std::string &HttpRequest::get_header_value(const std::string &key) const {
+  static const std::string k_empty_string;
+  ConstHeaderMapIt it = headers.find(key);
+  if (it != headers.end() && !it->second.empty()) {
+    return it->second.at(0);
+  }
+  return k_empty_string;
 }
 
-std::string HttpRequest::get_value_from_headers(const std::string &key) const {
-  ConstStrToStrMapIt it = headers.find(key);
+const std::vector<std::string> &
+HttpRequest::get_header_values(const std::string &key) const {
+  static const std::vector<std::string> k_empty_vector;
+  ConstHeaderMapIt it = headers.find(key);
   if (it != headers.end()) {
     return it->second;
   }
-  return "";
+  return k_empty_vector;
 }
 
-bool HttpRequest::add_header(std::string &key, std::string &value) {
-  if (headers.find(key) != headers.end()) {
-    return false;
+void HttpRequest::add_header(const std::string &key, const std::string &value) {
+
+  if (value.empty()) {
+    return;
   }
-  headers[key] = value;
-  return true;
+
+  std::string lower_key = to_lower(key);
+
+  if (lower_key == "date" || key == "set-cookie") {
+    headers[lower_key].push_back(trim(value));
+    return;
+  }
+
+  std::vector<std::string> values = split_csv(value);
+  for (size_t i = 0; i < values.size(); ++i) {
+    headers[lower_key].push_back(trim(values[i]));
+  }
+}
+
+bool HttpRequest::is_in_headers(const std::string &key) const {
+  return (headers.find(key) != headers.end());
 }
 
 void HttpRequest::clear() {
@@ -794,9 +828,10 @@ RedirStatus HttpRequest::handle_redirection() {
 
 void HttpRequest::handle_error(int status_code) {
   if (error_page_map.count(status_code)) {
-      const std::string& path = error_page_map[status_code];
-      response.generate_custom_error_page(status_code, path, _root, connection_policy);
+    const std::string &path = error_page_map[status_code];
+    response.generate_custom_error_page(status_code, path, _root,
+                                        connection_policy);
   } else {
-      response.generate_error_response(status_code, connection_policy);
+    response.generate_error_response(status_code, connection_policy);
   }
 }

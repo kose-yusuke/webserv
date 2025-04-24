@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/21 13:18:02 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/21 22:47:32 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,8 @@ public:
   std::string version;
   // std::string body;
   std::vector<char> body_data;
-  std::map<std::string, std::string> headers;
+  // std::map<std::string, std::string> headers;
+  HeaderMap headers;
 
   bool is_autoindex_enabled;
   std::string index_file_name;
@@ -66,9 +67,10 @@ public:
   void load_max_body_size();
   size_t get_max_body_size() const;
 
-  bool add_header(std::string &key, std::string &value);
+  const std::string &get_header_value(const std::string &key) const;
+  const std::vector<std::string> &get_header_values(const std::string &key) const;
+  void add_header(const std::string &key, const std::string &value);
   bool is_in_headers(const std::string &key) const;
-  std::string get_value_from_headers(const std::string &key) const;
 
   // リクエストの解析
   bool parse_http_request(const std::string &request, std::string &method,

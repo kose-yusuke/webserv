@@ -64,6 +64,10 @@ redir: $(NAME)
 	./$(NAME) config/valid/redir_practice.conf
 	@echo "== Tests Completed =="
 
+func: fclean
+	$(MAKE) LOG_LEVEL=0
+	$(MAKE) run
+
 debug: fclean
 	$(MAKE) LOG_LEVEL=2
 	$(MAKE) run
@@ -93,4 +97,4 @@ dirdelete:
 	curl -X DELETE http://localhost:8080/menu/ -v
 
 
-.PHONY: all clean fclean re run redir debug quiet test redirtest
+.PHONY: all clean fclean re run redir debug quiet test redirtest debug

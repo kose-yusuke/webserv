@@ -83,6 +83,9 @@ IOStatus Client::on_parse() {
     // trueの場合、requestの解析が完了しレスポンスを生成できる状態
     // request内でresponseクラスにresponseをpushしている
     request.handle_http_request();
+    if (request.get_connection_policy() != CP_KEEP_ALIVE) {
+      break;
+    }
     parser.clear(); // 状態をclearして, 再びheaderのparseを待機
   }
   return has_response() ? IO_READY_TO_WRITE : IO_CONTINUE;
