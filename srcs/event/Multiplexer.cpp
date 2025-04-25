@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sstream>
 #include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 Multiplexer *Multiplexer::instance = 0;
@@ -191,19 +192,17 @@ void Multiplexer::read_from_client(int client_fd) {
   Client *client = get_client_from_map(client_fd);
 
   switch (client->on_read()) {
-  case IO_SUCCESS:
-    monitor_write(client_fd);
-    break;
+
   case IO_CONTINUE:
     break;
-  case IO_CLOSED:
-    remove_client(client_fd);
+  case IO_READY_TO_WRITE:
+    monitor_write(client_fd);
     break;
-  case IO_ERROR:
+  case IO_SHOULD_CLOSE:
     remove_client(client_fd);
     break;
   default:
-    logfd(LOG_ERROR, "Unhandled IOStatus: ", client_fd);
+    logfd(LOG_ERROR, "Unhandled I/O Status: ", client_fd);
     remove_client(client_fd);
   }
 }
@@ -213,21 +212,31 @@ void Multiplexer::write_to_client(int client_fd) {
   Client *client = get_client_from_map(client_fd);
 
   switch (client->on_write()) {
-  case IO_SUCCESS:
-    unmonitor_write(client_fd);
-    break;
   case IO_CONTINUE:
     break;
-  case IO_CLOSED:
+  case IO_WRITE_COMPLETE:
     unmonitor_write(client_fd);
     break;
-  case IO_ERROR:
+  case IO_SHOULD_SHUTDOWN:
+    shutdown_write(client_fd);
+    break;
+  case IO_SHOULD_CLOSE:
     remove_client(client_fd);
     break;
   default:
-    logfd(LOG_ERROR, "Unhandled IOStatus: ", client_fd);
+    logfd(LOG_ERROR, "Unhandled I/O Status: ", client_fd);
     remove_client(client_fd);
   }
+}
+
+void Multiplexer::shutdown_write(int client_fd) {
+  LOG_DEBUG_FUNC_FD(client_fd);
+  if (shutdown(client_fd, SHUT_WR) == -1) {
+    logfd(LOG_ERROR, "shutdown() failed for fd: ", client_fd);
+    remove_client(client_fd);
+    return;
+  }
+  unmonitor_write(client_fd);
 }
 
 void Multiplexer::remove_client(int client_fd) {

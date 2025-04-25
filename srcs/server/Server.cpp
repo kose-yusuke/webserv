@@ -23,13 +23,6 @@ Server::Server(const ConfigMap &config, const LocationMap &locations)
     listenPorts_.push_back(port);
   }
 
-  // root
-  ConstConfigIt root_it = config.find("root");
-  if (root_it == config.end() || root_it->second.empty())
-    print_error_message("Missing required key: root");
-  // この辺実はいらなそう
-  public_root = root_it->second[0];
-
   ConstConfigIt error_it = config.find("error_page 404");
   error_404 = (error_it != config.end() && !error_it->second.empty())
                   ? error_it->second[0]

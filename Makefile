@@ -64,6 +64,10 @@ redir: $(NAME)
 	./$(NAME) config/valid/redir_practice.conf
 	@echo "== Tests Completed =="
 
+func: fclean
+	$(MAKE) LOG_LEVEL=0
+	$(MAKE) run
+
 debug: fclean
 	$(MAKE) LOG_LEVEL=2
 	$(MAKE) run
@@ -80,4 +84,17 @@ siegetest:
 redirtest:
 	@bash tests/test_redirects.sh
 
-.PHONY: all clean fclean re run redir debug quiet test redirtest
+filecreate:
+	curl -X POST http://localhost:8080/menu/test.txt -d 'Hello, world!' -v
+
+filedelete:
+	curl -X DELETE http://localhost:8080/menu/test.txt -v
+
+409conflict:
+	curl -X DELETE http://localhost:8080/menu -v
+
+dirdelete:
+	curl -X DELETE http://localhost:8080/menu/ -v
+
+
+.PHONY: all clean fclean re run redir debug quiet test redirtest debug
