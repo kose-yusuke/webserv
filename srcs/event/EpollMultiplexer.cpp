@@ -1,5 +1,5 @@
 #include "EpollMultiplexer.hpp"
-#include "Utils.hpp"
+#include "Logger.hpp"
 #include <cstdlib>
 #include <iostream>
 
@@ -21,7 +21,6 @@ void EpollMultiplexer::run() {
     throw std::runtime_error("epoll_create");
   }
   std::vector<struct epoll_event> evlist;
-  initialize_fds();
 
   while (true) {
     if (size > max_epoll_events) {

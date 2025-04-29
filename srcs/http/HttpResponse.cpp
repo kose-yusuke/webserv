@@ -6,11 +6,12 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/21 22:43:14 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/30 00:36:53 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpResponse.hpp"
+#include "Logger.hpp"
 #include "Utils.hpp"
 
 HttpResponse::HttpResponse() {}
@@ -61,7 +62,9 @@ void HttpResponse::generate_response(int status_code,
 }
 
 void HttpResponse::generate_custom_error_page(int status_code,
-                                              const std::string &error_page, std::string _root, ConnectionPolicy conn) {
+                                              const std::string &error_page,
+                                              std::string _root,
+                                              ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
   try {
     std::string file_content = read_file(_root + error_page);

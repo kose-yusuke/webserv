@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/21 22:42:57 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/30 00:26:35 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,10 +59,10 @@ std::string make_unique_filename() {
   return ss.str();
 }
 
-bool is_all_digits(const std::string& str) {
+bool is_all_digits(const std::string &str) {
   for (size_t i = 0; i < str.size(); ++i) {
-      if (!std::isdigit(str[i]))
-          return false;
+    if (!std::isdigit(str[i]))
+      return false;
   }
   return true;
 }
@@ -95,50 +95,6 @@ bool is_all_digits(const std::string& str) {
 //     // デフォルトのMIMEタイプ
 //     return "application/octet-stream";
 // }
-
-#ifndef LOG_LEVEL
-#define LOG_LEVEL LOG_INFO
-#endif
-
-LogLevel current_log_level = static_cast<LogLevel>(LOG_LEVEL);
-
-std::ofstream debug_log("debug.log");
-
-void log(LogLevel level, const std::string &message) {
-  if (level >= current_log_level) {
-    switch (level) {
-    case LOG_FUNC:
-      std::cout << CYAN << "[FUNC] " << RESET << message << std::endl;
-      break;
-    case LOG_INFO:
-      std::cout << GREEN << "[INFO] " << RESET << message << std::endl;
-      break;
-    case LOG_DEBUG:
-      debug_log << "[DEBUG] " << message << std::endl;
-      break;
-    case LOG_WARNING:
-      std::cerr << YELLOW << "[WARNING] " << RESET << message << std::endl;
-      break;
-    case LOG_ERROR:
-      std::cerr << RED << "[ERROR] " << RESET << message;
-      if (errno != 0) {
-        int err = errno;
-        errno = 0;
-        std::cerr << " (errno: " << err << ", reason: " << strerror(err) << ")";
-      }
-      std::cerr << std::endl;
-      break;
-    default:
-      std::cerr << "[UNKNOWN] " << message << std::endl;
-    }
-  }
-}
-
-void logfd(LogLevel level, const std::string &message, int fd) {
-  std::ostringstream oss;
-  oss << message << fd;
-  log(level, oss.str());
-}
 
 std::string trim_left(const std::string &s) {
   size_t start = s.find_first_not_of(" \t\r\n");

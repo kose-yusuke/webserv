@@ -1,6 +1,6 @@
 #include "PollMultiplexer.hpp"
+#include "Logger.hpp"
 #include "Server.hpp"
-#include "Utils.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -19,8 +19,7 @@ Multiplexer &PollMultiplexer::get_instance() {
 void PollMultiplexer::run() {
   LOG_DEBUG_FUNC();
   static const int max_poll_events = 65536;
-  pfds.reserve(get_num_servers());
-  initialize_fds();
+
   if (pfds.empty()) {
     throw std::runtime_error("pollfd empty");
   }
