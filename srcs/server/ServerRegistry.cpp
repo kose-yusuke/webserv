@@ -1,10 +1,9 @@
 #include "ServerRegistry.hpp"
+#include "Logger.hpp"
 #include "Multiplexer.hpp"
 #include "Server.hpp"
 #include "SocketBuilder.hpp"
-#include "Logger.hpp"
 #include "VirtualHostRouter.hpp"
-#include <cstddef>
 #include <iostream>
 #include <unistd.h>
 

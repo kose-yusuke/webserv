@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <map>
+#include <string>
 #include <vector>
 
 class Server;
@@ -39,4 +41,3 @@ private:
   ServerRegistry(const ServerRegistry &other);
   ServerRegistry &operator=(const ServerRegistry &other);
 };
-
