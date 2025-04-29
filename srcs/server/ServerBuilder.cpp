@@ -1,6 +1,7 @@
 #include "ServerBuilder.hpp"
 #include "Server.hpp"
 #include "ServerRegistry.hpp"
+#include <stdexcept>
 
 void ServerBuilder::build(const ServerAndLocationConfigs &config_pairs,
                           ServerRegistry &registry) {
