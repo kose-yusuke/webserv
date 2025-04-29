@@ -1,7 +1,6 @@
 #include "ClientRegistry.hpp"
 #include "Client.hpp"
 #include "Logger.hpp"
-#include <cstddef>
 
 ClientRegistry::ClientRegistry() {}
 
