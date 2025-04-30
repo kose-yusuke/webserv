@@ -3,27 +3,24 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/15 18:31:48 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/04/30 00:34:12 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "ClientRegistry.hpp"
 #include "ConfigParse.hpp"
+#include "Logger.hpp"
 #include "Multiplexer.hpp"
 #include "Server.hpp"
-#include "Utils.hpp"
+#include "ServerBuilder.hpp"
+#include "ServerRegistry.hpp"
 #include "types.hpp"
 
-static void free_resources(Multiplexer *multiplexer,
-                           std::vector<Server *> &servers) {
-  if (multiplexer) {
-    multiplexer->delete_instance(); // fd close & clientのdelete
-  }
-  for (size_t i = 0; i < servers.size(); i++) {
-    delete servers[i];
-  }
+static void free_resources() {
+  Multiplexer::delete_instance();
   debug_log.close();
 }
 
@@ -31,8 +28,7 @@ int main(int argc, char **argv) {
   if (argc != 2)
     return (print_error_message("need conf filename"));
 
-  Multiplexer *multiplexer = NULL;
-  std::vector<Server *> servers;
+  Multiplexer &multiplexer = Multiplexer::get_instance();
 
   try {
     Parse parser(argv[1]);
@@ -41,19 +37,21 @@ int main(int argc, char **argv) {
     if (server_location_configs.empty())
       throw std::runtime_error("No valid server configurations found.");
 
-    multiplexer = &Multiplexer::get_instance();
-    for (size_t i = 0; i < server_location_configs.size(); i++)
-      servers.push_back(new Server(server_location_configs[i].first,
-                                    server_location_configs[i].second));
-    for (size_t i = 0; i < servers.size(); i++)
-      servers[i]->createSockets();
+    ServerRegistry server_registry;
+    ClientRegistry client_registry;
 
-    multiplexer->run();
+    ServerBuilder::build(server_location_configs, server_registry);
+    server_registry.initialize();
 
-    free_resources(multiplexer, servers);
+    multiplexer.set_server_registry(&server_registry);
+    multiplexer.set_client_registry(&client_registry);
+
+    multiplexer.run();
+
+    free_resources();
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
-    free_resources(multiplexer, servers);
+    free_resources();
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;

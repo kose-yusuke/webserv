@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -20,23 +21,9 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-// #include <thread>
-#include <cstdlib>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
-
-#define RESET "\033[0m"
-#define RED "\033[31m"
-#define YELLOW "\033[33m"
-#define GREEN "\033[32m"
-#define CYAN "\033[36m"
-#define MAGENTA "\033[35m"
-#define GRAY "\033[90m"
-
-#define LOG_DEBUG_FUNC() log(LOG_FUNC, std::string(__func__) + "() called")
-#define LOG_DEBUG_FUNC_FD(fd)                                                  \
-  logfd(LOG_FUNC, std::string(__func__) + "() called on fd: ", fd)
 
 // kosekiさんから引き継いだ時点でのServer classのheader（一旦コメントアウト）
 // class Server {
@@ -79,18 +66,9 @@ int print_error_message(const std::string &message);
 // utils
 bool file_exists(const std::string &path);
 bool ends_with(const std::string &str, const std::string &suffix);
-bool has_index_file(const std::string &dir_path,std::string index_file_name);
+bool has_index_file(const std::string &dir_path, std::string index_file_name);
 bool is_directory(const std::string &path);
 std::string make_unique_filename();
-
-// log
-enum LogLevel { LOG_FUNC, LOG_INFO, LOG_DEBUG, LOG_WARNING, LOG_ERROR };
-// global 変数宣言
-extern LogLevel current_log_level;
-extern std::ofstream debug_log;
-
-void log(LogLevel level, const std::string &message);
-void logfd(LogLevel level, const std::string &prefix, int fd);
 
 // trim string
 std::string trim_left(const std::string &s);
@@ -105,4 +83,4 @@ size_t parse_hex(const std::string &s);
 std::vector<std::string> split_csv(const std::string &value);
 std::string to_lower(const std::string &s);
 
-bool is_all_digits(const std::string& str);
+bool is_all_digits(const std::string &str);

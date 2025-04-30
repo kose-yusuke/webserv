@@ -1,4 +1,5 @@
 #include "HttpRequestParser.hpp"
+#include "Logger.hpp"
 #include "Utils.hpp"
 #include <algorithm>
 #include <set>
@@ -72,6 +73,7 @@ void HttpRequestParser::parse_header() {
 
   recv_buffer.erase(recv_buffer.begin(), it + 4); // "\r\n\r\n"まで削除
   if (!std::getline(iss, line) || !parse_request_line(line)) {
+    log(LOG_DEBUG, "Failed to parse request line");
     set_framing_error(400);
     return;
   }
@@ -79,11 +81,13 @@ void HttpRequestParser::parse_header() {
 
   while (std::getline(iss, line) && !line.empty()) {
     if (!parse_header_line(line)) {
+      log(LOG_DEBUG, "Failed to parse header line: " + line);
       set_framing_error(400);
       return;
     }
   }
   if (!check_framing_error()) {
+    log(LOG_DEBUG, "Framing error detected by checking");
     set_framing_error(400);
     return;
   }
@@ -93,6 +97,7 @@ void HttpRequestParser::parse_header() {
 }
 
 void HttpRequestParser::next_parse_state() {
+  LOG_DEBUG_FUNC();
   if (request.is_in_headers("Content-Length")) {
     parse_state = PARSE_BODY;
   } else if (request.is_in_headers("Transfer-Encoding")) {
@@ -324,7 +329,7 @@ void HttpRequestParser::validate_headers_content() {
   }
 
   // Transfer-Encoding も Content-length もない POST
-  if (!request.is_in_headers("Transfer-Encoding") &&
+  if (request.method == "POST" && !request.is_in_headers("Transfer-Encoding") &&
       !request.is_in_headers("Content-Length")) {
     request.set_status_code(400);
   }
@@ -351,6 +356,7 @@ bool HttpRequestParser::is_valid_field_name_char(char c) {
 }
 
 void HttpRequestParser::set_framing_error(int status) {
+  LOG_DEBUG_FUNC();
   request.set_status_code(status);
   request.set_connection_policy(CP_MUST_CLOSE);
   parse_state = PARSE_DONE;

@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/21 22:47:32 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/29 20:10:03 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,7 @@
 #include <vector>
 
 class HttpResponse;
+class VirtualHostRouter;
 
 enum ResourceType { File, Directory, NotFound };
 enum RedirStatus { REDIR_NONE, REDIR_SUCCESS, REDIR_FAILED };
@@ -40,10 +41,8 @@ public:
   std::string method;
   std::string path;
   std::string version;
-  // std::string body;
-  std::vector<char> body_data;
-  // std::map<std::string, std::string> headers;
   HeaderMap headers;
+  std::vector<char> body_data;
 
   bool is_autoindex_enabled;
   std::string index_file_name;
@@ -55,7 +54,7 @@ public:
   LocationMap location_configs;
   ConfigMap best_match_config;
 
-  HttpRequest(int server_fd, HttpResponse &httpResponse);
+  HttpRequest(const VirtualHostRouter *router, HttpResponse &httpResponse);
   ~HttpRequest();
   void handle_http_request();
 
@@ -68,7 +67,8 @@ public:
   size_t get_max_body_size() const;
 
   const std::string &get_header_value(const std::string &key) const;
-  const std::vector<std::string> &get_header_values(const std::string &key) const;
+  const std::vector<std::string> &
+  get_header_values(const std::string &key) const;
   void add_header(const std::string &key, const std::string &value);
   bool is_in_headers(const std::string &key) const;
 
@@ -81,6 +81,7 @@ public:
 
 private:
   HttpResponse &response;
+  const VirtualHostRouter *virtual_host_router;
   ConnectionPolicy connection_policy;
   int status_code;
   std::string _root;
@@ -88,8 +89,10 @@ private:
 
   static const size_t k_default_max_body;
 
+  void select_server_by_host();
   void conf_init();
-  std::map<int, std::string> extract_error_page_map(const std::vector<std::string>& tokens);
+  std::map<int, std::string>
+  extract_error_page_map(const std::vector<std::string> &tokens);
   void init_cgi_extensions();
   void init_file_index();
   void merge_config(ConfigMap &base, const ConfigMap &override);

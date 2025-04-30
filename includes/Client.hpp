@@ -5,7 +5,7 @@
 #include "HttpResponse.hpp"
 #include <string>
 
-class Server;
+class VirtualHostRouter;
 
 enum IOStatus {
   IO_CONTINUE,        // 現状維持（read/write継続）
@@ -22,21 +22,22 @@ enum ClientState {
 
 class Client {
 public:
-  Client(int clientfd, int serverfd);
+  Client(int clientfd, const VirtualHostRouter *router);
   ~Client();
+
+  int get_fd() const;
 
   IOStatus on_read();
   IOStatus on_write();
 
 private:
-  int fd;                   // client fd
-  int server_fd;            // このclientが接続しているserver fd
+  int fd; // client fd
+  ClientState client_state;
+
   HttpResponse response;    // responseの生成とqueue管理
   HttpRequest request;      // header情報, body, contentLengthなどの管理
   HttpRequestParser parser; // header, bodyの解析管理
 
-  ClientState client_state;
-  // std::string response_buffer; // 現在送信中のbuffer
   ResponseEntry *current_entry; // 現在送信中のresponse entry;
   size_t response_sent;         // send済みのbytes数
 

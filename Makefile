@@ -3,15 +3,24 @@ CXX      := c++
 CXXFLAGS := -Wall -Wextra -Werror -std=c++98 -MMD -MP
 SRCDIR   := srcs
 OBJDIR   := objs
-SRCS     := $(SRCDIR)/main.cpp $(SRCDIR)/server/Server.cpp $(SRCDIR)/Utils.cpp \
+SRCS     := $(SRCDIR)/main.cpp \
+            $(SRCDIR)/server/Server.cpp \
+            $(SRCDIR)/server/ServerRegistry.cpp \
+            $(SRCDIR)/server/VirtualHostRouter.cpp \
+            $(SRCDIR)/server/ServerBuilder.cpp \
+            $(SRCDIR)/server/SocketBuilder.cpp \
+            $(SRCDIR)/client/Client.cpp \
+            $(SRCDIR)/client/ClientRegistry.cpp \
+            $(SRCDIR)/client/ConnectionManager.cpp \
+            $(SRCDIR)/http/HttpRequest.cpp \
+            $(SRCDIR)/http/HttpResponse.cpp \
+            $(SRCDIR)/http/HttpRequestParser.cpp \
             $(SRCDIR)/config/ConfigParse.cpp \
-			$(SRCDIR)/event/Multiplexer.cpp \
-			$(SRCDIR)/event/SelectMultiplexer.cpp \
-			$(SRCDIR)/event/PollMultiplexer.cpp \
-			$(SRCDIR)/http/HttpRequest.cpp \
-			$(SRCDIR)/http/HttpResponse.cpp \
-			$(SRCDIR)/client/Client.cpp \
-			$(SRCDIR)/http/HttpRequestParser.cpp
+            $(SRCDIR)/event/Multiplexer.cpp \
+            $(SRCDIR)/event/SelectMultiplexer.cpp \
+            $(SRCDIR)/event/PollMultiplexer.cpp \
+            $(SRCDIR)/utils/Logger.cpp \
+            $(SRCDIR)/utils/Utils.cpp
 
 UNAME_S := $(shell uname -s)
 
@@ -64,6 +73,11 @@ redir: $(NAME)
 	./$(NAME) config/valid/redir_practice.conf
 	@echo "== Tests Completed =="
 
+multiserver: $(NAME)
+	@echo "== Running Tests  =="
+	./$(NAME) config/valid/multiple_servers3.conf
+	@echo "== Tests Completed =="
+
 func: fclean
 	$(MAKE) LOG_LEVEL=0
 	$(MAKE) run
@@ -96,5 +110,11 @@ filedelete:
 dirdelete:
 	curl -X DELETE http://localhost:8080/menu/ -v
 
+routetest:
+	curl -H "Host: aaa.com" http://localhost:8080/
+	curl -H "Host: bbb.com" http://localhost:8080/
+	curl -H "Host: unknown.com" http://localhost:8080/
+	curl -H "Host: aaa.com:8080" http://localhost:8080/
+	curl -H "Host: bbb.com:8080" http://localhost:8080/
 
 .PHONY: all clean fclean re run redir debug quiet test redirtest debug

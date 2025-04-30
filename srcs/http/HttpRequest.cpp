@@ -6,31 +6,35 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/23 13:46:45 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/04/30 00:36:26 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include "Logger.hpp"
 #include "Multiplexer.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
+#include "VirtualHostRouter.hpp"
 
 const size_t HttpRequest::k_default_max_body = 104857600;
 
-// server fd 経由で, server_config, locations_configs を取得
-HttpRequest::HttpRequest(int server_fd, HttpResponse &httpResponse)
-    : response(httpResponse), status_code(0),
-      max_body_size(k_default_max_body) {
-  Server *server = Multiplexer::get_instance().get_server_from_map(server_fd);
-  if (!server) {
-    throw std::runtime_error("server not found by HttpRequest");
-  }
+HttpRequest::HttpRequest(const VirtualHostRouter *router,
+                         HttpResponse &httpResponse)
+    : is_autoindex_enabled(false), response(httpResponse),
+      virtual_host_router(router), connection_policy(CP_KEEP_ALIVE),
+      status_code(0), max_body_size(k_default_max_body) {}
+
+HttpRequest::~HttpRequest() {}
+
+// note: 適切なHost nameが存在することは、parser側で検証済みとする
+void HttpRequest::select_server_by_host() {
+  const std::string host_name = get_header_value("Host");
+  Server *server = virtual_host_router->route_by_host(host_name);
   this->server_config = server->get_config();
   this->location_configs = server->get_locations();
 }
-
-HttpRequest::~HttpRequest() {}
 
 void HttpRequest::init_cgi_extensions() {
   ConstConfigIt it = best_match_config.find("cgi_extensions");
@@ -103,6 +107,7 @@ HttpRequest::extract_error_page_map(const std::vector<std::string> &tokens) {
 
 void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
+  select_server_by_host();
   conf_init();
   print_best_match_config();
 
@@ -777,7 +782,19 @@ void HttpRequest::clear() {
   version.clear();
   body_data.clear();
   headers.clear();
-  connection_policy = CP_KEEP_ALIVE; // default
+
+  is_autoindex_enabled = false;
+  index_file_name.clear();
+  cgi_extensions.clear();
+  allow_methods.clear();
+  error_page_map.clear();
+
+  server_config.clear();
+  location_configs.clear();
+  best_match_config.clear();
+  _root.clear();
+
+  connection_policy = CP_KEEP_ALIVE;
   status_code = 0;
 }
 

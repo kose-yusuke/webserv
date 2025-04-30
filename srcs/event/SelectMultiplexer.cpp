@@ -1,5 +1,5 @@
 #include "SelectMultiplexer.hpp"
-#include "Utils.hpp"
+#include "Logger.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <string.h>
@@ -18,7 +18,6 @@ Multiplexer &SelectMultiplexer::get_instance() {
 
 void SelectMultiplexer::run() {
   LOG_DEBUG_FUNC();
-  initialize_fds();
 
   while (true) {
     if (max_fd >= FD_SETSIZE) {

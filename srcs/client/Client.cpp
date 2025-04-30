@@ -2,18 +2,19 @@
 #include "Client.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
-#include "Utils.hpp"
+#include "Logger.hpp"
+#include <cstddef>
 #include <sstream>
 #include <stdexcept>
 
-// TODO: timeout処理が必要 あとで
-
-Client::Client(int clientfd, int serverfd)
-    : fd(clientfd), server_fd(serverfd), response(),
-      request(serverfd, response), parser(request), client_state(CLIENT_ALIVE),
+Client::Client(int clientfd, const VirtualHostRouter *router)
+    : fd(clientfd), client_state(CLIENT_ALIVE), response(),
+      request(router, response), parser(request), current_entry(NULL),
       response_sent(0) {}
 
 Client::~Client() {}
+
+int Client::get_fd() const { return fd; }
 
 IOStatus Client::on_read() {
   LOG_DEBUG_FUNC();

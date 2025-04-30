@@ -1,5 +1,5 @@
 #include "KqueueMultiplexer.hpp"
-#include "Utils.hpp"
+#include "Logger.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <sys/event.h>
@@ -20,7 +20,6 @@ void KqueueMultiplexer::run() {
   static const int max_kqueue_events = 16384;
   int kq = kqueue();
   int size = 16;
-  initialize_fds();
 
   while (true) {
     if (size >= max_kqueue_events) {
