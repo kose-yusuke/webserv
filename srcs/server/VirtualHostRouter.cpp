@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/05 10:38:37 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/10 18:28:47 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/10 18:35:00 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,32 +35,16 @@ void VirtualHostRouter::add(Server *s){
   }
 }
 
-// Server *VirtualHostRouter::route_by_host(const std::string &host) const {
-//   size_t colon_pos = host.find(':');
-//   std::string host_name;
-//   if (colon_pos != std::string::npos) {
-//     host_name = host.substr(0, colon_pos);
-//   } else {
-//     host_name = host;
-//   }
-//   for (size_t i = 0; i < servers.size(); ++i) {
-//     if (servers[i]->matches_host(host_name)) {
-//       return servers[i];
-//     }
-//   }
-//   return servers.empty() ? NULL : servers[0];
-// }
 Server *VirtualHostRouter::route_by_host(const std::string &host) const {
   Server* best_match = NULL;
   size_t best_length = 0;
-
   size_t colon_pos = host.find(':');
   std::string host_name;
-  if (colon_pos != std::string::npos) {
+  
+  if (colon_pos != std::string::npos)
     host_name = host.substr(0, colon_pos);
-  } else {
+  else
     host_name = host;
-  }
 
   for (size_t i = 0; i < servers.size(); ++i) {
       const std::vector<std::string>& names = servers[i]->get_config().find("server_name")->second;
@@ -69,9 +53,8 @@ Server *VirtualHostRouter::route_by_host(const std::string &host) const {
           const std::string& pattern = names[j];
 
           // 完全一致（最優先）
-          if (pattern == host_name) {
+          if (pattern == host_name)
               return servers[i];
-          }
 
           // ワイルドカード前方一致（*.example.com）
           if (pattern.length() > best_length && parser.wildcard_suffix_match(pattern, host_name)) {
