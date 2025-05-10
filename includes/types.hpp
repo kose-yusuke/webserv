@@ -24,6 +24,7 @@ typedef LocationMap::const_iterator ConstLocationIt;
 typedef StrToStrMap::iterator StrToStrMapIt;
 typedef StrToStrMap::const_iterator ConstStrToStrMapIt;
 
+typedef std::pair<std::string, std::string> ListenPair;
 // HeaderMap
 
 struct CaseInsensitiveLess {
