@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/19 19:24:27 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/10 17:53:35 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/10 18:30:43 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,8 @@ class Parse{
         void check_duplicate_key(const std::string& key, std::map<std::string, std::vector<std::string> >& config);
         std::string space_outer_trim(const std::string& str);
         void merge_error_page(std::map<std::string, std::vector<std::string> >& config, const std::vector<std::string>& values);
-        bool wildcard_match(const std::string &pattern, const std::string &target);
+        bool wildcard_match(const std::string &pattern, const std::string &target) const;
+        bool wildcard_prefix_match(const std::string &pattern, const std::string &target) const;
+        bool wildcard_suffix_match(const std::string &pattern, const std::string &target) const;
         bool server_name_conflict(const std::string &a, const std::string &b);
 };

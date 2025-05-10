@@ -18,9 +18,6 @@ int SocketBuilder::create_socket(const std::string &ip,
       clean_port = port.substr(0, space_pos);
   }
 
-  std::cout << "Original port: " << port << std::endl;
-  std::cout << "Cleaned port: " << clean_port << std::endl;
-
   std::memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6 両方対応
   hints.ai_socktype = SOCK_STREAM; // stream sockets

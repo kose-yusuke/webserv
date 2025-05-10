@@ -21,15 +21,6 @@ Server::Server(const ConfigMap &config, const LocationMap &locations)
       }
     }
   }
-
-  if (_is_default)
-    std::cout << "[DEBUG] default_server is true for config with server_name: "
-              << (config.find("server_name") != config.end() ? config.find("server_name")->second[0] : "(none)")
-              << std::endl;
-  else
-    std::cout << "[DEBUG] default_server is false for config with server_name: "
-              << (config.find("server_name") != config.end() ? config.find("server_name")->second[0] : "(none)")
-              << std::endl;
 }
 
 // TODO: 確認

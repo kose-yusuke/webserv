@@ -139,16 +139,23 @@ bool Parse::server_name_conflict(const std::string &a, const std::string &b) {
     return (a == b || wildcard_match(a, b) || wildcard_match(b, a));
 }
 
-bool Parse::wildcard_match(const std::string &pattern, const std::string &target) {
-    if (pattern.empty()) 
+bool Parse::wildcard_match(const std::string &pattern, const std::string &target) const {
+    return wildcard_suffix_match(pattern, target) || wildcard_prefix_match(pattern, target);
+}
+
+bool Parse::wildcard_suffix_match(const std::string &pattern, const std::string &target) const {
+    if (pattern.size() < 3 || pattern[0] != '*' || pattern[1] != '.') 
         return false;
-    if (pattern[0] == '*' && pattern[1] == '.') {
-        return (target.size() >= pattern.size() - 1 &&
-               target.compare(target.size() - (pattern.size() - 1), std::string::npos, pattern.substr(1)) == 0);
-    } else if (pattern[pattern.size() - 1] == '*') {
-        return (target.compare(0, pattern.size() - 1, pattern.substr(0, pattern.size() - 1)) == 0);
-    }
-    return (false);
+    std::string suffix = pattern.substr(1);  // e.g., ".example.com"
+    if (target.size() < suffix.size()) return false;
+    return (target.compare(target.size() - suffix.size(), suffix.size(), suffix) == 0);
+}
+
+bool Parse::wildcard_prefix_match(const std::string &pattern, const std::string &target) const {
+    if (pattern.empty() || pattern[pattern.size() - 1] != '*') 
+        return false;
+    std::string prefix = pattern.substr(0, pattern.size() - 1);
+    return target.compare(0, prefix.size(), prefix) == 0;
 }
 
 bool is_valid_ip(const std::string& ip)
@@ -394,7 +401,6 @@ void Parse::parse_key_value(const std::string& line, std::string& key, std::vect
     std::string value_part = space_outer_trim(key_value.substr(space_pos + 1));
 
     if (key == "listen") {
-        // カンマで分割してから、各要素をスペースで分割
         std::istringstream iss(value_part);
         std::string token;
         while (std::getline(iss, token, ',')) {

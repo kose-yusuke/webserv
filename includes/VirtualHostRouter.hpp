@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "ConfigParse.hpp"
 
 class Server;
 
@@ -15,8 +16,8 @@ public:
 
 private:
   std::vector<Server *> servers;
+  Parse parser;
 
   VirtualHostRouter(const VirtualHostRouter &other);
   VirtualHostRouter &operator=(const VirtualHostRouter &other);
-  void move_default_to_front();
 };
