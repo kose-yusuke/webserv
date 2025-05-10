@@ -52,7 +52,7 @@ void Parse::validate_config(const std::map<std::string, std::vector<std::string>
     validate_config_keys(config);
     validate_listen_ip(config);
     validate_listen_port(config);
-    validate_server_name(config);
+    validate_duplicate_server_name_within_listen(config);
     validate_location_path(config);
 }
 
@@ -94,20 +94,61 @@ void Parse::validate_location_path(const std::map<std::string, std::vector<std::
     }
 }
 
-void Parse::validate_server_name(const std::map<std::string, std::vector<std::string> >& config)
-{
-    static std::vector<std::string> seen_server_names;
+void Parse::validate_duplicate_server_name_within_listen(const std::map<std::string, std::vector<std::string> >& config) {
 
-    std::map<std::string, std::vector<std::string> >::const_iterator it = config.find("server_name");
-    if (it != config.end()) {
-        for (size_t j = 0; j < it->second.size(); j++) {
-            for (size_t i = 0; i < seen_server_names.size(); i++) {
-                if (seen_server_names[i] == it->second[j])
-                    throw std::runtime_error("Duplicate server_name found: " + it->second[j]);
+    std::map<std::string, std::vector<std::string> >::const_iterator listen_it = config.find("listen");
+    std::map<std::string, std::vector<std::string> >::const_iterator name_it = config.find("server_name");
+
+    if (listen_it == config.end()) 
+        return;
+
+    std::vector<ListenPair> listens;
+    for (size_t i = 0; i < listen_it->second.size(); ++i) {
+        std::string token = listen_it->second[i];
+        if (token == "default_server") {
+            continue;
+        }
+        std::string ip = "0.0.0.0";
+        std::string port = token;
+        size_t colon = port.find(':');
+        if (colon != std::string::npos) {
+            ip = port.substr(0, colon);
+            port = port.substr(colon + 1);
+        }
+        listens.push_back(std::make_pair(ip, port));
+    }
+
+    if (name_it != config.end()) {
+        for (size_t i = 0; i < name_it->second.size(); ++i) {
+            const std::string &new_name = name_it->second[i];
+            for (size_t j = 0; j < listens.size(); ++j) {
+                ListenPair lp = listens[j];
+                std::vector<std::string> &names = listen_to_names[lp];
+                for (std::vector<std::string>::iterator it = names.begin(); it != names.end(); ++it) {
+                    if (server_name_conflict(*it, new_name)) {
+                        throw std::runtime_error("Duplicate server_name found on " + lp.first + ":" + lp.second + ": " + new_name);
+                    }
+                }
+                names.push_back(new_name);
             }
-            seen_server_names.push_back(it->second[j]);
         }
     }
+}
+
+bool Parse::server_name_conflict(const std::string &a, const std::string &b) {
+    return (a == b || wildcard_match(a, b) || wildcard_match(b, a));
+}
+
+bool Parse::wildcard_match(const std::string &pattern, const std::string &target) {
+    if (pattern.empty()) 
+        return false;
+    if (pattern[0] == '*' && pattern[1] == '.') {
+        return (target.size() >= pattern.size() - 1 &&
+               target.compare(target.size() - (pattern.size() - 1), std::string::npos, pattern.substr(1)) == 0);
+    } else if (pattern[pattern.size() - 1] == '*') {
+        return (target.compare(0, pattern.size() - 1, pattern.substr(0, pattern.size() - 1)) == 0);
+    }
+    return (false);
 }
 
 bool is_valid_ip(const std::string& ip)
@@ -170,6 +211,10 @@ void Parse::validate_listen_port(const std::map<std::string, std::vector<std::st
                 port_str = it->second[j].substr(colon_pos + 1);
             } else {
                 port_str = it->second[j];
+            }
+
+            if (port_str == "default_server") {
+                continue;
             }
 
             std::stringstream ss(port_str);
@@ -348,10 +393,24 @@ void Parse::parse_key_value(const std::string& line, std::string& key, std::vect
     // value = space_outer_trim(key_value.substr(space_pos + 1));
     std::string value_part = space_outer_trim(key_value.substr(space_pos + 1));
 
-    std::istringstream iss(value_part);
-    std::string word;
-    while (iss >> word) {
-        values.push_back(word);
+    if (key == "listen") {
+        // カンマで分割してから、各要素をスペースで分割
+        std::istringstream iss(value_part);
+        std::string token;
+        while (std::getline(iss, token, ',')) {
+            token = space_outer_trim(token);
+            std::istringstream token_stream(token);
+            std::string word;
+            while (token_stream >> word) {
+                values.push_back(word);
+            }
+        }
+    } else {
+        std::istringstream iss(value_part);
+        std::string word;
+        while (iss >> word) {
+            values.push_back(word);
+        }
     }
 }
 

@@ -18,4 +18,5 @@ private:
 
   VirtualHostRouter(const VirtualHostRouter &other);
   VirtualHostRouter &operator=(const VirtualHostRouter &other);
+  void move_default_to_front();
 };

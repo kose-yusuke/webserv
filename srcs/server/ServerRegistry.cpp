@@ -26,6 +26,8 @@ void ServerRegistry::add(const Server &s) {
 
   for (size_t i = 0; i < ip_ports.size(); ++i) {
 
+    if (ip_ports[i] == "default_server")
+      continue;
     size_t colon_pos = ip_ports[i].find(':');
     if (colon_pos == std::string::npos) {
       ip = "0.0.0.0";
