@@ -10,6 +10,17 @@ Server::Server(const ConfigMap &config, const LocationMap &locations)
   error_404 = (error_it != config.end() && !error_it->second.empty())
                   ? error_it->second[0]
                   : "404.html";
+  
+  ConstConfigIt listen_it = config.find("listen");
+  if (listen_it != config.end()) {
+    const std::vector<std::string> &tokens = listen_it->second;
+    for (size_t i = 0; i < tokens.size(); ++i) {
+      if (tokens[i] == "default_server") {
+        _is_default = true;
+        break;
+      }
+    }
+  }
 }
 
 // TODO: 確認
@@ -18,6 +29,7 @@ Server::Server(const Server &src) {
   location_configs = src.location_configs;
   public_root = src.public_root;
   error_404 = src.error_404;
+  _is_default = src._is_default;
 }
 
 Server::~Server() {}
@@ -39,4 +51,8 @@ bool Server::matches_host(const std::string &host_name) const {
 Server &Server::operator=(const Server &src) {
   (void)src;
   return *this;
+}
+
+bool Server::is_default_server() const {
+  return _is_default;
 }

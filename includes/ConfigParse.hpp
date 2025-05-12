@@ -6,13 +6,14 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/19 19:24:27 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/16 16:41:17 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/10 18:30:43 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include "Utils.hpp"
+#include "types.hpp"
 
 class Parse{
     private:
@@ -22,6 +23,7 @@ class Parse{
         // 最初のvectorはserverの設定がそれぞれ並んでいる, mapがキーとvalueの組み合わせ, valueのvectorはlistenなど複数ありえるのでvector
         std::vector<std::map<std::string, std::vector<std::string> > > server_configs;
         std::vector<std::map<std::string, std::map<std::string, std::vector<std::string> > > > locations_configs;
+        std::map<ListenPair, std::vector<std::string> > listen_to_names;
 
     public:
 
@@ -35,7 +37,7 @@ class Parse{
         void validate_config(const std::map<std::string, std::vector<std::string> >& config);
         void validate_config_keys(const std::map<std::string, std::vector<std::string> >& config);
         void validate_location_path(const std::map<std::string, std::vector<std::string> >& config);
-        void validate_server_name(const std::map<std::string, std::vector<std::string> >& config);
+        void validate_duplicate_server_name_within_listen(const std::map<std::string, std::vector<std::string> >& config);
         void validate_listen_port(const std::map<std::string, std::vector<std::string> >& config);
         void validate_listen_ip(const std::map<std::string, std::vector<std::string> >& config);
 
@@ -55,4 +57,8 @@ class Parse{
         void check_duplicate_key(const std::string& key, std::map<std::string, std::vector<std::string> >& config);
         std::string space_outer_trim(const std::string& str);
         void merge_error_page(std::map<std::string, std::vector<std::string> >& config, const std::vector<std::string>& values);
+        bool wildcard_match(const std::string &pattern, const std::string &target) const;
+        bool wildcard_prefix_match(const std::string &pattern, const std::string &target) const;
+        bool wildcard_suffix_match(const std::string &pattern, const std::string &target) const;
+        bool server_name_conflict(const std::string &a, const std::string &b);
 };
