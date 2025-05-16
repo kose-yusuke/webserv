@@ -8,12 +8,12 @@
 #include <sys/types.h>
 
 Multiplexer &SelectMultiplexer::get_instance() {
-  if (!Multiplexer::instance) {
+  if (!Multiplexer::instance_) {
     log(LOG_INFO, "SelectMultiplexer::get_instance()");
-    Multiplexer::instance = new SelectMultiplexer();
+    Multiplexer::instance_ = new SelectMultiplexer();
     std::atexit(Multiplexer::delete_instance);
   }
-  return *Multiplexer::instance;
+  return *Multiplexer::instance_;
 }
 
 void SelectMultiplexer::run() {
@@ -23,10 +23,17 @@ void SelectMultiplexer::run() {
     if (max_fd >= FD_SETSIZE) {
       throw std::runtime_error("select() fd exceeds FD_SETSIZE");
     }
+    handle_timeouts();
     active_read_fds = read_fds;
     active_write_fds = write_fds;
+
+    struct timeval timeout;
+    timeout.tv_sec = k_timeout_ms_ / 1000;
+    timeout.tv_usec = (k_timeout_ms_ % 1000) * 1000;
+
     errno = 0;
-    int nfd = select(max_fd + 1, &active_read_fds, &active_write_fds, 0, 0);
+    int nfd =
+        select(max_fd + 1, &active_read_fds, &active_write_fds, 0, &timeout);
     if (nfd == -1) {
       if (errno == EINTR) {
         continue;

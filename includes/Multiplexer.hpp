@@ -31,10 +31,13 @@ public:
 
 protected:
   // Singleton pattern
-  static Multiplexer *instance;
+  static Multiplexer *instance_;
+
+  static const int k_timeout_ms_;
 
   // I/O多重化処理の管理
   void process_event(int fd, bool readable, bool writable);
+  void handle_timeouts();
 
   Multiplexer();
   Multiplexer(const Multiplexer &other);
@@ -42,8 +45,8 @@ protected:
 
 private:
   // Registry
-  ServerRegistry *server_registry;
-  ClientRegistry *client_registry;
+  ServerRegistry *server_registry_;
+  ClientRegistry *client_registry_;
 
   // I/O多重化処理の補助関数
   void accept_client(int server_fd);
@@ -55,23 +58,3 @@ private:
   // 代入禁止
   Multiplexer &operator=(const Multiplexer &other);
 };
-
-/*
-try {
-    add_to_client_map(client_fd, new Client(client_fd, server_fd));
-  } catch (const std::exception &e) {
-    logfd(LOG_ERROR, e.what(), client_fd);
-    close(client_fd);
-    return;
-  }
-  Multiplexer::get_instance().monitor_read(client_fd);
-  // monitor_read(client_fd);
-  logfd(LOG_DEBUG, "New connection on client fd: ", client_fd);
-
-void ConnectionManager::remove_connection(Client *client, int client_fd) {
-  LOG_DEBUG_FUNC_FD(client_fd);
-  unmonitor(client_fd);
-  remove_from_client_map(client_fd); // close, delete もこの中
-}
-
-*/

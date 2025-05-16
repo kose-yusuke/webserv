@@ -8,12 +8,12 @@
 #include <sys/socket.h>
 
 Multiplexer &PollMultiplexer::get_instance() {
-  if (!Multiplexer::instance) {
+  if (!Multiplexer::instance_) {
     log(LOG_INFO, "PollMultiplexer::get_instance()");
-    Multiplexer::instance = new PollMultiplexer();
+    Multiplexer::instance_ = new PollMultiplexer();
     std::atexit(Multiplexer::delete_instance);
   }
-  return *Multiplexer::instance;
+  return *Multiplexer::instance_;
 }
 
 void PollMultiplexer::run() {
@@ -28,8 +28,9 @@ void PollMultiplexer::run() {
     if (pfds.size() >= max_poll_events) {
       throw std::runtime_error("poll() fd count exceeds limit");
     }
+    handle_timeouts();
     errno = 0;
-    int nfd = poll(pfds.data(), pfds.size(), 0);
+    int nfd = poll(pfds.data(), pfds.size(), k_timeout_ms_);
     if (nfd == -1) {
       if (errno == EINTR) {
         continue;
