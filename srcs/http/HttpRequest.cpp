@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/30 00:36:26 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/05/16 17:09:56 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,8 @@ HttpRequest::~HttpRequest() {}
 
 // note: 適切なHost nameが存在することは、parser側で検証済みとする
 void HttpRequest::select_server_by_host() {
+  LOG_DEBUG_FUNC();
+
   const std::string host_name = get_header_value("Host");
   Server *server = virtual_host_router->route_by_host(host_name);
   this->server_config = server->get_config();
@@ -62,6 +64,7 @@ void HttpRequest::init_file_index() {
 }
 
 void HttpRequest::conf_init() {
+  LOG_DEBUG_FUNC();
   this->best_match_config = get_best_match_config(path);
 
   if (!best_match_config["root"].empty())
@@ -559,6 +562,7 @@ bool HttpRequest::is_cgi_request(const std::string &path) {
 }
 
 void HttpRequest::print_best_match_config() const {
+  LOG_DEBUG_FUNC();
   std::cout << "=== best_match_config ===" << std::endl;
   for (ConstConfigIt it = best_match_config.begin();
        it != best_match_config.end(); ++it) {
