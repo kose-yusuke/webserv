@@ -1,11 +1,11 @@
 #pragma once
 
 #include "types.hpp"
+#include <cstddef>
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
-#include <cstddef>
-#include <iostream>
 
 class Server {
 public:
@@ -15,16 +15,16 @@ public:
 
   const ConfigMap &get_config() const;
   const LocationMap &get_locations() const;
+  const std::vector<std::string> &get_server_names() const;
 
-  bool matches_host(const std::string &host) const;
   bool is_default_server() const;
 
 private:
-  ConfigMap server_config;
-  LocationMap location_configs;
+  ConfigMap server_config_;
+  LocationMap location_configs_;
 
-  std::string public_root;
-  std::string error_404;
+  std::string public_root_;
+  std::string error_404_;
   bool _is_default;
 
   Server();

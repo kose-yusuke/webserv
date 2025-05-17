@@ -15,8 +15,8 @@ public:
   Server *route_by_host(const std::string &host) const;
 
 private:
-  std::vector<Server *> servers;
-  Parse parser;
+  std::vector<Server *> servers_;
+  Parse parser_;
 
   VirtualHostRouter(const VirtualHostRouter &other);
   VirtualHostRouter &operator=(const VirtualHostRouter &other);
