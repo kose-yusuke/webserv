@@ -27,9 +27,9 @@ private:
   typedef std::set<int>::iterator FdBackupIt;
   typedef std::set<int>::const_iterator ConstFdBackupIt;
 
-  int epfd;
-  std::set<int> read_fds;
-  std::set<int> write_fds;
+  int epfd_;
+  std::set<int> read_fds_;
+  std::set<int> write_fds_;
 
   bool is_readable(struct epoll_event &ev) const;
   bool is_writable(struct epoll_event &ev) const;
@@ -43,13 +43,3 @@ private:
 
   EpollMultiplexer &operator=(const EpollMultiplexer &other);
 };
-
-// TODO: dup()して、fdの複製が生じたときの管理
-// note: edge-triggered にするにはev.events = EPOLLIN | EPOLLET;する
-/*
-TODO: max_user_watches の反映
-c5r1s4% cat /proc/sys/fs/epoll/max_user_watches
-3599293
-TODO: handling EPOLLRDHUP, EPOLLHUP, EPOLLERR は大丈夫か？
-*/
-// add, remove に失敗したfdはどこでcloseするべきか？
