@@ -15,6 +15,7 @@ SRCS     := $(SRCDIR)/main.cpp \
             $(SRCDIR)/http/HttpRequest.cpp \
             $(SRCDIR)/http/HttpResponse.cpp \
             $(SRCDIR)/http/HttpRequestParser.cpp \
+			$(SRCDIR)/http/CgiHandler.cpp \
             $(SRCDIR)/config/ConfigParse.cpp \
             $(SRCDIR)/event/Multiplexer.cpp \
             $(SRCDIR)/event/SelectMultiplexer.cpp \

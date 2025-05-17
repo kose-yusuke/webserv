@@ -24,6 +24,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
+#include <regex.h>
+#include "types.hpp"
+#include "Logger.hpp"
 
 // kosekiさんから引き継いだ時点でのServer classのheader（一旦コメントアウト）
 // class Server {
@@ -62,6 +65,7 @@
 
 std::string read_file(const std::string &file_path);
 int print_error_message(const std::string &message);
+void print_best_match_config(ConfigMap best_match_config);
 
 // utils
 bool file_exists(const std::string &path);
@@ -82,5 +86,6 @@ size_t parse_hex(const std::string &s);
 
 std::vector<std::string> split_csv(const std::string &value);
 std::string to_lower(const std::string &s);
+bool regex_match_posix(const std::string &text, const std::string &pattern, bool ignore_case);
 
 bool is_all_digits(const std::string &str);

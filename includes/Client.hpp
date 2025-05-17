@@ -3,6 +3,7 @@
 #include "HttpRequest.hpp"
 #include "HttpRequestParser.hpp"
 #include "HttpResponse.hpp"
+#include "CgiHandler.hpp"
 #include <string>
 
 class VirtualHostRouter;
@@ -46,8 +47,8 @@ private:
 
   HttpResponse response_;    // responseの生成とqueue管理
   HttpRequest request_;      // header情報, body, contentLengthなどの管理
+  CgiHandler   cgi_; 
   HttpRequestParser parser_; // header, bodyの解析管理
-
   ResponseEntry *current_entry_; // 現在送信中のresponse entry;
   size_t response_sent_;         // send済みのbytes数
 
