@@ -16,10 +16,7 @@ void EpollMultiplexer::run() {
   LOG_DEBUG_FUNC();
   static const int max_epoll_events = 3599293;
   int size = 16; // num of fd; expect to monitor; not upper limit
-  epfd = epoll_create(size);
-  if (epfd == -1) {
-    throw std::runtime_error("epoll_create");
-  }
+
   std::vector<struct epoll_event> evlist;
 
   while (true) {
@@ -29,7 +26,7 @@ void EpollMultiplexer::run() {
     evlist.resize(size);
     handle_timeouts();
     errno = 0;
-    int nfd = epoll_wait(epfd, evlist.data(), evlist.size(), k_timeout_ms_);
+    int nfd = epoll_wait(epfd_, evlist.data(), evlist.size(), k_timeout_ms_);
     if (nfd == -1) {
       if (errno == EINTR) {
         continue;
@@ -54,18 +51,18 @@ void EpollMultiplexer::monitor_read(int fd) {
   ev.events = is_in_write_fds(fd) ? EPOLLIN | EPOLLOUT : EPOLLIN;
   ev.data.fd = fd;
 
-  if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+  if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev) == -1) {
     if (errno != EEXIST) {
       logfd(LOG_ERROR, "failed to list fd in read monitor: ", fd);
       return;
     }
     logfd(LOG_WARNING, "fd already under monitor: ", fd);
-    if (epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ev) == -1) {
+    if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev) == -1) {
       logfd(LOG_ERROR, "failed to list fd in read monitor: ", fd);
       return;
     }
   }
-  read_fds.insert(fd);
+  read_fds_.insert(fd);
 }
 
 void EpollMultiplexer::monitor_write(int fd) {
@@ -75,20 +72,20 @@ void EpollMultiplexer::monitor_write(int fd) {
   ev.data.fd = fd;
   ev.events = EPOLLIN | EPOLLOUT;
 
-  if (epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ev) == -1) {
+  if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev) == -1) {
 
     if (errno != ENOENT) {
       logfd(LOG_ERROR, "failed to list fd in write monitor: ", fd);
       return;
     }
     logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+    if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev) == -1) {
       logfd(LOG_ERROR, "failed to list fd in both monitor: ", fd);
       return;
     }
-    read_fds.insert(fd);
+    read_fds_.insert(fd);
   }
-  write_fds.insert(fd);
+  write_fds_.insert(fd);
 }
 
 void EpollMultiplexer::unmonitor_write(int fd) {
@@ -98,20 +95,20 @@ void EpollMultiplexer::unmonitor_write(int fd) {
   ev.data.fd = fd;
   ev.events = EPOLLIN;
 
-  if (epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ev) == -1) {
+  if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev) == -1) {
 
     if (errno != ENOENT) {
       logfd(LOG_ERROR, "failed to delist fd in write monitor: ", fd);
       return;
     }
     logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+    if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev) == -1) {
       logfd(LOG_ERROR, "failed to list fd in read monitor: ", fd);
       return;
     }
-    read_fds.insert(fd);
+    read_fds_.insert(fd);
   }
-  write_fds.erase(fd);
+  write_fds_.erase(fd);
 }
 
 void EpollMultiplexer::unmonitor(int fd) {
@@ -121,15 +118,15 @@ void EpollMultiplexer::unmonitor(int fd) {
   ev.events = 0;
   ev.data.fd = fd;
 
-  if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &ev) == -1) {
+  if (epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, &ev) == -1) {
     if (errno != ENOENT) {
       logfd(LOG_ERROR, "failed to delete fd: ", fd);
       return;
     }
     logfd(LOG_WARNING, "fd already erased: ", fd);
   }
-  read_fds.erase(fd);
-  write_fds.erase(fd);
+  read_fds_.erase(fd);
+  write_fds_.erase(fd);
 }
 
 bool EpollMultiplexer::is_readable(struct epoll_event &ev) const {
@@ -141,14 +138,19 @@ bool EpollMultiplexer::is_writable(struct epoll_event &ev) const {
 }
 
 bool EpollMultiplexer::is_in_read_fds(int fd) const {
-  return read_fds.find(fd) != read_fds.end();
+  return read_fds_.find(fd) != read_fds_.end();
 }
 
 bool EpollMultiplexer::is_in_write_fds(int fd) const {
-  return write_fds.find(fd) != write_fds.end();
+  return write_fds_.find(fd) != write_fds_.end();
 }
 
-EpollMultiplexer::EpollMultiplexer() {}
+EpollMultiplexer::EpollMultiplexer() {
+  epfd_ = epoll_create(16);
+  if (epfd_ == -1) {
+    throw std::runtime_error("epoll_create");
+  }
+}
 
 EpollMultiplexer::EpollMultiplexer(const EpollMultiplexer &other)
     : Multiplexer(other) {}
