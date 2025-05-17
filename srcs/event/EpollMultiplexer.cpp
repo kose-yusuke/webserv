@@ -16,10 +16,7 @@ void EpollMultiplexer::run() {
   LOG_DEBUG_FUNC();
   static const int max_epoll_events = 3599293;
   int size = 16; // num of fd; expect to monitor; not upper limit
-  epfd = epoll_create(size);
-  if (epfd == -1) {
-    throw std::runtime_error("epoll_create");
-  }
+
   std::vector<struct epoll_event> evlist;
 
   while (true) {
@@ -148,7 +145,12 @@ bool EpollMultiplexer::is_in_write_fds(int fd) const {
   return write_fds.find(fd) != write_fds.end();
 }
 
-EpollMultiplexer::EpollMultiplexer() {}
+EpollMultiplexer::EpollMultiplexer() {
+  epfd = epoll_create(16);
+  if (epfd == -1) {
+    throw std::runtime_error("epoll_create");
+  }
+}
 
 EpollMultiplexer::EpollMultiplexer(const EpollMultiplexer &other)
     : Multiplexer(other) {}
