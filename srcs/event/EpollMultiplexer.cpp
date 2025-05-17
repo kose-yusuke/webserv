@@ -4,12 +4,12 @@
 #include <iostream>
 
 Multiplexer &EpollMultiplexer::get_instance() {
-  if (!Multiplexer::instance) {
+  if (!Multiplexer::instance_) {
     log(LOG_INFO, "EpollMultiplexer::get_instance()");
-    Multiplexer::instance = new EpollMultiplexer();
+    Multiplexer::instance_ = new EpollMultiplexer();
     std::atexit(Multiplexer::delete_instance);
   }
-  return *Multiplexer::instance;
+  return *Multiplexer::instance_;
 }
 
 void EpollMultiplexer::run() {
@@ -27,8 +27,9 @@ void EpollMultiplexer::run() {
       throw std::runtime_error("epoll event list exceeds limit");
     }
     evlist.resize(size);
+    handle_timeouts();
     errno = 0;
-    int nfd = epoll_wait(epfd, evlist.data(), evlist.size(), 0);
+    int nfd = epoll_wait(epfd, evlist.data(), evlist.size(), k_timeout_ms_);
     if (nfd == -1) {
       if (errno == EINTR) {
         continue;

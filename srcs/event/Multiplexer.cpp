@@ -14,7 +14,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-Multiplexer *Multiplexer::instance = 0;
+Multiplexer *Multiplexer::instance_ = 0;
+
+const int Multiplexer::k_timeout_ms_ = 1000;
 
 Multiplexer &Multiplexer::get_instance() {
 #if defined(__linux__)
@@ -31,37 +33,56 @@ Multiplexer &Multiplexer::get_instance() {
 }
 
 void Multiplexer::delete_instance() {
-  if (instance) {
-    delete instance;
+  if (instance_) {
+    delete instance_;
   }
-  instance = 0;
+  instance_ = 0;
 }
 
 void Multiplexer::set_server_registry(ServerRegistry *registry) {
-  server_registry = registry;
+  server_registry_ = registry;
 }
 
 void Multiplexer::set_client_registry(ClientRegistry *registry) {
-  client_registry = registry;
+  client_registry_ = registry;
 }
 
 void Multiplexer::process_event(int fd, bool readable, bool writable) {
   if (!readable && !writable) {
     return;
   }
-  if (server_registry->has(fd)) {
+  if (server_registry_->has(fd)) {
     if (readable) {
       accept_client(fd);
     }
     return;
   }
-  if (client_registry->has(fd)) {
+  if (client_registry_->has(fd)) {
     if (readable) {
       read_from_client(fd);
     }
     if (writable) {
       write_to_client(fd);
     }
+  }
+}
+
+void Multiplexer::handle_timeouts() {
+  std::vector<int> timed_out_fds = client_registry_->mark_timed_out_clients();
+
+  for (size_t i = 0; i < timed_out_fds.size(); ++i) {
+    logfd(LOG_INFO,
+          "[TIMEOUT] monitor_write after timeout fd=", timed_out_fds[i]);
+    monitor_write(timed_out_fds[i]);
+  }
+
+  std::vector<int> unresponsive_fds =
+      client_registry_->detect_unresponsive_clients();
+
+  for (size_t i = 0; i < unresponsive_fds.size(); ++i) {
+    logfd(LOG_INFO,
+          "[TIMEOUT] forcibly removing unresponsive fd=", unresponsive_fds[i]);
+    remove_client(unresponsive_fds[i]);
   }
 }
 
@@ -79,15 +100,15 @@ void Multiplexer::accept_client(int serverfd) {
     return;
   }
 
-  Client *client = new Client(clientfd, server_registry->get_router(serverfd));
-  client_registry->add(clientfd, client);
+  Client *client = new Client(clientfd, server_registry_->get_router(serverfd));
+  client_registry_->add(clientfd, client);
   monitor_read(clientfd);
   logfd(LOG_DEBUG, "New connection on client socket: ", clientfd);
 }
 
 void Multiplexer::read_from_client(int clientfd) {
   LOG_DEBUG_FUNC_FD(clientfd);
-  Client *client = client_registry->get(clientfd);
+  Client *client = client_registry_->get(clientfd);
 
   switch (client->on_read()) {
 
@@ -107,7 +128,7 @@ void Multiplexer::read_from_client(int clientfd) {
 
 void Multiplexer::write_to_client(int clientfd) {
   LOG_DEBUG_FUNC_FD(clientfd);
-  Client *client = client_registry->get(clientfd);
+  Client *client = client_registry_->get(clientfd);
 
   switch (client->on_write()) {
   case IO_CONTINUE:
@@ -140,7 +161,7 @@ void Multiplexer::shutdown_write(int clientfd) {
 void Multiplexer::remove_client(int clientfd) {
   LOG_DEBUG_FUNC_FD(clientfd);
   unmonitor(clientfd);
-  client_registry->remove(clientfd);
+  client_registry_->remove(clientfd);
 }
 
 Multiplexer &Multiplexer::operator=(const Multiplexer &other) {

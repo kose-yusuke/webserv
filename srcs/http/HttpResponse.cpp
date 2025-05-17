@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/30 00:36:53 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/05/16 14:12:22 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,22 +18,25 @@ HttpResponse::HttpResponse() {}
 
 HttpResponse::~HttpResponse() {}
 
-ResponseEntry *HttpResponse::get_next_response() {
+ResponseEntry *HttpResponse::get_front_response() {
   LOG_DEBUG_FUNC();
-  return &response_queue.front();
+  if (response_deque_.empty() || !response_deque_.front().is_ready) {
+    return NULL;
+  }
+  return &response_deque_.front();
 }
 
-void HttpResponse::pop_response() {
+void HttpResponse::pop_front_response() {
   LOG_DEBUG_FUNC();
-  response_queue.pop();
+  response_deque_.pop_front();
 }
 
 bool HttpResponse::has_next_response() const {
-  return (!response_queue.empty() && response_queue.front().is_ready);
+  return (!response_deque_.empty() && response_deque_.front().is_ready);
 }
 
-void HttpResponse::push_response(ConnectionPolicy conn,
-                                 const std::string &response) {
+void HttpResponse::push_front_response(ConnectionPolicy conn,
+                                       const std::string &response) {
   LOG_DEBUG_FUNC();
   if (response.empty()) {
     return;
@@ -42,7 +45,20 @@ void HttpResponse::push_response(ConnectionPolicy conn,
   entry.is_ready = true;
   entry.conn = conn;
   entry.buffer = response;
-  response_queue.push(entry);
+  response_deque_.push_front(entry);
+}
+
+void HttpResponse::push_back_response(ConnectionPolicy conn,
+                                      const std::string &response) {
+  LOG_DEBUG_FUNC();
+  if (response.empty()) {
+    return;
+  }
+  struct ResponseEntry entry;
+  entry.is_ready = true;
+  entry.conn = conn;
+  entry.buffer = response;
+  response_deque_.push_back(entry);
 }
 
 void HttpResponse::generate_response(int status_code,
@@ -57,8 +73,7 @@ void HttpResponse::generate_response(int status_code,
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << content;
 
-  push_response(conn, response.str());
-  // send(client_socket, response.str().c_str(), response.str().size(), 0);
+  push_back_response(conn, response.str());
 }
 
 void HttpResponse::generate_custom_error_page(int status_code,
@@ -84,7 +99,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
     response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     response << file_content;
 
-    push_response(conn, response.str());
+    push_back_response(conn, response.str());
     // send(client_socket, response.str().c_str(), response.str().size(), 0);
   } catch (const std::exception &e) {
     std::ostringstream fallback;
@@ -100,7 +115,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
     fallback << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     fallback << "Not Found";
 
-    push_response(conn, fallback.str());
+    push_back_response(conn, fallback.str());
     // send(client_socket, fallback.str().c_str(), fallback.str().size(), 0);
   }
 }
@@ -116,8 +131,7 @@ void HttpResponse::generate_error_response(int status_code,
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
-  push_response(conn, response.str());
-  // send(client_socket, response.str().c_str(), response.str().size(), 0);
+  push_back_response(conn, response.str());
 }
 
 void HttpResponse::generate_error_response(int status_code,
@@ -131,7 +145,7 @@ void HttpResponse::generate_error_response(int status_code,
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
-  push_response(conn, response.str());
+  push_back_response(conn, response.str());
 }
 
 void HttpResponse::generate_redirect(int status_code,
@@ -145,7 +159,33 @@ void HttpResponse::generate_redirect(int status_code,
   response << "Location: " << new_location << "\r\n";
   response << "Content-Length: 0\r\n";
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
-  push_response(conn, response.str());
+  push_back_response(conn, response.str());
+}
+
+void HttpResponse::generate_timeout_response() {
+  LOG_DEBUG_FUNC();
+
+  std::ostringstream content;
+  content << "<html>\n"
+          << "  <head>\n"
+          << "    <title>408 Request Timeout</title>\n"
+          << "  </head>\n"
+          << "  <body>\n"
+          << "    <h1>408 Request Timeout</h1>\n"
+          << "    <p>Failed to process request in time. Please try again.</p>\n"
+          << "  </body>\n"
+          << "</html>";
+
+  std::string content_str = content.str();
+
+  std::ostringstream response;
+  response << "HTTP/1.1 408 Request Timeout\r\n";
+  response << "Content-Type: text/html\r\n";
+  response << "Content-Length: " << content_str.size() << "\r\n";
+  response << "Connection: close\r\n\r\n";
+  response << content_str;
+
+  push_front_response(CP_MUST_CLOSE, response.str());
 }
 
 const char *HttpResponse::get_status_message(int status_code) {
@@ -170,6 +210,8 @@ const char *HttpResponse::get_status_message(int status_code) {
     return "Not Found";
   case 405:
     return "Method Not Allowed";
+  case 408:
+    return "Request Timeout";
   case 413:
     return "Payload Too Large";
   case 414:

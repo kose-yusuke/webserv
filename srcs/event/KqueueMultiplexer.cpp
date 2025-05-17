@@ -7,12 +7,12 @@
 #include <sys/types.h>
 
 Multiplexer &KqueueMultiplexer::get_instance() {
-  if (!Multiplexer::instance) {
+  if (!Multiplexer::instance_) {
     log(LOG_INFO, "KqueueMultiplexer::get_instance()");
-    Multiplexer::instance = new KqueueMultiplexer();
+    Multiplexer::instance_ = new KqueueMultiplexer();
     std::atexit(Multiplexer::delete_instance);
   }
-  return *Multiplexer::instance;
+  return *Multiplexer::instance_;
 }
 
 void KqueueMultiplexer::run() {
@@ -20,15 +20,19 @@ void KqueueMultiplexer::run() {
   static const int max_kqueue_events = 16384;
   int kq = kqueue();
   int size = 16;
+  struct timespec timeout;
+  timeout.tv_sec = k_timeout_ms_ / 1000;
+  timeout.tv_nsec = (k_timeout_ms_ % 1000) * 1000000;
 
   while (true) {
     if (size >= max_kqueue_events) {
       throw std::runtime_error("kqueue event list exceeds limit");
     }
     event_list.resize(size);
+    handle_timeouts();
     errno = 0;
     int nfd = kevent(kq, change_list.data(), change_list.size(),
-                     event_list.data(), event_list.size(), 0);
+                     event_list.data(), event_list.size(), &timeout);
     if (nfd == -1) {
       if (errno == EINTR) {
         continue;
@@ -64,9 +68,10 @@ void KqueueMultiplexer::monitor_write(int fd) {
 
 void KqueueMultiplexer::unmonitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
-  struct kevent ev;
-  EV_SET(&ev, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-  change_list.push_back(ev);
+
+  struct kevent delete_ev;
+  EV_SET(&delete_ev, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+  change_list.push_back(delete_ev);
 }
 
 void KqueueMultiplexer::unmonitor(int fd) {
