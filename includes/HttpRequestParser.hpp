@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+class HttpRequest;
+
 class HttpRequestParser {
 public:
   HttpRequestParser(HttpRequest &http_request);

@@ -1,7 +1,5 @@
 
 #include "Client.hpp"
-#include "HttpRequest.hpp"
-#include "HttpResponse.hpp"
 #include "Logger.hpp"
 #include <cstddef>
 #include <sstream>
@@ -11,7 +9,11 @@
 Client::Client(int clientfd, const VirtualHostRouter *router)
     : fd_(clientfd), client_state_(CLIENT_ALIVE), timeout_sec_(15),
       last_activity_(time(NULL)), response_(), request_(router, response_),
-      parser_(request_), current_entry_(NULL), response_sent_(0) {}
+      cgi_(response_, request_), parser_(request_), current_entry_(NULL), 
+      response_sent_(0) 
+      {
+        request_.set_cgi_handler(&cgi_);
+      }
 
 Client::~Client() {}
 

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/30 00:26:35 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/05/17 19:08:59 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,23 @@ int print_error_message(const std::string &message) {
   std::exit(1);
   return (1);
 }
+
+void print_best_match_config(ConfigMap best_match_config){
+  LOG_DEBUG_FUNC();
+  std::cout << "=== best_match_config ===" << std::endl;
+  for (ConstConfigIt it = best_match_config.begin();
+       it != best_match_config.end(); ++it) {
+    std::cout << "Key: " << it->first << std::endl;
+    std::cout << "Values:";
+    for (std::vector<std::string>::const_iterator vit = it->second.begin();
+         vit != it->second.end(); ++vit) {
+      std::cout << " " << *vit;
+    }
+    std::cout << std::endl;
+  }
+  std::cout << "==================================" << std::endl;
+}
+
 
 bool ends_with(const std::string &str, const std::string &suffix) {
   if (str.length() < suffix.length())
@@ -66,6 +83,21 @@ bool is_all_digits(const std::string &str) {
   }
   return true;
 }
+
+bool regex_match_posix(const std::string &text, const std::string &pattern, bool ignore_case) {
+  regex_t regex;
+  int cflags = REG_EXTENDED;
+  if (ignore_case)
+  cflags |= REG_ICASE;
+
+  if (regcomp(&regex, pattern.c_str(), cflags) != 0)
+  return false;
+
+  int result = regexec(&regex, text.c_str(), 0, NULL, 0);
+  regfree(&regex);
+  return result == 0;
+}
+
 
 // 拡張子に基づいてMIMEタイプを返す関数
 // std::string get_mime_type(const std::string& file_path) {

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/29 20:10:03 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/05/17 19:51:01 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,8 @@
 
 #include "ResponseTypes.hpp"
 #include "types.hpp"
+#include "Utils.hpp"
+#include "CgiHandler.hpp"
 #include <algorithm>
 #include <dirent.h>
 #include <fcntl.h>
@@ -31,6 +33,7 @@
 
 class HttpResponse;
 class VirtualHostRouter;
+class CgiHandler;
 
 enum ResourceType { File, Directory, NotFound };
 enum RedirStatus { REDIR_NONE, REDIR_SUCCESS, REDIR_FAILED };
@@ -79,9 +82,12 @@ public:
 
   void clear();
 
+  void set_cgi_handler(CgiHandler* handler);
+
 private:
-  HttpResponse &response;
+  HttpResponse &response; 
   const VirtualHostRouter *virtual_host_router;
+  CgiHandler* cgi;
   ConnectionPolicy connection_policy;
   int status_code;
   std::string _root;
@@ -100,12 +106,10 @@ private:
   ResourceType get_resource_type(const std::string &path);
   void handle_get_request(std::string path);
   void handle_directory_request(std::string path);
-  bool is_cgi_request(const std::string &path);
   void handle_cgi_request(const std::string &cgi_path);
   // POSTの処理
   void handle_post_request();
   bool is_location_upload_file(const std::string file_path);
-  bool is_location_has_cgi();
   // DELETEの処理
   void handle_delete_request(const std::string path);
   int handle_directory_delete(const std::string &dir_path);
@@ -122,8 +126,6 @@ private:
 
   HttpRequest(const HttpRequest &other);
   HttpRequest &operator=(const HttpRequest &other);
-
-  void print_best_match_config() const;
 
   void handle_error(int status_code);
 };

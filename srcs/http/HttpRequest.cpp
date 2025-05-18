@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/16 17:09:56 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/05/17 19:37:53 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,18 +17,18 @@
 #include "Server.hpp"
 #include "Utils.hpp"
 #include "VirtualHostRouter.hpp"
+#include "CgiHandler.hpp"
 
 const size_t HttpRequest::k_default_max_body = 104857600;
 
 HttpRequest::HttpRequest(const VirtualHostRouter *router,
                          HttpResponse &httpResponse)
     : is_autoindex_enabled(false), response(httpResponse),
-      virtual_host_router(router), connection_policy(CP_KEEP_ALIVE),
+      virtual_host_router(router), cgi(NULL), connection_policy(CP_KEEP_ALIVE),
       status_code(0), max_body_size(k_default_max_body) {}
 
 HttpRequest::~HttpRequest() {}
 
-// note: 適切なHost nameが存在することは、parser側で検証済みとする
 void HttpRequest::select_server_by_host() {
   LOG_DEBUG_FUNC();
 
@@ -59,7 +59,7 @@ void HttpRequest::init_file_index() {
   if (index_it != best_match_config.end() && !index_it->second.empty()) {
     index_file_name = index_it->second[0];
   } else {
-    index_file_name = "index.html"; // デフォルト
+    index_file_name = "index.html";
   }
 }
 
@@ -73,6 +73,7 @@ void HttpRequest::conf_init() {
     _root = server_config["root"][0];
   else
     print_error_message("No root found in config file.");
+  set_cgi_handler(cgi);
   init_cgi_extensions();
   init_autoindex();
   init_file_index();
@@ -112,7 +113,7 @@ void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
   select_server_by_host();
   conf_init();
-  print_best_match_config();
+  print_best_match_config(best_match_config);
 
   if (status_code != 0) {
     // TODO: kosekiさんが実装済みの、custom error pageの呼び出しを反映させる
@@ -163,21 +164,6 @@ void HttpRequest::merge_config(ConfigMap &base, const ConfigMap &override) {
   for (ConstConfigIt it = override.begin(); it != override.end(); ++it) {
     base[it->first] = it->second;
   }
-}
-
-bool regex_match_posix(const std::string &text, const std::string &pattern,
-                       bool ignore_case) {
-  regex_t regex;
-  int cflags = REG_EXTENDED;
-  if (ignore_case)
-    cflags |= REG_ICASE;
-
-  if (regcomp(&regex, pattern.c_str(), cflags) != 0)
-    return false;
-
-  int result = regexec(&regex, text.c_str(), 0, NULL, 0);
-  regfree(&regex);
-  return result == 0;
 }
 
 ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
@@ -275,8 +261,8 @@ void HttpRequest::handle_get_request(std::string path) {
   if (type == Directory) {
     handle_directory_request(path);
   } else if (type == File) {
-    if (is_cgi_request(file_path))
-      handle_cgi_request(file_path);
+    if (cgi && cgi->is_cgi_request(file_path, cgi_extensions))
+      cgi->handle_cgi_request(file_path, body_data, path, method);
     else
       handle_file_request(file_path);
   } else {
@@ -286,8 +272,8 @@ void HttpRequest::handle_get_request(std::string path) {
   if (type == Directory) {
     handle_directory_request(path);
   } else if (type == File) {
-    if (is_location_has_cgi() && is_cgi_request(path))
-      handle_cgi_request(file_path);
+    if (cgi && cgi->is_location_has_cgi(best_match_config) && cgi->is_cgi_request(path, cgi_extensions))
+      cgi->handle_cgi_request(file_path, body_data, path, method);
     else
       handle_file_request(file_path);
   } else {
@@ -344,8 +330,6 @@ void HttpRequest::handle_directory_request(std::string path) {
     // autoindexがONの場合、ディレクトリリストを生成する
     if (is_autoindex_enabled) {
       std::string dir_listing = generate_directory_listing(_root + path);
-      // HttpResponse::send_response(client_socket, 200, dir_listing,
-      // "text/html");
       response.generate_response(200, dir_listing, "text/html",
                                  connection_policy);
     } else {
@@ -392,8 +376,8 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
 void HttpRequest::handle_post_request() {
   std::string full_path = _root + path;
 
-  if (is_location_has_cgi() && is_cgi_request(path)) {
-    handle_cgi_request(full_path);
+  if (cgi && cgi->is_location_has_cgi(best_match_config) && cgi->is_cgi_request(path, cgi_extensions)) {
+    cgi->handle_cgi_request(full_path, body_data, path, method);
     return;
   }
 
@@ -447,8 +431,8 @@ void HttpRequest::handle_delete_request(const std::string path) {
   if (type == Directory) {
     status = handle_directory_delete(file_path);
   } else if (type == File) {
-    if (is_cgi_request(file_path))
-      handle_cgi_request(file_path);
+    if (cgi && cgi->is_cgi_request(file_path, cgi_extensions))
+      cgi->handle_cgi_request(file_path, body_data, path, method);
     else {
       status = handle_file_delete(file_path);
       if (status == -1)
@@ -483,11 +467,6 @@ int HttpRequest::handle_directory_delete(const std::string &dir_path) {
     response.generate_error_response(409, "Conflict", connection_policy);
     return -1;
   }
-
-  // if (is_location_has_cgi() && is_cgi_request(dir_path)) {
-  //   handle_cgi_request(dir_path);
-  //   return 0;
-  // }
 
   if (has_index_file(dir_path, index_file_name)) {
     response.generate_error_response(403, "Forbidden", connection_policy);
@@ -543,153 +522,6 @@ int HttpRequest::delete_all_directory_content(const std::string &dir_path) {
 
   closedir(dir);
   return 0;
-}
-
-/*Cgi関連の処理*/
-bool HttpRequest::is_cgi_request(const std::string &path) {
-  std::string::size_type dot_pos = path.find_last_of('.');
-  if (dot_pos == std::string::npos) {
-    return false;
-  }
-
-  std::string extension = path.substr(dot_pos);
-  for (size_t i = 0; i < cgi_extensions.size(); ++i) {
-    if (cgi_extensions[i] == extension) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void HttpRequest::print_best_match_config() const {
-  LOG_DEBUG_FUNC();
-  std::cout << "=== best_match_config ===" << std::endl;
-  for (ConstConfigIt it = best_match_config.begin();
-       it != best_match_config.end(); ++it) {
-    std::cout << "Key: " << it->first << std::endl;
-    std::cout << "Values:";
-    for (std::vector<std::string>::const_iterator vit = it->second.begin();
-         vit != it->second.end(); ++vit) {
-      std::cout << " " << *vit;
-    }
-    std::cout << std::endl;
-  }
-  std::cout << "==================================" << std::endl;
-}
-
-bool HttpRequest::is_location_has_cgi() {
-  ConstConfigIt it = best_match_config.find("cgi_extensions");
-  if (it == best_match_config.end() || it->second.empty())
-    return false;
-  return true;
-}
-
-void HttpRequest::handle_cgi_request(const std::string &cgi_path) {
-  int output_pipe[2];
-
-  if (pipe(output_pipe) == -1) {
-    std::cerr << "pipe failed" << std::endl;
-    std::exit(1);
-  }
-
-  // TODO: String body -> Vector int body_dataのため
-  // 応急処置としてここでstringにしている
-  std::string body(body_data.begin(), body_data.end());
-
-  std::string tmp_path;
-  int tmp_fd = -1;
-  for (int i = 0; i < 10; ++i) {
-    tmp_path = "/tmp/cgi_tmp_" + make_unique_filename();
-    tmp_fd = open(tmp_path.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0600);
-    if (tmp_fd != -1)
-      break;
-  }
-  if (tmp_fd == -1) {
-    std::cerr << "Failed to create temp file: " << strerror(errno) << std::endl;
-    std::exit(1);
-  }
-
-  std::ofstream ofs(tmp_path.c_str());
-  if (!ofs) {
-    std::cerr << "Failed to open temp file for writing" << std::endl;
-    close(tmp_fd);
-    std::exit(1);
-  }
-  ofs << body;
-  ofs.close();
-  close(tmp_fd);
-
-  pid_t pid = fork();
-  if (pid < 0) {
-    std::cerr << "fork failed" << std::endl;
-    std::exit(1);
-  }
-
-  if (pid == 0) {
-    int in_fd = open(tmp_path.c_str(), O_RDONLY);
-    if (in_fd == -1) {
-      std::cerr << "open temp file failed: " << strerror(errno) << std::endl;
-      std::exit(1);
-    }
-
-    dup2(in_fd, STDIN_FILENO);
-    dup2(output_pipe[1], STDOUT_FILENO);
-    close(in_fd);
-    close(output_pipe[0]);
-
-    std::string contentLength = get_header_value("Content-Length");
-    std::string contentLengthStr = "CONTENT_LENGTH=" + contentLength;
-    std::string requestMethodStr = "REQUEST_METHOD=POST";
-    std::string contentTypeStr =
-        "CONTENT_TYPE=" + get_header_value("Content-Type");
-    std::string queryString = "QUERY_STRING=";
-
-    if (method == "POST") {
-      std::string body(body_data.begin(), body_data.end());
-      queryString += body;
-    } else if (method == "GET") {
-      size_t pos = path.find('?');
-      if (pos != std::string::npos) {
-        queryString += path.substr(pos + 1);
-      }
-    }
-    (void)cgi_path;
-
-    char *envp[] = {const_cast<char *>(requestMethodStr.c_str()),
-                    const_cast<char *>(contentLengthStr.c_str()),
-                    const_cast<char *>(contentTypeStr.c_str()),
-                    const_cast<char *>(queryString.c_str()), NULL};
-
-    char *argv[] = {const_cast<char *>(cgi_path.c_str()), NULL};
-
-    execve(cgi_path.c_str(), argv, envp);
-    perror("execve");
-    std::exit(1);
-  } else {
-    close(output_pipe[1]);
-
-    std::string cgi_output;
-    char buffer[1024];
-    ssize_t bytes_read;
-    while ((bytes_read = read(output_pipe[0], buffer, sizeof(buffer) - 1)) >
-           0) {
-      buffer[bytes_read] = '\0';
-      cgi_output += buffer;
-    }
-    close(output_pipe[0]);
-    int status;
-    waitpid(pid, &status, 0);
-
-    std::remove(tmp_path.c_str());
-
-    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-      response.generate_response(200, cgi_output, "text/html",
-                                 connection_policy);
-    } else {
-      response.generate_error_response(500, "CGI Execution Failed",
-                                       connection_policy);
-    }
-  }
 }
 
 // autoindex
@@ -807,17 +639,6 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &other) {
   return *this;
 }
 
-// bool HttpRequest::parse_http_request(const std::string &request,
-//                                      std::string &method, std::string
-//                                      &path, std::string &version) {
-//   std::istringstream request_stream(request);
-//   if (!(request_stream >> method >> path >> version)) {
-//     return false;
-//   }
-//   return true;
-// }
-
-// typedef std::map<std::string, std::vector<std::string> > ConfigMap;
 RedirStatus HttpRequest::handle_redirection() {
 
   ConstConfigIt return_it = best_match_config.find("return");
@@ -855,4 +676,8 @@ void HttpRequest::handle_error(int status_code) {
   } else {
     response.generate_error_response(status_code, connection_policy);
   }
+}
+
+void HttpRequest::set_cgi_handler(CgiHandler* handler) {
+  this->cgi = handler;
 }

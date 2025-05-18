@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Server.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/17 19:42:07 by koseki.yusu       #+#    #+#             */
+/*   Updated: 2025/05/17 19:42:09 by koseki.yusu      ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "Server.hpp"
 #include "ConfigParse.hpp"
 #include <algorithm>
@@ -5,11 +17,6 @@
 // TODO: 確認
 Server::Server(const ConfigMap &config, const LocationMap &locations)
     : server_config_(config), location_configs_(locations) {
-
-  ConstConfigIt error_it = config.find("error_page 404");
-  error_404_ = (error_it != config.end() && !error_it->second.empty())
-                   ? error_it->second[0]
-                   : "404.html";
 
   ConstConfigIt listen_it = config.find("listen");
   if (listen_it != config.end()) {
@@ -27,8 +34,6 @@ Server::Server(const ConfigMap &config, const LocationMap &locations)
 Server::Server(const Server &src) {
   server_config_ = src.server_config_;
   location_configs_ = src.location_configs_;
-  public_root_ = src.public_root_;
-  error_404_ = src.error_404_;
   _is_default = src._is_default;
 }
 

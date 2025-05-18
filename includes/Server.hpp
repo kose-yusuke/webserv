@@ -23,8 +23,6 @@ private:
   ConfigMap server_config_;
   LocationMap location_configs_;
 
-  std::string public_root_;
-  std::string error_404_;
   bool _is_default;
 
   Server();
