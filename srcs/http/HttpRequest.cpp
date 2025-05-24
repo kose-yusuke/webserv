@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/17 19:37:53 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/24 13:06:00 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -456,7 +456,6 @@ int HttpRequest::handle_file_delete(const std::string &file_path) {
     return 0;
   } else {
     std::cerr << "Failed to delete file: " << file_path << std::endl;
-    perror("Error");
     return -1;
   }
   return 0;
