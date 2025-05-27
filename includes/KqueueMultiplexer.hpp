@@ -16,6 +16,8 @@ protected:
   void monitor_write(int fd);
   void unmonitor_write(int fd);
   void unmonitor(int fd);
+  void monitor_pipe_read(int fd);
+  void monitor_pipe_write(int fd);
 
 private:
   typedef std::vector<struct kevent> KeventVec;

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/17 19:37:53 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/27 17:19:54 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,8 @@
 #include "Utils.hpp"
 #include "VirtualHostRouter.hpp"
 #include "CgiHandler.hpp"
+
+// TODO: CgiSesison と namespace cgiの分離
 
 const size_t HttpRequest::k_default_max_body = 104857600;
 

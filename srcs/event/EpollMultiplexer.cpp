@@ -48,21 +48,19 @@ void EpollMultiplexer::monitor_read(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
 
   struct epoll_event ev;
-  ev.events = is_in_write_fds(fd) ? EPOLLIN | EPOLLOUT : EPOLLIN;
+  ev.events = EPOLLIN;
   ev.data.fd = fd;
 
   if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev) == -1) {
     if (errno != EEXIST) {
-      logfd(LOG_ERROR, "failed to list fd in read monitor: ", fd);
+      logfd(LOG_ERROR, "epoll_ctl ADD failed (EPOLLIN): ", fd);
       return;
     }
     logfd(LOG_WARNING, "fd already under monitor: ", fd);
     if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev) == -1) {
-      logfd(LOG_ERROR, "failed to list fd in read monitor: ", fd);
-      return;
+      logfd(LOG_ERROR, "epoll_ctl MOD fallback failed (EPOLLIN): ", fd);
     }
   }
-  read_fds_.insert(fd);
 }
 
 void EpollMultiplexer::monitor_write(int fd) {
@@ -75,17 +73,14 @@ void EpollMultiplexer::monitor_write(int fd) {
   if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev) == -1) {
 
     if (errno != ENOENT) {
-      logfd(LOG_ERROR, "failed to list fd in write monitor: ", fd);
+      logfd(LOG_ERROR, "epoll_ctl MOD failed (EPOLLOUT): ", fd);
       return;
     }
     logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
     if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev) == -1) {
-      logfd(LOG_ERROR, "failed to list fd in both monitor: ", fd);
-      return;
+      logfd(LOG_ERROR, "epoll_ctl ADD fallback failed (EPOLLOUT): ", fd);
     }
-    read_fds_.insert(fd);
   }
-  write_fds_.insert(fd);
 }
 
 void EpollMultiplexer::unmonitor_write(int fd) {
@@ -96,19 +91,16 @@ void EpollMultiplexer::unmonitor_write(int fd) {
   ev.events = EPOLLIN;
 
   if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev) == -1) {
-
     if (errno != ENOENT) {
-      logfd(LOG_ERROR, "failed to delist fd in write monitor: ", fd);
+      logfd(LOG_ERROR, "epoll_ctl MOD failed (EPOLLIN): ", fd);
       return;
     }
     logfd(LOG_WARNING, "fd not in read monitor. Adding it now: ", fd);
     if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev) == -1) {
-      logfd(LOG_ERROR, "failed to list fd in read monitor: ", fd);
+      logfd(LOG_ERROR, "epoll_ctl ADD fallback failed (EPOLLIN): ", fd);
       return;
     }
-    read_fds_.insert(fd);
   }
-  write_fds_.erase(fd);
 }
 
 void EpollMultiplexer::unmonitor(int fd) {
@@ -125,8 +117,27 @@ void EpollMultiplexer::unmonitor(int fd) {
     }
     logfd(LOG_WARNING, "fd already erased: ", fd);
   }
-  read_fds_.erase(fd);
-  write_fds_.erase(fd);
+}
+
+void EpollMultiplexer::monitor_pipe_read(int fd) { monitor_read(fd); }
+
+void EpollMultiplexer::monitor_pipe_write(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+
+  struct epoll_event ev;
+  ev.events = EPOLLOUT;
+  ev.data.fd = fd;
+
+  if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev) == -1) {
+    if (errno != EEXIST) {
+      logfd(LOG_ERROR, "epoll_ctl ADD failed (EPOLLIN): ", fd);
+      return;
+    }
+    logfd(LOG_WARNING, "fd already under monitor: ", fd);
+    if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev) == -1) {
+      logfd(LOG_ERROR, "epoll_ctl MOD fallback failed (EPOLLIN): ", fd);
+    }
+  }
 }
 
 bool EpollMultiplexer::is_readable(struct epoll_event &ev) const {
@@ -135,14 +146,6 @@ bool EpollMultiplexer::is_readable(struct epoll_event &ev) const {
 
 bool EpollMultiplexer::is_writable(struct epoll_event &ev) const {
   return ev.events & EPOLLOUT;
-}
-
-bool EpollMultiplexer::is_in_read_fds(int fd) const {
-  return read_fds_.find(fd) != read_fds_.end();
-}
-
-bool EpollMultiplexer::is_in_write_fds(int fd) const {
-  return write_fds_.find(fd) != write_fds_.end();
 }
 
 EpollMultiplexer::EpollMultiplexer() {

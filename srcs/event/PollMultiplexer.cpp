@@ -97,20 +97,31 @@ void PollMultiplexer::unmonitor_write(int fd) {
 void PollMultiplexer::unmonitor(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
 
-  for (size_t i = 0; i < pfds.size(); ++i) {
-    for (size_t j = i + 1; j < pfds.size(); ++j) {
-      if (pfds[i].fd == pfds[j].fd) {
-        logfd(LOG_ERROR, "Duplicate fd in pfds: ", pfds[i].fd);
-      }
-    }
-  }
-
   PollFdIt it = find_pollfd(fd);
   if (it == pfds.end()) {
     logfd(LOG_WARNING, "fd already erased: ", fd);
     return;
   }
   pfds.erase(it);
+}
+
+void PollMultiplexer::monitor_pipe_read(int fd) { monitor_read(fd); }
+
+void PollMultiplexer::monitor_pipe_write(int fd) {
+  LOG_DEBUG_FUNC_FD(fd);
+  PollFdIt it = find_pollfd(fd);
+  if (it != pfds.end()) {
+    if (it->events & POLLOUT) {
+      return;
+    }
+    logfd(LOG_WARNING, "fd found, adding missing write event (POLLOUT): ", fd);
+    it->events = POLLOUT;
+    return;
+  }
+  struct pollfd pfd;
+  pfd.fd = fd;
+  pfd.events = POLLOUT;
+  pfds.push_back(pfd);
 }
 
 bool PollMultiplexer::is_readable(struct pollfd pfd) const {

@@ -19,6 +19,9 @@ protected:
   void unmonitor_write(int fd);
   void unmonitor(int fd);
 
+  void monitor_pipe_read(int fd);
+  void monitor_pipe_write(int fd);
+
 private:
   typedef std::vector<struct pollfd> PollFdVec;
   typedef std::vector<struct pollfd>::iterator PollFdIt;

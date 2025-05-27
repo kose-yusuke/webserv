@@ -8,6 +8,7 @@ class Server;
 class Client;
 class ServerRegistry;
 class ClientRegistry;
+class CgiSession;
 
 /**
  * Server の I/O 多重化を管理する基底クラス
@@ -20,14 +21,20 @@ public:
 
   virtual void run() = 0;
 
+  // TODO: 可視性の確認
   // 監視fd管理用の純粋仮想関数
   virtual void monitor_read(int fd) = 0;
   virtual void monitor_write(int fd) = 0;
   virtual void unmonitor_write(int fd) = 0;
   virtual void unmonitor(int fd) = 0;
 
+  virtual void monitor_pipe_read(int fd) = 0;
+  virtual void monitor_pipe_write(int fd) = 0;
+
   void set_server_registry(ServerRegistry *registry);
   void set_client_registry(ClientRegistry *registry);
+
+  void register_cgi_fds(int stdin_fd, int stdout_fd, CgiSession *session);
 
 protected:
   // Singleton pattern
@@ -54,6 +61,11 @@ private:
   void write_to_client(int client_fd);
   void shutdown_write(int client_fd);
   void remove_client(int client_fd);
+
+  // CGIのfdを扱う関数
+  void read_from_cgi(int cgi_stdout);
+  void write_to_cgi(int cgi_stdin);
+  void remove_cgi(int cgi_fd);
 
   // 代入禁止
   Multiplexer &operator=(const Multiplexer &other);

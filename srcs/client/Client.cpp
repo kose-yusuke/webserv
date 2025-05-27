@@ -1,5 +1,6 @@
 
 #include "Client.hpp"
+#include "CgiSession.hpp"
 #include "Logger.hpp"
 #include <cstddef>
 #include <sstream>
@@ -9,11 +10,10 @@
 Client::Client(int clientfd, const VirtualHostRouter *router)
     : fd_(clientfd), client_state_(CLIENT_ALIVE), timeout_sec_(15),
       last_activity_(time(NULL)), response_(), request_(router, response_),
-      cgi_(response_, request_), parser_(request_), current_entry_(NULL), 
-      response_sent_(0) 
-      {
-        request_.set_cgi_handler(&cgi_);
-      }
+      cgi_(request_, response_, fd_), parser_(request_), current_entry_(NULL),
+      response_sent_(0) {
+  request_.set_cgi_handler(&cgi_);
+}
 
 Client::~Client() {}
 
@@ -27,8 +27,6 @@ IOStatus Client::on_read() {
   if (bytes_read == -1 || bytes_read == 0) {
     return IO_SHOULD_CLOSE;
   }
-
-  std::string debug(buffer, bytes_read);
 
   update_activity();
   parser_.append_data(buffer, bytes_read);
@@ -124,6 +122,7 @@ bool Client::has_response() const {
 
 void Client::update_activity() { last_activity_ = time(NULL); }
 
+// Cgiのタイムアウトもここで管理できそうかも。別にやった方がクリアかも
 bool Client::is_timeout(time_t now) const {
   return (client_state_ == CLIENT_ALIVE && now - last_activity_ > timeout_sec_);
 }

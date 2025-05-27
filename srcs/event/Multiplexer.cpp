@@ -3,14 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   Multiplexer.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 19:42:26 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/17 19:42:28 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/27 19:18:05 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Multiplexer.hpp"
+#include "CgiSession.hpp"
 #include "Client.hpp"
 #include "ClientRegistry.hpp"
 #include "ConnectionManager.hpp"
@@ -59,6 +60,12 @@ void Multiplexer::set_client_registry(ClientRegistry *registry) {
   client_registry_ = registry;
 }
 
+void Multiplexer::register_cgi_fds(int stdin_fd, int stdout_fd,
+                                   CgiSession *session) {
+  client_registry_->add_cgi(stdin_fd, session);
+  client_registry_->add_cgi(stdout_fd, session);
+}
+
 void Multiplexer::process_event(int fd, bool readable, bool writable) {
   if (!readable && !writable) {
     return;
@@ -75,6 +82,14 @@ void Multiplexer::process_event(int fd, bool readable, bool writable) {
     }
     if (writable) {
       write_to_client(fd);
+    }
+  }
+  if (client_registry_->has_cgi(fd)) {
+    if (readable) {
+      read_from_cgi(fd);
+    }
+    if (writable) {
+      write_to_cgi(fd);
     }
   }
 }
@@ -174,6 +189,55 @@ void Multiplexer::remove_client(int clientfd) {
   LOG_DEBUG_FUNC_FD(clientfd);
   unmonitor(clientfd);
   client_registry_->remove(clientfd);
+}
+
+void Multiplexer::read_from_cgi(int cgi_stdout) {
+  LOG_DEBUG_FUNC_FD(cgi_stdout);
+  CgiSession *session = client_registry_->get_cgi(cgi_stdout);
+
+  switch (session->on_read()) {
+  case CGI_IO_CONTINUE:
+    // Do nothing
+    break;
+  case CGI_IO_READ_COMPLETE:
+    remove_cgi(cgi_stdout);
+    monitor_write(session->get_client_fd());
+    // Client のwrite event から CgiSession::on_done() を呼ぶ
+    break;
+  case CGI_IO_ERROR:
+    remove_cgi(cgi_stdout);
+    break;
+  default:
+    logfd(LOG_ERROR, "Unhandled I/O Status on cgi stdout fd: ", cgi_stdout);
+    break;
+  }
+}
+
+void Multiplexer::write_to_cgi(int cgi_stdin) {
+  LOG_DEBUG_FUNC_FD(cgi_stdin);
+  CgiSession *session = client_registry_->get_cgi(cgi_stdin);
+
+  switch (session->on_write()) {
+  case CGI_IO_CONTINUE:
+    // Do nothing
+    break;
+  case CGI_IO_WRITE_COMPLETE:
+    remove_cgi(cgi_stdin);
+    monitor_pipe_read(session->get_stdout_fd());
+    break;
+  case CGI_IO_ERROR:
+    remove_cgi(cgi_stdin);
+    remove_cgi(session->get_stdout_fd());
+    break;
+  default:
+    logfd(LOG_ERROR, "Unhandled I/O Status on cgi stdin fd: ", cgi_stdin);
+    break;
+  }
+}
+
+void Multiplexer::remove_cgi(int cgi_fd) {
+  unmonitor(cgi_fd);
+  client_registry_->remove_cgi(cgi_fd);
 }
 
 Multiplexer &Multiplexer::operator=(const Multiplexer &other) {

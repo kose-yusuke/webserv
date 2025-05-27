@@ -1,10 +1,20 @@
 #include "ClientRegistry.hpp"
+#include "CgiSession.hpp"
 #include "Client.hpp"
 #include "Logger.hpp"
 
 ClientRegistry::ClientRegistry() {}
 
 ClientRegistry::~ClientRegistry() {
+
+  for (CgiIt cgi_it = cgis_.begin(); cgi_it != cgis_.end(); ++cgi_it) {
+    if (close(cgi_it->first) == -1) {
+      logfd(LOG_ERROR, "Failed to close cgi fd: ", cgi_it->first);
+    }
+    // CgiSessionはClientが所有しているメンバ変数になる
+  }
+  cgis_.clear();
+
   for (ClientIt it = clients_.begin(); it != clients_.end(); ++it) {
     if (it->first != -1 && close(it->first) == -1) {
       logfd(LOG_ERROR, "Failed to close client fd: ", it->first);
@@ -50,6 +60,40 @@ bool ClientRegistry::has(int fd) const {
 }
 
 size_t ClientRegistry::size() const { return clients_.size(); }
+
+void ClientRegistry::add_cgi(int fd, CgiSession *session) {
+  if (has_cgi(fd)) {
+    logfd(LOG_ERROR, "Duplicate cgi fd: ", fd);
+    return;
+  }
+  cgis_[fd] = session;
+}
+
+// ClientRegistyがfdの所有権を持つ. CgiSessionはClientが持つ
+void ClientRegistry::remove_cgi(int fd) {
+  CgiIt it = cgis_.find(fd);
+  if (it == cgis_.end()) {
+    logfd(LOG_ERROR, "CGI fd not in registry: ", fd);
+    return;
+  }
+  if (close(it->first) == -1) {
+    logfd(LOG_ERROR, "Failed to close cgi fd: ", fd);
+  }
+  cgis_.erase(it);
+}
+
+CgiSession *ClientRegistry::get_cgi(int fd) const {
+  ConstCgiIt it = cgis_.find(fd);
+  if (it == cgis_.end()) {
+    logfd(LOG_ERROR, "Failed to find cgi fd: ", fd);
+    return NULL;
+  }
+  return it->second;
+}
+
+bool ClientRegistry::has_cgi(int fd) const {
+  return cgis_.find(fd) != cgis_.end();
+}
 
 std::vector<int> ClientRegistry::mark_timed_out_clients() {
   time_t now = time(NULL);

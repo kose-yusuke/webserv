@@ -56,6 +56,7 @@ void SelectMultiplexer::monitor_read(int fd) {
 void SelectMultiplexer::monitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   FD_SET(fd, &write_fds);
+  max_fd = std::max(fd, max_fd);
 }
 
 void SelectMultiplexer::unmonitor_write(int fd) {
@@ -77,6 +78,10 @@ void SelectMultiplexer::unmonitor(int fd) {
     }
   }
 }
+
+void SelectMultiplexer::monitor_pipe_read(int fd) { monitor_read(fd); }
+
+void SelectMultiplexer::monitor_pipe_write(int fd) { monitor_write(fd); }
 
 bool SelectMultiplexer::is_readable(int fd) {
   return FD_ISSET(fd, &active_read_fds);
