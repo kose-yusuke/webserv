@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/27 17:19:54 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/05/27 19:25:00 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -458,7 +458,6 @@ int HttpRequest::handle_file_delete(const std::string &file_path) {
     return 0;
   } else {
     std::cerr << "Failed to delete file: " << file_path << std::endl;
-    perror("Error");
     return -1;
   }
   return 0;

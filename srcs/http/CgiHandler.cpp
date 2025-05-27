@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 18:32:44 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/17 19:22:55 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/24 13:06:44 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,7 +125,7 @@ void CgiHandler::handle_cgi_request(const std::string &cgi_path, std::vector<cha
         char *argv[] = {const_cast<char *>(cgi_path.c_str()), NULL};
 
         execve(cgi_path.c_str(), argv, envp);
-        perror("execve");
+        std::cout << "Error :" << strerror(errno) << std::endl;
         std::exit(1);
     } else {
         close(output_pipe[1]);
