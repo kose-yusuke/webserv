@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/24 13:06:00 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/31 18:40:42 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,6 +113,11 @@ void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
   select_server_by_host();
   conf_init();
+  if (!validate_client_body_size())
+  {
+    handle_error(413);
+    return; 
+  }
   print_best_match_config(best_match_config);
 
   if (status_code != 0) {
@@ -178,7 +183,7 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
 
   // 1. 完全一致(= /path) を評価
   for (ConstLocationIt it = location_configs.begin();
-       it != location_configs.end(); ++it) {
+      it != location_configs.end(); ++it) {
     const std::string &loc = it->first;
     if (loc.substr(0, 2) == "= ") {
       if (loc.substr(2) == path) {
@@ -194,7 +199,7 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   ConstLocationIt longest_prefix_it = location_configs.find("/");
 
   for (ConstLocationIt it = location_configs.begin();
-       it != location_configs.end(); ++it) {
+      it != location_configs.end(); ++it) {
     const std::string &loc = it->first;
     if (loc.substr(0, 3) == "^~ ") {
       std::string clean_loc = loc.substr(3);
@@ -238,6 +243,40 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   return (best_config);
 }
 
+size_t HttpRequest::get_body_size() {return body_size;}
+
+void HttpRequest::load_body_size()
+{
+  if (is_in_headers("Content-Length")) {
+
+    StrVector num_values = get_header_values("Content-Length");
+    if (num_values.empty()) {
+      return;
+    }
+    try {
+      body_size = str_to_size(num_values[0]);
+    } catch (const std::exception &e) {
+      return;
+    }
+    for (size_t i = 1; i < num_values.size(); ++i) {
+      if (num_values[i] != num_values[0]) {
+        return;
+      }
+    }
+  }
+}
+
+bool HttpRequest::validate_client_body_size(){
+  // body size の超過;
+  load_max_body_size();
+  load_body_size();
+  if (body_size > get_max_body_size()) {
+    set_status_code(413);
+    return false;
+  }
+  return true;
+}
+
 void HttpRequest::load_max_body_size() {
   ConstConfigIt it = server_config.find("client_max_body_size");
   if (it != server_config.end()) {
@@ -257,17 +296,6 @@ void HttpRequest::handle_get_request(std::string path) {
   }
 
   ResourceType type = get_resource_type(file_path);
-
-  if (type == Directory) {
-    handle_directory_request(path);
-  } else if (type == File) {
-    if (cgi && cgi->is_cgi_request(file_path, cgi_extensions))
-      cgi->handle_cgi_request(file_path, body_data, path, method);
-    else
-      handle_file_request(file_path);
-  } else {
-    handle_error(404);
-  }
 
   if (type == Directory) {
     handle_directory_request(path);

@@ -323,11 +323,6 @@ bool HttpRequestParser::check_framing_error() {
 void HttpRequestParser::validate_headers_content() {
   LOG_DEBUG_FUNC();
 
-  // body size の超過
-  if (body_size > request.get_max_body_size()) {
-    request.set_status_code(413);
-  }
-
   // Transfer-Encoding も Content-length もない POST
   if (request.method == "POST" && !request.is_in_headers("Transfer-Encoding") &&
       !request.is_in_headers("Content-Length")) {

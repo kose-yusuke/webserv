@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/16 14:12:22 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/05/24 16:59:49 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,6 +110,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
       fallback << "Method Not Allowed";
     }
     // fallback << "\r\nContent-Length: 9\r\n\r\nNot Found";
+    fallback << "\r\n";
     fallback << "Content-Length: 9\r\n";
     fallback << "Content-Type: text/plain\r\n";
     fallback << "Connection: " << to_connection_value(conn) << "\r\n\r\n";

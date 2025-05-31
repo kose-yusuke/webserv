@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/17 19:51:01 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/05/24 18:21:51 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,7 @@ public:
   std::string version;
   HeaderMap headers;
   std::vector<char> body_data;
+  size_t body_size;
 
   bool is_autoindex_enabled;
   std::string index_file_name;
@@ -123,6 +124,10 @@ private:
   void handle_file_request(const std::string &file_path);
 
   RedirStatus handle_redirection();
+
+  bool validate_client_body_size();
+  void load_body_size();
+  size_t get_body_size();
 
   HttpRequest(const HttpRequest &other);
   HttpRequest &operator=(const HttpRequest &other);
