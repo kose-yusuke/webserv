@@ -26,6 +26,7 @@ class CgiHandler {
         bool is_cgi_request(const std::string &path, const std::vector<std::string>& cgi_extensions);
         bool is_location_has_cgi(ConfigMap best_match_config);
         void handle_cgi_request(const std::string &cgi_path, std::vector<char> body_data, std::string method, std::string path);
+        bool is_cgi_like_path(const std::string& path);
     private:
         HttpResponse &response;
         HttpRequest &request;

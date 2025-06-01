@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/31 18:40:42 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/06/01 10:51:11 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -408,9 +408,15 @@ void HttpRequest::handle_post_request() {
     cgi->handle_cgi_request(full_path, body_data, path, method);
     return;
   }
+  
+  if (cgi->is_cgi_like_path(path)) {
+    response.generate_error_response(
+      403, "CGI execution forbidden for this location", connection_policy);
+    return;
+  }
 
   if (!is_location_upload_file(full_path)) {
-    handle_get_request(path); // POSTが許されない場所ならGETにフォールバック
+    handle_get_request(path);
     return;
   }
 
@@ -459,7 +465,7 @@ void HttpRequest::handle_delete_request(const std::string path) {
   if (type == Directory) {
     status = handle_directory_delete(file_path);
   } else if (type == File) {
-    if (cgi && cgi->is_cgi_request(file_path, cgi_extensions))
+    if (cgi && cgi->is_location_has_cgi(best_match_config) && cgi->is_cgi_request(file_path, cgi_extensions))
       cgi->handle_cgi_request(file_path, body_data, path, method);
     else {
       status = handle_file_delete(file_path);

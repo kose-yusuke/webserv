@@ -89,3 +89,4 @@ std::string to_lower(const std::string &s);
 bool regex_match_posix(const std::string &text, const std::string &pattern, bool ignore_case);
 
 bool is_all_digits(const std::string &str);
+std::string getExtension(const std::string& path);
