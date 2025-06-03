@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <map>
+#include <set>
 #include <vector>
 
 class Client;
@@ -18,13 +19,15 @@ public:
   bool has(int fd) const;
   size_t size() const;
 
+  std::vector<int> mark_timed_out_clients();
+  std::vector<int> detect_unresponsive_clients() const;
+
   void add_cgi(int fd, CgiSession *session);
   void remove_cgi(int fd);
   CgiSession *get_cgi(int fd) const;
   bool has_cgi(int fd) const;
 
-  std::vector<int> mark_timed_out_clients();
-  std::vector<int> detect_unresponsive_clients() const;
+  std::set<CgiSession *> mark_timed_out_cgis();
 
 private:
   std::map<int, Client *> clients_;

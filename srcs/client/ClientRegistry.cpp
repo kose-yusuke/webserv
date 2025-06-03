@@ -6,12 +6,13 @@
 ClientRegistry::ClientRegistry() {}
 
 ClientRegistry::~ClientRegistry() {
-
   for (CgiIt cgi_it = cgis_.begin(); cgi_it != cgis_.end(); ++cgi_it) {
     if (close(cgi_it->first) == -1) {
       logfd(LOG_ERROR, "Failed to close cgi fd: ", cgi_it->first);
     }
-    // CgiSessionはClientが所有しているメンバ変数になる
+    // Note: CgiSession*は、ClientRegistryではなくClientが所有権を持つ
+    // CgiSession::pid_ は、CgiSessionのデストラクタがkillする
+    // stdin_fd_, stdout_fd_ のcloseのみここで行う
   }
   cgis_.clear();
 
@@ -61,6 +62,33 @@ bool ClientRegistry::has(int fd) const {
 
 size_t ClientRegistry::size() const { return clients_.size(); }
 
+std::vector<int> ClientRegistry::mark_timed_out_clients() {
+  time_t now = time(NULL);
+  std::vector<int> timed_out_clients;
+  timed_out_clients.reserve(clients_.size());
+
+  for (ClientIt it = clients_.begin(); it != clients_.end(); ++it) {
+    if (it->second->is_timeout(now)) {
+      it->second->on_timeout();
+      timed_out_clients.push_back(it->first);
+    }
+  }
+  return timed_out_clients;
+}
+
+std::vector<int> ClientRegistry::detect_unresponsive_clients() const {
+  time_t now = time(NULL);
+  std::vector<int> unresponsive_clients;
+  unresponsive_clients.reserve(clients_.size());
+
+  for (ConstClientIt it = clients_.begin(); it != clients_.end(); ++it) {
+    if (it->second->is_unresponsive(now)) {
+      unresponsive_clients.push_back(it->first);
+    }
+  }
+  return unresponsive_clients;
+}
+
 void ClientRegistry::add_cgi(int fd, CgiSession *session) {
   if (has_cgi(fd)) {
     logfd(LOG_ERROR, "Duplicate cgi fd: ", fd);
@@ -69,11 +97,10 @@ void ClientRegistry::add_cgi(int fd, CgiSession *session) {
   cgis_[fd] = session;
 }
 
-// ClientRegistyがfdの所有権を持つ. CgiSessionはClientが持つ
+// ClientRegistyがfdの所有権を持つ. ClientがCgiSessionの所有権を持つ
 void ClientRegistry::remove_cgi(int fd) {
   CgiIt it = cgis_.find(fd);
   if (it == cgis_.end()) {
-    logfd(LOG_ERROR, "CGI fd not in registry: ", fd);
     return;
   }
   if (close(it->first) == -1) {
@@ -95,33 +122,17 @@ bool ClientRegistry::has_cgi(int fd) const {
   return cgis_.find(fd) != cgis_.end();
 }
 
-std::vector<int> ClientRegistry::mark_timed_out_clients() {
+std::set<CgiSession *> ClientRegistry::mark_timed_out_cgis() {
   time_t now = time(NULL);
-  std::vector<int> timed_out_clients;
-  timed_out_clients.reserve(clients_.size());
+  std::set<CgiSession *> timed_out_cgis;
 
-  for (ClientIt it = clients_.begin(); it != clients_.end(); ++it) {
-    if (it->second->is_timeout(now)) {
-      it->second->on_timeout(); // stateの更新と、timeout responseの準備
-      timed_out_clients.push_back(it->first);
+  for (CgiIt it = cgis_.begin(); it != cgis_.end(); ++it) {
+    if (it->second->is_cgi_timeout(now)) {
+      it->second->on_cgi_timeout(); // stateの更新; pidのkill
+      timed_out_cgis.insert(it->second);
     }
   }
-  // multiplexerにmonitor_write()を頼みたいfdsを渡す
-  return timed_out_clients;
-}
-
-std::vector<int> ClientRegistry::detect_unresponsive_clients() const {
-  time_t now = time(NULL);
-  std::vector<int> unresponsive_clients;
-  unresponsive_clients.reserve(clients_.size());
-
-  for (ConstClientIt it = clients_.begin(); it != clients_.end(); ++it) {
-    if (it->second->is_unresponsive(now)) {
-      unresponsive_clients.push_back(it->first);
-    }
-  }
-  // multiplexerにforce closeさせたいfdsを渡す
-  return unresponsive_clients;
+  return timed_out_cgis;
 }
 
 ClientRegistry &ClientRegistry::operator=(const ClientRegistry &other) {
