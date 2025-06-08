@@ -46,8 +46,9 @@ void ZombieRegistry::manage_zombies() {
 
     pid_t result = waitpid(it->first, NULL, WNOHANG);
     if (result == it->first || (result == -1 && errno == ECHILD)) {
-      ZombiesIt next_it = pending_zombies_.erase(it);
-      it = next_it;
+      ZombiesIt erase_it = it;
+      ++it;
+      pending_zombies_.erase(erase_it);
       continue;
     }
 
