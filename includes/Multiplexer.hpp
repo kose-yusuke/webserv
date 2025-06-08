@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <map>
+#include <sys/types.h>
 #include <vector>
 
 class Server;
