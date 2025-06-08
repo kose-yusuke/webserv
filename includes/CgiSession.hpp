@@ -1,13 +1,9 @@
 #pragma once
 
 #include "HttpRequest.hpp"
-#include "HttpRequestParser.hpp"
 #include "HttpResponse.hpp"
 #include "Logger.hpp"
-#include "Utils.hpp"
-#include "types.hpp"
 #include <ctime>
-#include <errno.h>
 #include <fcntl.h>
 #include <iostream>
 #include <string>
@@ -29,54 +25,66 @@ enum CgiIOStatus {
   CGI_IO_ERROR
 };
 
+/*
+CgiSession: CGIの起動とpipe通信の制御-
+*/
 class CgiSession {
 public:
-  enum CgiState {
-    WAIT_WRITE_BODY,
-    WAIT_READ_OUTPUT,
-    WAIT_CHILD_EXIT,
-    DONE,
-    ERROR
-  };
+  enum CgiState { WAIT_WRITE_BODY, WAIT_READ_OUTPUT, DONE, ERROR, TIMED_OUT };
 
+  // Constructor / Destructor / Assignment
   CgiSession(HttpRequest &request, HttpResponse &response, int client_fd);
   ~CgiSession();
 
+  // Accessors
+  int get_client_fd() const;
   int get_stdin_fd() const;
   int get_stdout_fd() const;
-  int get_client_fd() const;
-  bool is_done() const;
-  bool is_timeout(time_t now) const;
 
+  // State checkers
+  bool is_cgi_active() const;
+  bool is_cgi_timeout(time_t now) const;
+
+  // Main processing logic
   void handle_cgi_request(const std::string &cgi_path,
                           std::vector<char> body_data, std::string method,
                           std::string path);
-  CgiIOStatus on_write(); // write body to CGI
-  CgiIOStatus on_read();  // read output from CGI
-  bool on_done();
-  void on_timeout();
+
+  // event 発火
+  CgiIOStatus on_cgi_write(); // write body to CGI
+  CgiIOStatus on_cgi_read();  // read output from CGI
+  void on_cgi_timeout();
+  void on_client_timeout();
+  void on_client_abort();
 
 private:
   HttpRequest &request_;
   HttpResponse &response_;
 
+  const int client_fd_;
+  CgiState state_;
   pid_t pid_;
   int stdin_fd_;
   int stdout_fd_;
-  int client_fd_;
-  CgiState state_;
 
+  ConnectionPolicy conn_policy_;
   std::vector<char> body_buf_;
   size_t write_offset_;
-  std::string output_buf_;
+  bool is_header_sent_;
 
-  time_t cgi_timeout_sec_;
-  time_t cgi_start_time_;
   time_t cgi_last_activity_;
 
-  void set_cgi_start_time();
+  // Helpers
+  void handle_cgi_header();
+  void handle_cgi_done();
+  void handle_cgi_error();
+  void terminate_pid();
+  void terminate_cgi_fds();
+  bool is_terminal_state() const;
+
+  void reset();
   void update_cgi_activity();
 
-  CgiSession(const CgiSession &other);
+  CgiSession(const CgiSession &other); // copy 禁止
   CgiSession &operator=(const CgiSession &other);
 };

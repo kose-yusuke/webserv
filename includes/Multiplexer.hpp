@@ -9,6 +9,7 @@ class Client;
 class ServerRegistry;
 class ClientRegistry;
 class CgiSession;
+class ZombieRegistry;
 
 /**
  * Server の I/O 多重化を管理する基底クラス
@@ -33,8 +34,11 @@ public:
 
   void set_server_registry(ServerRegistry *registry);
   void set_client_registry(ClientRegistry *registry);
+  void set_zombie_registry(ZombieRegistry *registry);
 
   void register_cgi_fds(int stdin_fd, int stdout_fd, CgiSession *session);
+  void cleanup_cgi(int cgi_fd);
+  void track_zombie(pid_t pid);
 
 protected:
   // Singleton pattern
@@ -45,6 +49,7 @@ protected:
   // I/O多重化処理の管理
   void process_event(int fd, bool readable, bool writable);
   void handle_timeouts();
+  void handle_zombies();
 
   Multiplexer();
   Multiplexer(const Multiplexer &other);
@@ -54,18 +59,18 @@ private:
   // Registry
   ServerRegistry *server_registry_;
   ClientRegistry *client_registry_;
+  ZombieRegistry *zombie_registry_;
 
   // I/O多重化処理の補助関数
   void accept_client(int server_fd);
   void read_from_client(int client_fd);
   void write_to_client(int client_fd);
   void shutdown_write(int client_fd);
-  void remove_client(int client_fd);
+  void cleanup_client(int client_fd);
 
   // CGIのfdを扱う関数
   void read_from_cgi(int cgi_stdout);
   void write_to_cgi(int cgi_stdin);
-  void remove_cgi(int cgi_fd);
 
   // 代入禁止
   Multiplexer &operator=(const Multiplexer &other);

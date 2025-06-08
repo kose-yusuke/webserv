@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 19:42:26 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/27 19:18:05 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/09 00:02:33 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 #include "PollMultiplexer.hpp"
 #include "SelectMultiplexer.hpp"
 #include "ServerRegistry.hpp"
+#include "ZombieRegistry.hpp"
 #include <iostream>
 #include <sstream>
 #include <string.h>
@@ -60,11 +61,17 @@ void Multiplexer::set_client_registry(ClientRegistry *registry) {
   client_registry_ = registry;
 }
 
+void Multiplexer::set_zombie_registry(ZombieRegistry *registry) {
+  zombie_registry_ = registry;
+}
+
 void Multiplexer::register_cgi_fds(int stdin_fd, int stdout_fd,
                                    CgiSession *session) {
   client_registry_->add_cgi(stdin_fd, session);
   client_registry_->add_cgi(stdout_fd, session);
 }
+
+void Multiplexer::track_zombie(pid_t pid) { zombie_registry_->track(pid); }
 
 void Multiplexer::process_event(int fd, bool readable, bool writable) {
   if (!readable && !writable) {
@@ -95,6 +102,16 @@ void Multiplexer::process_event(int fd, bool readable, bool writable) {
 }
 
 void Multiplexer::handle_timeouts() {
+
+  std::set<CgiSession *> timed_out_cgis =
+      client_registry_->mark_timed_out_cgis();
+  for (std::set<CgiSession *>::iterator it = timed_out_cgis.begin();
+       it != timed_out_cgis.end(); ++it) {
+    monitor_write((*it)->get_client_fd());
+    cleanup_cgi((*it)->get_stdin_fd());
+    cleanup_cgi((*it)->get_stdout_fd());
+  }
+
   std::vector<int> timed_out_fds = client_registry_->mark_timed_out_clients();
 
   for (size_t i = 0; i < timed_out_fds.size(); ++i) {
@@ -109,8 +126,13 @@ void Multiplexer::handle_timeouts() {
   for (size_t i = 0; i < unresponsive_fds.size(); ++i) {
     logfd(LOG_INFO,
           "[TIMEOUT] forcibly removing unresponsive fd=", unresponsive_fds[i]);
-    remove_client(unresponsive_fds[i]);
+    cleanup_client(unresponsive_fds[i]);
   }
+}
+
+void Multiplexer::handle_zombies() {
+  zombie_registry_->reap_zombies();
+  zombie_registry_->manage_zombies();
 }
 
 Multiplexer::Multiplexer() {}
@@ -145,11 +167,11 @@ void Multiplexer::read_from_client(int clientfd) {
     monitor_write(clientfd);
     break;
   case IO_SHOULD_CLOSE:
-    remove_client(clientfd);
+    cleanup_client(clientfd);
     break;
   default:
     logfd(LOG_ERROR, "Unhandled I/O Status on client socket: ", clientfd);
-    remove_client(clientfd);
+    cleanup_client(clientfd);
   }
 }
 
@@ -167,11 +189,11 @@ void Multiplexer::write_to_client(int clientfd) {
     shutdown_write(clientfd);
     break;
   case IO_SHOULD_CLOSE:
-    remove_client(clientfd);
+    cleanup_client(clientfd);
     break;
   default:
     logfd(LOG_ERROR, "Unhandled I/O Status on client socket: ", clientfd);
-    remove_client(clientfd);
+    cleanup_client(clientfd);
   }
 }
 
@@ -179,13 +201,13 @@ void Multiplexer::shutdown_write(int clientfd) {
   LOG_DEBUG_FUNC_FD(clientfd);
   if (shutdown(clientfd, SHUT_WR) == -1) {
     logfd(LOG_ERROR, "shutdown() failed for fd: ", clientfd);
-    remove_client(clientfd);
+    cleanup_client(clientfd);
     return;
   }
   unmonitor_write(clientfd);
 }
 
-void Multiplexer::remove_client(int clientfd) {
+void Multiplexer::cleanup_client(int clientfd) {
   LOG_DEBUG_FUNC_FD(clientfd);
   unmonitor(clientfd);
   client_registry_->remove(clientfd);
@@ -195,17 +217,17 @@ void Multiplexer::read_from_cgi(int cgi_stdout) {
   LOG_DEBUG_FUNC_FD(cgi_stdout);
   CgiSession *session = client_registry_->get_cgi(cgi_stdout);
 
-  switch (session->on_read()) {
+  switch (session->on_cgi_read()) {
   case CGI_IO_CONTINUE:
     // Do nothing
     break;
   case CGI_IO_READ_COMPLETE:
-    remove_cgi(cgi_stdout);
+    cleanup_cgi(cgi_stdout);
     monitor_write(session->get_client_fd());
     // Client のwrite event から CgiSession::on_done() を呼ぶ
     break;
   case CGI_IO_ERROR:
-    remove_cgi(cgi_stdout);
+    cleanup_cgi(cgi_stdout);
     break;
   default:
     logfd(LOG_ERROR, "Unhandled I/O Status on cgi stdout fd: ", cgi_stdout);
@@ -217,17 +239,17 @@ void Multiplexer::write_to_cgi(int cgi_stdin) {
   LOG_DEBUG_FUNC_FD(cgi_stdin);
   CgiSession *session = client_registry_->get_cgi(cgi_stdin);
 
-  switch (session->on_write()) {
+  switch (session->on_cgi_write()) {
   case CGI_IO_CONTINUE:
     // Do nothing
     break;
   case CGI_IO_WRITE_COMPLETE:
-    remove_cgi(cgi_stdin);
+    cleanup_cgi(cgi_stdin);
     monitor_pipe_read(session->get_stdout_fd());
     break;
   case CGI_IO_ERROR:
-    remove_cgi(cgi_stdin);
-    remove_cgi(session->get_stdout_fd());
+    cleanup_cgi(cgi_stdin);
+    cleanup_cgi(session->get_stdout_fd());
     break;
   default:
     logfd(LOG_ERROR, "Unhandled I/O Status on cgi stdin fd: ", cgi_stdin);
@@ -235,7 +257,7 @@ void Multiplexer::write_to_cgi(int cgi_stdin) {
   }
 }
 
-void Multiplexer::remove_cgi(int cgi_fd) {
+void Multiplexer::cleanup_cgi(int cgi_fd) {
   unmonitor(cgi_fd);
   client_registry_->remove_cgi(cgi_fd);
 }

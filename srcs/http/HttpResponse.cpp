@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/16 14:12:22 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/09 02:01:41 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,10 +20,7 @@ HttpResponse::~HttpResponse() {}
 
 ResponseEntry *HttpResponse::get_front_response() {
   LOG_DEBUG_FUNC();
-  if (response_deque_.empty() || !response_deque_.front().is_ready) {
-    return NULL;
-  }
-  return &response_deque_.front();
+  return response_deque_.empty() ? NULL : &response_deque_.front();
 }
 
 void HttpResponse::pop_front_response() {
@@ -32,32 +29,36 @@ void HttpResponse::pop_front_response() {
 }
 
 bool HttpResponse::has_next_response() const {
-  return (!response_deque_.empty() && response_deque_.front().is_ready);
+  return (!response_deque_.empty());
 }
 
 void HttpResponse::push_front_response(ConnectionPolicy conn,
-                                       const std::string &response) {
+                                       const std::string &response,
+                                       bool chunk_in_progress) {
   LOG_DEBUG_FUNC();
   if (response.empty()) {
     return;
   }
   struct ResponseEntry entry;
-  entry.is_ready = true;
   entry.conn = conn;
   entry.buffer = response;
+  entry.offset = 0;
+  entry.chunk_in_progress = chunk_in_progress;
   response_deque_.push_front(entry);
 }
 
 void HttpResponse::push_back_response(ConnectionPolicy conn,
-                                      const std::string &response) {
+                                      const std::string &response,
+                                      bool chunk_in_progress) {
   LOG_DEBUG_FUNC();
   if (response.empty()) {
     return;
   }
   struct ResponseEntry entry;
-  entry.is_ready = true;
   entry.conn = conn;
   entry.buffer = response;
+  entry.offset = 0;
+  entry.chunk_in_progress = chunk_in_progress;
   response_deque_.push_back(entry);
 }
 
@@ -73,7 +74,33 @@ void HttpResponse::generate_response(int status_code,
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << content;
 
-  push_back_response(conn, response.str());
+  push_back_response(conn, response.str(), false);
+}
+
+void HttpResponse::generate_chunk_response_header(ConnectionPolicy conn) {
+  LOG_DEBUG_FUNC();
+  std::ostringstream response;
+  response << "HTTP/1.1 200 OK\r\n";
+  response << "Content-Type: text/html; charset=UTF-8\r\n";
+  response << "Transfer-Encoding: chunked\r\n";
+  response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
+  push_back_response(conn, response.str(), true);
+}
+
+void HttpResponse::generate_chunk_response_body(const std::string &content,
+                                                ConnectionPolicy conn) {
+  LOG_DEBUG_FUNC();
+  std::ostringstream response;
+  response << std::hex << content.size() << "\r\n";
+  response << content << "\r\n";
+  push_back_response(conn, response.str(), true);
+}
+
+void HttpResponse::generate_chunk_response_last(ConnectionPolicy conn) {
+  LOG_DEBUG_FUNC();
+  std::ostringstream response;
+  response << "0\r\n\r\n";
+  push_back_response(conn, response.str(), false);
 }
 
 void HttpResponse::generate_custom_error_page(int status_code,
@@ -99,8 +126,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
     response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     response << file_content;
 
-    push_back_response(conn, response.str());
-    // send(client_socket, response.str().c_str(), response.str().size(), 0);
+    push_back_response(conn, response.str(), false);
   } catch (const std::exception &e) {
     std::ostringstream fallback;
     fallback << "HTTP/1.1 " << status_code << " ";
@@ -109,14 +135,13 @@ void HttpResponse::generate_custom_error_page(int status_code,
     } else if (status_code == 405) {
       fallback << "Method Not Allowed";
     }
-    // fallback << "\r\nContent-Length: 9\r\n\r\nNot Found";
+    fallback << "\r\n";
     fallback << "Content-Length: 9\r\n";
     fallback << "Content-Type: text/plain\r\n";
     fallback << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     fallback << "Not Found";
 
-    push_back_response(conn, fallback.str());
-    // send(client_socket, fallback.str().c_str(), fallback.str().size(), 0);
+    push_back_response(conn, fallback.str(), false);
   }
 }
 
@@ -131,7 +156,7 @@ void HttpResponse::generate_error_response(int status_code,
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
-  push_back_response(conn, response.str());
+  push_back_response(conn, response.str(), false);
 }
 
 void HttpResponse::generate_error_response(int status_code,
@@ -145,7 +170,7 @@ void HttpResponse::generate_error_response(int status_code,
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
-  push_back_response(conn, response.str());
+  push_back_response(conn, response.str(), false);
 }
 
 void HttpResponse::generate_redirect(int status_code,
@@ -159,7 +184,7 @@ void HttpResponse::generate_redirect(int status_code,
   response << "Location: " << new_location << "\r\n";
   response << "Content-Length: 0\r\n";
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
-  push_back_response(conn, response.str());
+  push_back_response(conn, response.str(), false);
 }
 
 void HttpResponse::generate_timeout_response() {
@@ -185,7 +210,7 @@ void HttpResponse::generate_timeout_response() {
   response << "Connection: close\r\n\r\n";
   response << content_str;
 
-  push_front_response(CP_MUST_CLOSE, response.str());
+  push_front_response(CP_MUST_CLOSE, response.str(), false);
 }
 
 const char *HttpResponse::get_status_message(int status_code) {
@@ -233,8 +258,6 @@ const char *HttpResponse::get_status_message(int status_code) {
 const char *HttpResponse::to_connection_value(ConnectionPolicy conn) const {
   return conn == CP_KEEP_ALIVE ? "keep-alive" : "close";
 }
-
-HttpResponse::HttpResponse(const HttpResponse &other) { (void)other; }
 
 HttpResponse &HttpResponse::operator=(const HttpResponse &other) {
   (void)other;

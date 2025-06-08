@@ -12,14 +12,17 @@ SRCS     := $(SRCDIR)/main.cpp \
             $(SRCDIR)/client/Client.cpp \
             $(SRCDIR)/client/ClientRegistry.cpp \
             $(SRCDIR)/client/ConnectionManager.cpp \
-            $(SRCDIR)/http/HttpRequest.cpp \
-            $(SRCDIR)/http/HttpResponse.cpp \
-            $(SRCDIR)/http/HttpRequestParser.cpp \
-			$(SRCDIR)/http/CgiHandler.cpp \
+            $(SRCDIR)/client/ZombieRegistry.cpp \
             $(SRCDIR)/config/ConfigParse.cpp \
             $(SRCDIR)/event/Multiplexer.cpp \
-            $(SRCDIR)/event/SelectMultiplexer.cpp \
             $(SRCDIR)/event/PollMultiplexer.cpp \
+            $(SRCDIR)/event/SelectMultiplexer.cpp \
+            $(SRCDIR)/http/CgiSession.cpp \
+            $(SRCDIR)/http/CgiUtils.cpp \
+            $(SRCDIR)/http/HttpRequest.cpp \
+            $(SRCDIR)/http/HttpRequestParser.cpp \
+            $(SRCDIR)/http/HttpResponse.cpp \
+			$(SRCDIR)/http/HttpTransaction.cpp \
             $(SRCDIR)/utils/Logger.cpp \
             $(SRCDIR)/utils/Utils.cpp
 

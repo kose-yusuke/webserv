@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/04/30 00:34:12 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/09 02:48:23 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include "Server.hpp"
 #include "ServerBuilder.hpp"
 #include "ServerRegistry.hpp"
+#include "ZombieRegistry.hpp"
 #include "types.hpp"
 
 static void free_resources() {
@@ -39,12 +40,14 @@ int main(int argc, char **argv) {
 
     ServerRegistry server_registry;
     ClientRegistry client_registry;
+    ZombieRegistry zombie_registry;
 
     ServerBuilder::build(server_location_configs, server_registry);
     server_registry.initialize();
 
     multiplexer.set_server_registry(&server_registry);
     multiplexer.set_client_registry(&client_registry);
+    multiplexer.set_zombie_registry(&zombie_registry);
 
     multiplexer.run();
 

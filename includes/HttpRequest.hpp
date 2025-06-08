@@ -3,19 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/17 19:51:01 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/06/09 02:46:28 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include "ResponseTypes.hpp"
-#include "types.hpp"
 #include "Utils.hpp"
-#include "CgiHandler.hpp"
+#include "types.hpp"
 #include <algorithm>
 #include <dirent.h>
 #include <fcntl.h>
@@ -33,7 +32,7 @@
 
 class HttpResponse;
 class VirtualHostRouter;
-class CgiHandler;
+class CgiSession;
 
 enum ResourceType { File, Directory, NotFound };
 enum RedirStatus { REDIR_NONE, REDIR_SUCCESS, REDIR_FAILED };
@@ -41,21 +40,21 @@ enum RedirStatus { REDIR_NONE, REDIR_SUCCESS, REDIR_FAILED };
 class HttpRequest {
 public:
   // メンバ変数（仮）
-  std::string method;
-  std::string path;
-  std::string version;
-  HeaderMap headers;
-  std::vector<char> body_data;
+  std::string method_;
+  std::string path_;
+  std::string version_;
+  HeaderMap headers_;
+  std::vector<char> body_data_;
 
-  bool is_autoindex_enabled;
-  std::string index_file_name;
-  std::vector<std::string> cgi_extensions;
-  std::vector<std::string> allow_methods;
-  std::map<int, std::string> error_page_map;
+  bool is_autoindex_enabled_;
+  std::string index_file_name_;
+  std::vector<std::string> cgi_extensions_;
+  std::vector<std::string> allow_methods_;
+  std::map<int, std::string> error_page_map_;
 
-  ConfigMap server_config;
-  LocationMap location_configs;
-  ConfigMap best_match_config;
+  ConfigMap server_config_;
+  LocationMap location_configs_;
+  ConfigMap best_match_config_;
 
   HttpRequest(const VirtualHostRouter *router, HttpResponse &httpResponse);
   ~HttpRequest();
@@ -76,24 +75,22 @@ public:
   bool is_in_headers(const std::string &key) const;
 
   // リクエストの解析
-  bool parse_http_request(const std::string &request, std::string &method,
-                          std::string &path, std::string &version);
   ConfigMap get_best_match_config(const std::string &path);
 
   void clear();
 
-  void set_cgi_handler(CgiHandler* handler);
+  void set_cgi_session(CgiSession *handler);
 
 private:
-  HttpResponse &response; 
-  const VirtualHostRouter *virtual_host_router;
-  CgiHandler* cgi;
-  ConnectionPolicy connection_policy;
-  int status_code;
+  HttpResponse &response_;
+  const VirtualHostRouter *virtual_host_router_;
+  CgiSession *cgi_;
+  ConnectionPolicy connection_policy_;
+  int status_code_;
   std::string _root;
-  size_t max_body_size;
+  size_t max_body_size_;
 
-  static const size_t k_default_max_body;
+  static const size_t k_default_max_body_;
 
   void select_server_by_host();
   void conf_init();
@@ -106,7 +103,6 @@ private:
   ResourceType get_resource_type(const std::string &path);
   void handle_get_request(std::string path);
   void handle_directory_request(std::string path);
-  void handle_cgi_request(const std::string &cgi_path);
   // POSTの処理
   void handle_post_request();
   bool is_location_upload_file(const std::string file_path);

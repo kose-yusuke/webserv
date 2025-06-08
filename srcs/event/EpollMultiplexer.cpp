@@ -25,6 +25,7 @@ void EpollMultiplexer::run() {
     }
     evlist.resize(size);
     handle_timeouts();
+    handle_zombies();
     errno = 0;
     int nfd = epoll_wait(epfd_, evlist.data(), evlist.size(), k_timeout_ms_);
     if (nfd == -1) {

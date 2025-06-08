@@ -1,34 +1,49 @@
 #pragma once
 
+#include "CgiSession.hpp"
 #include "HttpRequest.hpp"
 #include "HttpRequestParser.hpp"
 #include "HttpResponse.hpp"
 #include <cstddef>
 
-class CgiSession;
+class VirtualHostRouter;
 
+// Multiplexerにmonitorのon offを支持するのに使っているstatus
+enum IOStatus {
+  IO_CONTINUE,        // 現状維持（read/write継続）
+  IO_READY_TO_WRITE,  // write監視をON
+  IO_WRITE_COMPLETE,  // write監視をOFF
+  IO_SHOULD_SHUTDOWN, // shutdown(fd, SHUT_WR)
+  IO_SHOULD_CLOSE     // close(fd)
+};
+
+/*
+HttpTransaction: リクエストの解析, CGI遷移, レスポンスの準備状態管理
+ */
 class HttpTransaction {
 public:
-  HttpTransaction();
+  HttpTransaction(int clientfd, const VirtualHostRouter *router);
   ~HttpTransaction();
 
-  bool parse(char *buffer, size_t len); // ← parser_使って更新
-  bool is_complete();
-  void handle_request(); // ← request_.handle_http_request()
-  void handle_cgi();     // ← cgi_.handle_cgi_request(...)
-  HttpResponse &get_response();
-  // etc...
+  void append_raw_request(const char *raw, size_t length);
+  IOStatus process_request_data(bool is_half_closed);
+  IOStatus decide_next_io(ConnectionPolicy conn, bool is_chunk);
+  void handle_client_timeout();
+  void handle_client_abort();
+
+  bool has_response() const;
+  ResponseEntry *get_response();
+  void pop_response();
 
 private:
-  HttpRequestParser parser_;
-  HttpRequest request_;
-  HttpResponse response_;
-
-  // どっちにするか悩み中
-  CgiSession *cgi_;
-  CgiSession cgi_;
-
+  int fd_;
+  HttpResponse response_;    // responseの生成とqueue管理
+  HttpRequest request_;      // header情報, body, contentLengthなどの管理
+  HttpRequestParser parser_; // header, bodyの解析管理
+  CgiSession cgi_;           // cgi session の管理
 
   HttpTransaction(const HttpTransaction &other);
   HttpTransaction &operator=(const HttpTransaction &other);
 };
+
+// TODO: CgiSessionとの関連やstateの更新を精査する
