@@ -25,9 +25,13 @@ public:
   HttpTransaction(int clientfd, const VirtualHostRouter *router);
   ~HttpTransaction();
 
-  void append_raw_request(const char *raw, size_t length);
-  IOStatus process_request_data(bool is_half_closed);
-  IOStatus decide_next_io(ConnectionPolicy conn, bool is_chunk);
+  void append_data(const char *raw, size_t length);
+  void process_data();
+  bool should_close();
+
+  IOStatus decide_io_after_write(ConnectionPolicy connection_policy,
+                                 ResponseType response_type);
+  void reset_cgi_session();
   void handle_client_timeout();
   void handle_client_abort();
 
@@ -45,5 +49,3 @@ private:
   HttpTransaction(const HttpTransaction &other);
   HttpTransaction &operator=(const HttpTransaction &other);
 };
-
-// TODO: CgiSessionとの関連やstateの更新を精査する

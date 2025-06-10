@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:14 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/09 02:48:23 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/11 02:33:52 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include "ServerRegistry.hpp"
 #include "ZombieRegistry.hpp"
 #include "types.hpp"
+#include <signal.h>
 
 static void free_resources() {
   Multiplexer::delete_instance();
@@ -30,6 +31,7 @@ int main(int argc, char **argv) {
     return (print_error_message("need conf filename"));
 
   Multiplexer &multiplexer = Multiplexer::get_instance();
+  signal(SIGPIPE, SIG_IGN);
 
   try {
     Parse parser(argv[1]);

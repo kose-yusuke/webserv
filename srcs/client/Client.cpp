@@ -8,7 +8,6 @@
 
 static const int k_default_timeout = 15;
 
-// TODO: chunk_in_progress を反映させたlogicに修正
 Client::Client(int clientfd, const VirtualHostRouter *router)
     : fd_(clientfd), state_(CLIENT_ALIVE), timeout_sec_(k_default_timeout),
       last_activity_(time(NULL)), transaction_(clientfd, router) {}
@@ -27,16 +26,30 @@ IOStatus Client::on_read() {
     return IO_SHOULD_CLOSE;
   }
   update_activity();
-  transaction_.append_raw_request(buffer, bytes_read);
+  transaction_.append_data(buffer, bytes_read);
   if (state_ == CLIENT_TIMED_OUT) {
     return IO_CONTINUE;
   }
-  return transaction_.process_request_data(state_ == CLIENT_HALF_CLOSED);
+  switch (state_) {
+  case CLIENT_ALIVE:
+    transaction_.process_data();
+    return (transaction_.has_response()) ? IO_READY_TO_WRITE : IO_CONTINUE;
+
+  case CLIENT_HALF_CLOSED:
+    return (transaction_.should_close()) ? IO_SHOULD_CLOSE : IO_CONTINUE;
+
+  case CLIENT_TIMED_OUT:
+    return IO_CONTINUE;
+  }
 }
 
 IOStatus Client::on_write() {
   LOG_DEBUG_FUNC();
-  if (state_ == CLIENT_HALF_CLOSED || !transaction_.has_response()) {
+  if (state_ == CLIENT_HALF_CLOSED) {
+    return IO_WRITE_COMPLETE;
+  }
+  transaction_.process_data();
+  if (!transaction_.has_response()) {
     return IO_WRITE_COMPLETE;
   }
 
@@ -55,11 +68,11 @@ IOStatus Client::on_write() {
     return IO_CONTINUE; // partial write
   }
 
-  ConnectionPolicy conn_policy = entry->conn;
-  bool is_chunk = entry->chunk_in_progress;
+  ConnectionPolicy conn = entry->conn;
+  ResponseType type = entry->type;
   transaction_.pop_response();
 
-  IOStatus io_status = transaction_.decide_next_io(conn_policy, is_chunk);
+  IOStatus io_status = transaction_.decide_io_after_write(conn, type);
   if (io_status == IO_SHOULD_SHUTDOWN) {
     state_ = CLIENT_HALF_CLOSED;
   }
@@ -70,6 +83,7 @@ IOStatus Client::on_timeout() {
   if (state_ != CLIENT_ALIVE) {
     return IO_CONTINUE;
   }
+  LOG_DEBUG_FUNC();
   update_activity();
   transaction_.handle_client_timeout();
   state_ = CLIENT_TIMED_OUT;
@@ -77,19 +91,11 @@ IOStatus Client::on_timeout() {
 }
 
 bool Client::is_timeout(time_t now) const {
-  return (state_ == CLIENT_ALIVE && now - last_activity_ > timeout_sec_) ||
-         state_ == CLIENT_CGI_TIMED_OUT;
+  return (state_ == CLIENT_ALIVE && now - last_activity_ > timeout_sec_);
 }
 
 bool Client::is_unresponsive(time_t now) const {
   return ((state_ != CLIENT_ALIVE) && now - last_activity_ > timeout_sec_);
-}
-
-void Client::set_cgi_timeout_status() {
-  if (state_ != CLIENT_ALIVE) {
-    return;
-  }
-  state_ = CLIENT_CGI_TIMED_OUT;
 }
 
 void Client::update_activity() { last_activity_ = time(NULL); }

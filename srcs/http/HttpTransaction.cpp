@@ -12,37 +12,61 @@ HttpTransaction::HttpTransaction(int fd, const VirtualHostRouter *router)
 
 HttpTransaction::~HttpTransaction() {}
 
-void HttpTransaction::append_raw_request(const char *raw, size_t length) {
+// parserのbufferにraw dataを蓄積
+void HttpTransaction::append_data(const char *raw, size_t length) {
+  LOG_DEBUG_FUNC();
   parser_.append_data(raw, length);
 }
 
-IOStatus HttpTransaction::process_request_data(bool is_half_closed) {
+// parse + response生成
+void HttpTransaction::process_data() {
   LOG_DEBUG_FUNC();
-  while (!cgi_.is_cgi_active() && parser_.parse()) {
-
-    if (!is_half_closed) {
-      request_.handle_http_request(); // response の生成が走る
+  if (cgi_.is_cgi_active()) {
+    return;
+  }
+  bool keep_alive = true;
+  while (keep_alive && parser_.parse()) {
+    request_.handle_http_request(); // responseを生成し、response queueに積む
+    if (cgi_.is_cgi_active()) {
+      return;
     }
-    if (request_.get_connection_policy() != CP_KEEP_ALIVE ||
-        cgi_.is_cgi_active()) {
-      break;
+    keep_alive = request_.get_connection_policy() == CP_KEEP_ALIVE;
+    parser_.clear();
+  }
+}
+
+// is_half_closed時のparse + `Connection: close` header検知
+bool HttpTransaction::should_close() {
+  LOG_DEBUG_FUNC();
+  if (cgi_.is_cgi_active()) {
+    return false;
+  }
+  while (parser_.parse()) {
+    if (request_.get_connection_policy() == CP_WILL_CLOSE) {
+      return true; // trueの際は、IO_SHOULD_CLOSEになる
     }
     parser_.clear();
   }
-  if (is_half_closed && request_.get_connection_policy() == CP_WILL_CLOSE) {
-    return IO_SHOULD_CLOSE;
-  }
-  return !is_half_closed && has_response() ? IO_READY_TO_WRITE : IO_CONTINUE;
+  return false;
 }
 
-IOStatus HttpTransaction::decide_next_io(ConnectionPolicy conn, bool is_chunk) {
+IOStatus HttpTransaction::decide_io_after_write(ConnectionPolicy conn_policy,
+                                                ResponseType response_type) {
+  LOG_DEBUG_FUNC();
 
-  if (is_chunk) {
-
+  switch (response_type) {
+  case CHUNK:
     return has_response() ? IO_CONTINUE : IO_WRITE_COMPLETE;
+  case CHUNK_LAST:
+    reset_cgi_session();
+    process_data();
+    break;
+  case NORMAL:
+  default:
+    process_data();
   }
 
-  switch (conn) {
+  switch (conn_policy) {
   case CP_WILL_CLOSE:
     return IO_SHOULD_CLOSE;
   case CP_MUST_CLOSE:
@@ -53,7 +77,14 @@ IOStatus HttpTransaction::decide_next_io(ConnectionPolicy conn, bool is_chunk) {
   }
 }
 
+void HttpTransaction::reset_cgi_session() {
+  LOG_DEBUG_FUNC();
+  cgi_.reset();
+  parser_.clear();
+}
+
 void HttpTransaction::handle_client_timeout() {
+  LOG_DEBUG_FUNC();
   if (!cgi_.is_cgi_active()) {
     response_.generate_timeout_response();
   } else {
@@ -65,6 +96,7 @@ void HttpTransaction::handle_client_abort() {
   if (!cgi_.is_cgi_active()) {
     return;
   }
+  LOG_DEBUG_FUNC();
   cgi_.on_client_abort();
 }
 

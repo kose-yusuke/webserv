@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:51 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/09 02:46:44 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/09 22:20:12 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,11 +20,17 @@
 #include <string>
 #include <sys/socket.h>
 
+enum ResponseType {
+  NORMAL,    // 通常のContent-Lengthありレスポンス
+  CHUNK,     // chunked の途中（headerまたはbody）
+  CHUNK_LAST // 終端チャンク（"0\r\n\r\n"）
+};
+
 struct ResponseEntry {
-  ConnectionPolicy conn;  // 送信後の接続処理
-  std::string buffer;     // response
-  size_t offset;          // 送信済みバイト数
-  bool chunk_in_progress; // chunkedレスポンスの途中
+  ConnectionPolicy conn; // 送信後の接続処理
+  std::string buffer;    // response
+  size_t offset;         // 送信済みバイト数
+  ResponseType type;
 };
 
 class HttpResponse {
@@ -64,12 +70,14 @@ private:
   std::deque<ResponseEntry> response_deque_;
 
   void push_front_response(ConnectionPolicy connection_policy,
-                           const std::string &response, bool chunk_in_progress);
+                           const std::string &response, ResponseType type);
   void push_back_response(ConnectionPolicy connection_policy,
-                          const std::string &response, bool chunk_in_progress);
+                          const std::string &response, ResponseType type);
   const char *get_status_message(int status_code);
   const char *to_connection_value(ConnectionPolicy conn) const;
 
   HttpResponse(const HttpResponse &other);
   HttpResponse &operator=(const HttpResponse &other);
 };
+
+// TODO: push_front()するべきではない

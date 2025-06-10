@@ -56,6 +56,7 @@ public:
   void on_cgi_timeout();
   void on_client_timeout();
   void on_client_abort();
+  void reset();
 
 private:
   HttpRequest &request_;
@@ -82,7 +83,6 @@ private:
   void terminate_cgi_fds();
   bool is_terminal_state() const;
 
-  void reset();
   void update_cgi_activity();
 
   CgiSession(const CgiSession &other); // copy 禁止
