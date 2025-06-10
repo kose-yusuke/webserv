@@ -27,19 +27,16 @@ IOStatus Client::on_read() {
   }
   update_activity();
   transaction_.append_data(buffer, bytes_read);
-  if (state_ == CLIENT_TIMED_OUT) {
-    return IO_CONTINUE;
-  }
+
   switch (state_) {
-  case CLIENT_ALIVE:
-    transaction_.process_data();
-    return (transaction_.has_response()) ? IO_READY_TO_WRITE : IO_CONTINUE;
-
-  case CLIENT_HALF_CLOSED:
-    return (transaction_.should_close()) ? IO_SHOULD_CLOSE : IO_CONTINUE;
-
   case CLIENT_TIMED_OUT:
     return IO_CONTINUE;
+  case CLIENT_HALF_CLOSED:
+    return (transaction_.should_close()) ? IO_SHOULD_CLOSE : IO_CONTINUE;
+  case CLIENT_ALIVE:
+  default:
+    transaction_.process_data();
+    return (transaction_.has_response()) ? IO_READY_TO_WRITE : IO_CONTINUE;
   }
 }
 
