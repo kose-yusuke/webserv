@@ -249,6 +249,7 @@ void CgiSession::handle_cgi_done() {
   state_ = DONE;
   Multiplexer::get_instance().track_zombie(pid_);
   pid_ = -1;
+  terminate_cgi_fds();
   response_.generate_chunk_response_last(conn_policy_);
 }
 
