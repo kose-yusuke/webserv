@@ -28,6 +28,9 @@ bool CgiParser::parse(bool eof) {
   if (state_ == CGI_PARSE_CHUNK) {
     parse_chunked_body(eof);
   }
+  if (eof && state_ == CGI_PARSE_HEADER) {
+    set_error_status();
+  }
   return (is_done() || state_ == CGI_PARSE_CHUNK);
 }
 
@@ -47,7 +50,6 @@ std::vector<char> CgiParser::take_body() {
   temp.swap(body_); // body_ を空にして temp に入れる
   return temp;
 }
-
 
 static const int k_max_cgi_header_size = 8192;
 static const size_t k_max_cgi_body = 1048576;
@@ -85,12 +87,6 @@ void CgiParser::parse_headers() {
   std::istringstream iss(header_text);
   std::string line;
 
-  if (!std::getline(iss, line)) {
-    log(LOG_DEBUG, "Failed to parse CGI header");
-    set_error_status();
-    return;
-  }
-
   while (std::getline(iss, line) && !line.empty()) {
     if (!parse_header_line(line)) {
       log(LOG_DEBUG, "Failed to parse CGI header line: " + line);
@@ -98,6 +94,12 @@ void CgiParser::parse_headers() {
       return;
     }
   }
+
+  if (!is_in_headers("Content-Type")) {
+    set_error_status();
+    return;
+  }
+
   if (status_code_ == 200 && is_in_headers("Location")) {
     set_status_code(302);
   }

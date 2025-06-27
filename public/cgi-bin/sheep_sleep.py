@@ -3,11 +3,11 @@ import time
 import sys
 import random
 
-print("Content-Type: text/plain")
+print("Content-Type: text/plain; charset=utf-8")
 print()
 sys.stdout.flush()
 
-# 0〜100の間でランダムに終了する
+# 0〜10の間でランダムに終了する
 sleep_limit = random.randint(0, 10)
 
 for i in range(1, 101):
