@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ResponseTypes.hpp"
+#include <string>
 #include <utility>
 #include <vector>
 
