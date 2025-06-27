@@ -1,8 +1,10 @@
 #pragma once
 
+#include "CgiParser.hpp"
+#include "CgiResponseBuilder.hpp"
 #include "HttpRequest.hpp"
-#include "HttpResponse.hpp"
 #include "Logger.hpp"
+#include "ResponseTypes.hpp"
 #include <ctime>
 #include <fcntl.h>
 #include <iostream>
@@ -10,9 +12,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-class HttpRequest;
-class HttpResponse;
 
 enum CgiIOStatus {
 
@@ -26,59 +25,76 @@ enum CgiIOStatus {
 };
 
 /*
-CgiSession: CGIの起動とpipe通信の制御-
+方針
+- Client -> CGI の一方向参照
+- 通常時は、ClientがCGI sessionを片付ける
+- Clientが先に死んでいる場合のみ、自主的にCGI sessionを終了する
+- CGI session はbufにCGI IOの出力を貯めるだけで, parseやレスポンス生成を行わない
+*/
+
+/*
+CgiSession: CGIの起動とpipe通信の制御
 */
 class CgiSession {
 public:
-  enum CgiState { WAIT_WRITE_BODY, WAIT_READ_OUTPUT, DONE, ERROR, TIMED_OUT };
+  // enum 再検討
+  enum CgiState {
+    CGI_IDLE,
+    CGI_WRITING,
+    CGI_READING,
+    CGI_EOF,
+    CGI_ERROR,
+    CGI_TIMED_OUT
+  };
 
   // Constructor / Destructor / Assignment
-  CgiSession(HttpRequest &request, HttpResponse &response, int client_fd);
+  CgiSession(int client_fd);
   ~CgiSession();
 
   // Accessors
-  int get_client_fd() const;
+  int get_client_fd() const { return client_fd_; };
   int get_stdin_fd() const;
   int get_stdout_fd() const;
+  void mark_client_dead();
 
   // State checkers
-  bool is_cgi_active() const;
+  bool is_client_alive() const;
+  bool is_processing() const;
+  bool is_failed() const;
+  bool is_eof() const;
+  bool is_session_completed() const;
   bool is_cgi_timeout(time_t now) const;
 
   // Main processing logic
-  void handle_cgi_request(const std::string &cgi_path,
-                          std::vector<char> body_data, std::string method,
-                          std::string path);
+  void handle_cgi_request(HttpRequest &request, const std::string &cgi_path);
+  void build_response(HttpResponse &response);
+  void build_error_response(HttpResponse &response, int status_code,
+                            ConnectionPolicy policy);
+
+  void close_fd(int fd);
 
   // event 発火
   CgiIOStatus on_cgi_write(); // write body to CGI
   CgiIOStatus on_cgi_read();  // read output from CGI
   void on_cgi_timeout();
-  void on_client_timeout();
-  void on_client_abort();
-  void reset();
 
 private:
-  HttpRequest &request_;
-  HttpResponse &response_;
+  CgiParser parser_;
+  CgiResponseBuilder builder_;
 
-  const int client_fd_;
-  CgiState state_;
-  pid_t pid_;
-  int stdin_fd_;
-  int stdout_fd_;
+  int client_fd_;
+  CgiState state_; // 実行状態: WAIT_WRITE, WAIT_READ, DONE, ERROR...
+  pid_t pid_;      // 子プロセスPID
+  int stdin_fd_;   // CGI入力パイプ (親 -> 子)
+  int stdout_fd_;  // CGI出力パイプ (子 -> 親)
 
-  ConnectionPolicy conn_policy_;
-  std::vector<char> body_buf_;
-  size_t write_offset_;
-  bool is_header_sent_;
+  std::vector<char> in_buf_; // 入力データ
+  size_t in_off_;            // 入力進捗のoffset
 
-  time_t cgi_last_activity_;
+  time_t cgi_last_activity_; // timeout監視用タイムスタンプ
+  bool client_alive_; // Clientが死んだ時に、CgiSessionのself clean upを喚起
 
   // Helpers
-  void handle_cgi_header();
-  void handle_cgi_done();
-  void handle_cgi_error();
   void terminate_pid();
   void terminate_cgi_fds();
   bool is_terminal_state() const;

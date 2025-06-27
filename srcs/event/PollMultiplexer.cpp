@@ -29,7 +29,6 @@ void PollMultiplexer::run() {
       throw std::runtime_error("poll() fd count exceeds limit");
     }
     handle_timeouts();
-    handle_zombies();
     errno = 0;
     int nfd = poll(pfds.data(), pfds.size(), k_timeout_ms_);
     if (nfd == -1) {

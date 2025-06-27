@@ -30,7 +30,6 @@ void KqueueMultiplexer::run() {
     }
     event_list.resize(size);
     handle_timeouts();
-    handle_zombies();
     errno = 0;
     int nfd = kevent(kq, change_list.data(), change_list.size(),
                      event_list.data(), event_list.size(), &timeout);

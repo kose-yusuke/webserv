@@ -6,11 +6,12 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 19:42:26 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/09 00:02:33 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/27 22:17:07 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Multiplexer.hpp"
+#include "CgiRegistry.hpp"
 #include "CgiSession.hpp"
 #include "Client.hpp"
 #include "ClientRegistry.hpp"
@@ -21,7 +22,6 @@
 #include "PollMultiplexer.hpp"
 #include "SelectMultiplexer.hpp"
 #include "ServerRegistry.hpp"
-#include "ZombieRegistry.hpp"
 #include <iostream>
 #include <sstream>
 #include <string.h>
@@ -61,17 +61,13 @@ void Multiplexer::set_client_registry(ClientRegistry *registry) {
   client_registry_ = registry;
 }
 
-void Multiplexer::set_zombie_registry(ZombieRegistry *registry) {
-  zombie_registry_ = registry;
+void Multiplexer::set_cgi_registry(CgiRegistry *registry) {
+  cgi_registry_ = registry;
 }
 
-void Multiplexer::register_cgi_fds(int stdin_fd, int stdout_fd,
-                                   CgiSession *session) {
-  client_registry_->add_cgi(stdin_fd, session);
-  client_registry_->add_cgi(stdout_fd, session);
+void Multiplexer::register_cgi_fd(int fd, CgiSession *session) {
+  cgi_registry_->add(fd, session);
 }
-
-void Multiplexer::track_zombie(pid_t pid) { zombie_registry_->track(pid); }
 
 void Multiplexer::process_event(int fd, bool readable, bool writable) {
   if (!readable && !writable) {
@@ -91,7 +87,7 @@ void Multiplexer::process_event(int fd, bool readable, bool writable) {
       write_to_client(fd);
     }
   }
-  if (client_registry_->has_cgi(fd)) {
+  if (cgi_registry_->has(fd)) {
     if (readable) {
       read_from_cgi(fd);
     }
@@ -102,14 +98,12 @@ void Multiplexer::process_event(int fd, bool readable, bool writable) {
 }
 
 void Multiplexer::handle_timeouts() {
+  std::set<int> timed_out_cgi_clients = cgi_registry_->mark_timed_outs();
 
-  std::set<CgiSession *> timed_out_cgis =
-      client_registry_->mark_timed_out_cgis();
-  for (std::set<CgiSession *>::iterator it = timed_out_cgis.begin();
-       it != timed_out_cgis.end(); ++it) {
-    monitor_write((*it)->get_client_fd());
-    cleanup_cgi((*it)->get_stdin_fd());
-    cleanup_cgi((*it)->get_stdout_fd());
+  for (std::set<int>::const_iterator it = timed_out_cgi_clients.begin();
+       it != timed_out_cgi_clients.end(); ++it) {
+    logfd(LOG_INFO, "[TIMEOUT] monitor_write after CGI timeout fd=", *it);
+    monitor_write(*it);
   }
 
   std::vector<int> timed_out_fds = client_registry_->mark_timed_out_clients();
@@ -128,11 +122,6 @@ void Multiplexer::handle_timeouts() {
           "[TIMEOUT] forcibly removing unresponsive fd=", unresponsive_fds[i]);
     cleanup_client(unresponsive_fds[i]);
   }
-}
-
-void Multiplexer::handle_zombies() {
-  zombie_registry_->reap_zombies();
-  zombie_registry_->manage_zombies();
 }
 
 Multiplexer::Multiplexer() {}
@@ -215,17 +204,13 @@ void Multiplexer::cleanup_client(int clientfd) {
 
 void Multiplexer::read_from_cgi(int cgi_stdout) {
   LOG_DEBUG_FUNC_FD(cgi_stdout);
-  CgiSession *session = client_registry_->get_cgi(cgi_stdout);
+  CgiSession *session = cgi_registry_->get(cgi_stdout);
 
   switch (session->on_cgi_read()) {
   case CGI_IO_CONTINUE:
     // Do nothing
     break;
   case CGI_IO_READ_COMPLETE:
-    cleanup_cgi(cgi_stdout);
-    monitor_write(session->get_client_fd());
-    // Client のwrite event から CgiSession::on_done() を呼ぶ
-    break;
   case CGI_IO_ERROR:
     cleanup_cgi(cgi_stdout);
     break;
@@ -233,11 +218,14 @@ void Multiplexer::read_from_cgi(int cgi_stdout) {
     logfd(LOG_ERROR, "Unhandled I/O Status on cgi stdout fd: ", cgi_stdout);
     break;
   }
+  if (session->is_client_alive()) {
+    monitor_write(session->get_client_fd());
+  }
 }
 
 void Multiplexer::write_to_cgi(int cgi_stdin) {
   LOG_DEBUG_FUNC_FD(cgi_stdin);
-  CgiSession *session = client_registry_->get_cgi(cgi_stdin);
+  CgiSession *session = cgi_registry_->get(cgi_stdin);
 
   switch (session->on_cgi_write()) {
   case CGI_IO_CONTINUE:
@@ -245,6 +233,7 @@ void Multiplexer::write_to_cgi(int cgi_stdin) {
     break;
   case CGI_IO_WRITE_COMPLETE:
     cleanup_cgi(cgi_stdin);
+    register_cgi_fd(session->get_stdout_fd(), session);
     monitor_pipe_read(session->get_stdout_fd());
     break;
   case CGI_IO_ERROR:
@@ -259,7 +248,7 @@ void Multiplexer::write_to_cgi(int cgi_stdin) {
 
 void Multiplexer::cleanup_cgi(int cgi_fd) {
   unmonitor(cgi_fd);
-  client_registry_->remove_cgi(cgi_fd);
+  cgi_registry_->remove(cgi_fd);
 }
 
 Multiplexer &Multiplexer::operator=(const Multiplexer &other) {

@@ -22,16 +22,15 @@ HttpTransaction: リクエストの解析, CGI遷移, レスポンスの準備�
  */
 class HttpTransaction {
 public:
-  HttpTransaction(int clientfd, const VirtualHostRouter *router);
+  HttpTransaction(int fd, const VirtualHostRouter *router);
   ~HttpTransaction();
 
   void append_data(const char *raw, size_t length);
   void process_data();
+  void process_cgi_session();
   bool should_close();
 
-  IOStatus decide_io_after_write(ConnectionPolicy connection_policy,
-                                 ResponseType response_type);
-  void reset_cgi_session();
+  IOStatus decide_io_after_write(ConnectionPolicy connection_policy);
   void handle_client_timeout();
   void handle_client_abort();
 
@@ -40,11 +39,10 @@ public:
   void pop_response();
 
 private:
-  int fd_;
+  int client_fd_;
   HttpResponse response_;    // responseの生成とqueue管理
   HttpRequest request_;      // header情報, body, contentLengthなどの管理
   HttpRequestParser parser_; // header, bodyの解析管理
-  CgiSession cgi_;           // cgi session の管理
 
   HttpTransaction(const HttpTransaction &other);
   HttpTransaction &operator=(const HttpTransaction &other);

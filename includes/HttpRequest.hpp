@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/09 02:46:28 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/27 07:23:49 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ class CgiSession;
 
 enum ResourceType { File, Directory, NotFound };
 enum RedirStatus { REDIR_NONE, REDIR_SUCCESS, REDIR_FAILED };
+enum HttpStatus {};
 
 class HttpRequest {
 public:
@@ -56,12 +57,17 @@ public:
   LocationMap location_configs_;
   ConfigMap best_match_config_;
 
-  HttpRequest(const VirtualHostRouter *router, HttpResponse &httpResponse);
+  HttpRequest(int fd, const VirtualHostRouter *router, HttpResponse &httpResponse);
   ~HttpRequest();
+
   void handle_http_request();
 
   ConnectionPolicy get_connection_policy() const;
   void set_connection_policy(ConnectionPolicy policy);
+
+  const std::string &get_method() const { return method_; }
+  const std::string &get_path() const { return path_; }
+  const std::vector<char> &get_body() const { return body_data_; }
 
   void set_status_code(int status);
   int get_status_code() const;
@@ -79,12 +85,15 @@ public:
 
   void clear();
 
-  void set_cgi_session(CgiSession *handler);
+  bool has_cgi_session() const;
+  CgiSession *get_cgi_session() const;
+  void clear_cgi_session();
 
 private:
+  int client_fd_;
   HttpResponse &response_;
   const VirtualHostRouter *virtual_host_router_;
-  CgiSession *cgi_;
+  CgiSession *cgi_session_;
   ConnectionPolicy connection_policy_;
   int status_code_;
   std::string _root;
@@ -119,6 +128,7 @@ private:
   void handle_file_request(const std::string &file_path);
 
   RedirStatus handle_redirection();
+  void launch_cgi(const std::string &cgi_path);
 
   HttpRequest(const HttpRequest &other);
   HttpRequest &operator=(const HttpRequest &other);

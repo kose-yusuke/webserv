@@ -5,10 +5,8 @@
 // ソケット（fd）とコネクションの生死は clientの管轄
 // CGIの応答遅延など → HttpTransaction あるいは CgiSession に責務を持たせる
 HttpTransaction::HttpTransaction(int fd, const VirtualHostRouter *router)
-    : response_(), request_(router, response_), parser_(request_),
-      cgi_(request_, response_, fd) {
-  request_.set_cgi_session(&cgi_);
-}
+    : client_fd_(fd), response_(), request_(fd, router, response_),
+      parser_(request_) {}
 
 HttpTransaction::~HttpTransaction() {}
 
@@ -21,13 +19,15 @@ void HttpTransaction::append_data(const char *raw, size_t length) {
 // parse + response生成
 void HttpTransaction::process_data() {
   LOG_DEBUG_FUNC();
-  if (cgi_.is_cgi_active()) {
+  if (request_.has_cgi_session()) {
+    process_cgi_session();
     return;
   }
   bool keep_alive = true;
   while (keep_alive && parser_.parse()) {
     request_.handle_http_request(); // responseを生成し、response queueに積む
-    if (cgi_.is_cgi_active()) {
+    if (request_.has_cgi_session()) {
+      process_cgi_session();
       return;
     }
     keep_alive = request_.get_connection_policy() == CP_KEEP_ALIVE;
@@ -35,10 +35,26 @@ void HttpTransaction::process_data() {
   }
 }
 
+void HttpTransaction::process_cgi_session() {
+  LOG_DEBUG_FUNC();
+  CgiSession *session = request_.get_cgi_session();
+
+  session->build_response(response_); // まだdataがなければ何もしない
+  if (session->is_failed() || session->is_session_completed()) {
+    bool keep_alive = request_.get_connection_policy() == CP_KEEP_ALIVE;
+    request_.clear_cgi_session();
+    parser_.clear(); // 次のリクエストへ
+    if (keep_alive) {
+      process_data();
+    }
+    return;
+  }
+}
+
 // is_half_closed時のparse + `Connection: close` header検知
 bool HttpTransaction::should_close() {
   LOG_DEBUG_FUNC();
-  if (cgi_.is_cgi_active()) {
+  if (request_.has_cgi_session()) {
     return false;
   }
   while (parser_.parse()) {
@@ -50,22 +66,8 @@ bool HttpTransaction::should_close() {
   return false;
 }
 
-IOStatus HttpTransaction::decide_io_after_write(ConnectionPolicy conn_policy,
-                                                ResponseType response_type) {
+IOStatus HttpTransaction::decide_io_after_write(ConnectionPolicy conn_policy) {
   LOG_DEBUG_FUNC();
-
-  switch (response_type) {
-  case CHUNK:
-    return has_response() ? IO_CONTINUE : IO_WRITE_COMPLETE;
-  case CHUNK_LAST:
-    reset_cgi_session();
-    process_data();
-    break;
-  case NORMAL:
-  default:
-    process_data();
-  }
-
   switch (conn_policy) {
   case CP_WILL_CLOSE:
     return IO_SHOULD_CLOSE;
@@ -77,31 +79,35 @@ IOStatus HttpTransaction::decide_io_after_write(ConnectionPolicy conn_policy,
   }
 }
 
-void HttpTransaction::reset_cgi_session() {
-  LOG_DEBUG_FUNC();
-  cgi_.reset();
-  parser_.clear();
-}
-
 void HttpTransaction::handle_client_timeout() {
   LOG_DEBUG_FUNC();
-  if (!cgi_.is_cgi_active()) {
-    response_.generate_timeout_response();
+  if (request_.has_cgi_session()) {
+    CgiSession *session = request_.get_cgi_session();
+    session->build_error_response(response_, 408, CP_MUST_CLOSE);
+    if (session->is_failed() || session->is_session_completed()) {
+      request_.clear_cgi_session();
+    } else {
+      session->mark_client_dead();
+    }
   } else {
-    cgi_.on_client_timeout();
+    response_.generate_timeout_response();
   }
 }
 
 void HttpTransaction::handle_client_abort() {
-  if (!cgi_.is_cgi_active()) {
-    return;
-  }
   LOG_DEBUG_FUNC();
-  cgi_.on_client_abort();
+  if (request_.has_cgi_session()) {
+    CgiSession *session = request_.get_cgi_session();
+    if (session->is_failed() || session->is_session_completed()) {
+      request_.clear_cgi_session();
+    } else {
+      session->mark_client_dead();
+    }
+  }
 }
 
 bool HttpTransaction::has_response() const {
-  return (response_.has_next_response());
+  return (response_.has_response());
 }
 
 ResponseEntry *HttpTransaction::get_response() {

@@ -12,7 +12,15 @@ Client::Client(int clientfd, const VirtualHostRouter *router)
     : fd_(clientfd), state_(CLIENT_ALIVE), timeout_sec_(k_default_timeout),
       last_activity_(time(NULL)), transaction_(clientfd, router) {}
 
-Client::~Client() {}
+Client::~Client() {
+  if (fd_ != -1) {
+    if (close(fd_) < 0) {
+      logfd(LOG_ERROR, "Failed to close client fd: ", fd_);
+    }
+    fd_ = -1;
+  }
+  transaction_.handle_client_abort();
+}
 
 int Client::get_fd() const { return fd_; }
 
@@ -51,10 +59,10 @@ IOStatus Client::on_write() {
   }
 
   ResponseEntry *entry = transaction_.get_response();
-  const std::string &buf = entry->buffer;
+  const std::vector<char> &buf = entry->buffer;
   size_t &offset = entry->offset;
 
-  ssize_t bytes_sent = send(fd_, buf.c_str() + offset, buf.size() - offset, 0);
+  ssize_t bytes_sent = send(fd_, buf.data() + offset, buf.size() - offset, 0);
   if (bytes_sent <= 0) {
     transaction_.handle_client_abort();
     return IO_SHOULD_CLOSE;
@@ -66,10 +74,9 @@ IOStatus Client::on_write() {
   }
 
   ConnectionPolicy conn = entry->conn;
-  ResponseType type = entry->type;
   transaction_.pop_response();
 
-  IOStatus io_status = transaction_.decide_io_after_write(conn, type);
+  IOStatus io_status = transaction_.decide_io_after_write(conn);
   if (io_status == IO_SHOULD_SHUTDOWN) {
     state_ = CLIENT_HALF_CLOSED;
   }

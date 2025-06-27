@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/31 16:56:06 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/28 03:22:31 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,13 +20,12 @@
 #include "Utils.hpp"
 #include "VirtualHostRouter.hpp"
 
-// TODO: CgiSesison と namespace cgiの分離
 const size_t HttpRequest::k_default_max_body_ = 104857600;
 
-HttpRequest::HttpRequest(const VirtualHostRouter *router,
+HttpRequest::HttpRequest(int fd, const VirtualHostRouter *router,
                          HttpResponse &httpResponse)
-    : is_autoindex_enabled_(false), response_(httpResponse),
-      virtual_host_router_(router), cgi_(NULL),
+    : is_autoindex_enabled_(false), client_fd_(fd), response_(httpResponse),
+      virtual_host_router_(router), cgi_session_(NULL),
       connection_policy_(CP_KEEP_ALIVE), status_code_(0),
       max_body_size_(k_default_max_body_) {}
 
@@ -240,7 +239,6 @@ void HttpRequest::load_max_body_size() {
 }
 
 /*GET Request*/
-// TODO: GET処理内のDirectory/File分岐が2重になっているように見えるので要確認
 void HttpRequest::handle_get_request(std::string path) {
 
   std::string file_path = get_requested_resource(path);
@@ -254,21 +252,9 @@ void HttpRequest::handle_get_request(std::string path) {
   if (type == Directory) {
     handle_directory_request(path);
   } else if (type == File) {
-    if (CgiUtils::is_cgi_request(file_path, cgi_extensions_))
-      cgi_->handle_cgi_request(file_path, body_data_, path, method_);
-    else
-      handle_file_request(file_path);
-  } else {
-    handle_error(404);
-  }
-
-  // こっちが正しい
-  if (type == Directory) {
-    handle_directory_request(path);
-  } else if (type == File) {
     if (CgiUtils::is_location_has_cgi(best_match_config_) &&
         CgiUtils::is_cgi_request(path, cgi_extensions_))
-      cgi_->handle_cgi_request(file_path, body_data_, path, method_);
+      launch_cgi(file_path);
     else
       handle_file_request(file_path);
   } else {
@@ -374,7 +360,7 @@ void HttpRequest::handle_post_request() {
 
   if (CgiUtils::is_location_has_cgi(best_match_config_) &&
       CgiUtils::is_cgi_request(path_, cgi_extensions_)) {
-    cgi_->handle_cgi_request(full_path, body_data_, path_, method_);
+    launch_cgi(full_path);
     return;
   }
 
@@ -429,7 +415,7 @@ void HttpRequest::handle_delete_request(const std::string path) {
     status = handle_directory_delete(file_path);
   } else if (type == File) {
     if (CgiUtils::is_cgi_request(file_path, cgi_extensions_))
-      cgi_->handle_cgi_request(file_path, body_data_, path, method_);
+      launch_cgi(file_path);
     else {
       status = handle_file_delete(file_path);
       if (status == -1)
@@ -643,7 +629,7 @@ RedirStatus HttpRequest::handle_redirection() {
   }
   // return があるが、empty() または `status_code path` 形式でない
   if (return_it->second.empty() || return_it->second.size() != 2) {
-    handle_error(400); // TODO: status 要確認
+    handle_error(400);
     return REDIR_FAILED;
   }
   int redir_status_code;
@@ -651,12 +637,12 @@ RedirStatus HttpRequest::handle_redirection() {
     redir_status_code = str_to_int(return_it->second.at(0));
   } catch (const std::exception &e) {
     log(LOG_ERROR, e.what());
-    handle_error(400); // TODO: status 要確認
+    handle_error(400);
     return REDIR_FAILED;
   }
   std::string new_location = return_it->second.at(1);
   if (new_location.size() == 0) {
-    handle_error(400); // TODO: status 要確認
+    handle_error(400);
     return REDIR_FAILED;
   }
   response_.generate_redirect(redir_status_code, new_location,
@@ -674,4 +660,29 @@ void HttpRequest::handle_error(int status_code) {
   }
 }
 
-void HttpRequest::set_cgi_session(CgiSession *handler) { this->cgi_ = handler; }
+void HttpRequest::launch_cgi(const std::string &cgi_path) {
+  if (cgi_session_) {
+    log(LOG_WARNING, "cgi_session_ has already created");
+    return; // 呼ばれないはず debug 用
+  }
+  try {
+    cgi_session_ = new CgiSession(client_fd_);
+    cgi_session_->handle_cgi_request(*this, cgi_path);
+  } catch (const std::exception &e) {
+    // CGI初期化中に例外が発生した場合、セッションを解放してエラー応答
+    if (cgi_session_) {
+      delete cgi_session_;
+      cgi_session_ = NULL;
+    }
+    handle_error(500);
+  }
+}
+
+bool HttpRequest::has_cgi_session() const { return cgi_session_ != NULL; }
+
+CgiSession *HttpRequest::get_cgi_session() const { return cgi_session_; }
+
+void HttpRequest::clear_cgi_session() {
+  delete cgi_session_;
+  cgi_session_ = NULL;
+}

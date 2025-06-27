@@ -7,10 +7,10 @@
 
 class Server;
 class Client;
+class CgiSession;
 class ServerRegistry;
 class ClientRegistry;
-class CgiSession;
-class ZombieRegistry;
+class CgiRegistry;
 
 /**
  * Server の I/O 多重化を管理する基底クラス
@@ -23,7 +23,6 @@ public:
 
   virtual void run() = 0;
 
-  // TODO: 可視性の確認
   // 監視fd管理用の純粋仮想関数
   virtual void monitor_read(int fd) = 0;
   virtual void monitor_write(int fd) = 0;
@@ -35,11 +34,10 @@ public:
 
   void set_server_registry(ServerRegistry *registry);
   void set_client_registry(ClientRegistry *registry);
-  void set_zombie_registry(ZombieRegistry *registry);
+  void set_cgi_registry(CgiRegistry *registry);
 
-  void register_cgi_fds(int stdin_fd, int stdout_fd, CgiSession *session);
+  void register_cgi_fd(int fd, CgiSession *session);
   void cleanup_cgi(int cgi_fd);
-  void track_zombie(pid_t pid);
 
 protected:
   // Singleton pattern
@@ -50,7 +48,6 @@ protected:
   // I/O多重化処理の管理
   void process_event(int fd, bool readable, bool writable);
   void handle_timeouts();
-  void handle_zombies();
 
   Multiplexer();
   Multiplexer(const Multiplexer &other);
@@ -60,7 +57,7 @@ private:
   // Registry
   ServerRegistry *server_registry_;
   ClientRegistry *client_registry_;
-  ZombieRegistry *zombie_registry_;
+  CgiRegistry *cgi_registry_;
 
   // I/O多重化処理の補助関数
   void accept_client(int server_fd);

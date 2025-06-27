@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/09 22:42:12 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/27 04:19:58 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,87 +20,131 @@ HttpResponse::~HttpResponse() {}
 
 ResponseEntry *HttpResponse::get_front_response() {
   LOG_DEBUG_FUNC();
-  return response_deque_.empty() ? NULL : &response_deque_.front();
+  return response_queue_.empty() ? NULL : &response_queue_.front();
+}
+
+bool HttpResponse::has_response() const { return (!response_queue_.empty()); }
+
+void HttpResponse::push_back_response(ConnectionPolicy conn,
+                                      const std::vector<char> &buf) {
+  LOG_DEBUG_FUNC();
+  if (buf.empty()) {
+    return;
+  }
+  struct ResponseEntry entry;
+  entry.conn = conn;
+  entry.buffer = buf;
+  entry.offset = 0;
+  response_queue_.push(entry);
+}
+
+void HttpResponse::push_back_response(ConnectionPolicy conn,
+                                      std::ostringstream &oss) {
+  std::string str = oss.str();
+  if (str.empty()) {
+    return;
+  }
+  struct ResponseEntry entry;
+  entry.conn = conn;
+  entry.buffer = std::vector<char>(str.begin(), str.end());
+  entry.offset = 0;
+  response_queue_.push(entry);
 }
 
 void HttpResponse::pop_front_response() {
   LOG_DEBUG_FUNC();
-  response_deque_.pop_front();
+  response_queue_.pop();
 }
 
-bool HttpResponse::has_next_response() const {
-  return (!response_deque_.empty());
-}
-
-void HttpResponse::push_front_response(ConnectionPolicy conn,
-                                       const std::string &response,
-                                       ResponseType type) {
-  LOG_DEBUG_FUNC();
-  if (response.empty()) {
-    return;
-  }
-  struct ResponseEntry entry;
-  entry.conn = conn;
-  entry.buffer = response;
-  entry.offset = 0;
-  entry.type = type;
-  response_deque_.push_front(entry);
-}
-
-void HttpResponse::push_back_response(ConnectionPolicy conn,
-                                      const std::string &response,
-                                      ResponseType type) {
-  LOG_DEBUG_FUNC();
-  if (response.empty()) {
-    return;
-  }
-  struct ResponseEntry entry;
-  entry.conn = conn;
-  entry.buffer = response;
-  entry.offset = 0;
-  entry.type = type;
-  response_deque_.push_back(entry);
-}
-
+// TODO: HttpResponse::generate_response() の content を vector<char> に変更
+// - CGI, static file でバイナリ対応を安全に行うため
 void HttpResponse::generate_response(int status_code,
                                      const std::string &content,
                                      const std::string &content_type,
                                      ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
-  std::ostringstream response;
-  response << "HTTP/1.1 " << status_code << " OK\r\n";
-  response << "Content-Length: " << content.size() << "\r\n";
-  response << "Content-Type: " << content_type << "\r\n";
-  response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
-  response << content;
 
-  push_back_response(conn, response.str(), NORMAL);
+  std::ostringstream oss;
+  oss << "HTTP/1.1 " << status_code << " OK\r\n";
+  oss << "Content-Length: " << content.size() << "\r\n";
+  oss << "Content-Type: " << content_type << "\r\n";
+  oss << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
+  std::string header = oss.str();
+
+  std::vector<char> response;
+  response.insert(response.end(), header.begin(), header.end());
+  response.insert(response.end(), content.begin(), content.end());
+
+  push_back_response(conn, response);
 }
 
-void HttpResponse::generate_chunk_response_header(ConnectionPolicy conn) {
+void HttpResponse::generate_response(
+    int status_code,
+    const std::vector<std::pair<std::string, std::string> > &headers,
+    const std::vector<char> &body, ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
-  std::ostringstream response;
-  response << "HTTP/1.1 200 OK\r\n";
-  response << "Content-Type: text/html; charset=UTF-8\r\n";
-  response << "Transfer-Encoding: chunked\r\n";
-  response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
-  push_back_response(conn, response.str(), CHUNK);
+
+  std::ostringstream oss;
+  oss << "HTTP/1.1 " << status_code << " " << get_status_message(status_code)
+      << "\r\n";
+  for (size_t i = 0; i < headers.size(); ++i) {
+    oss << headers[i].first << ": " << headers[i].second << "\r\n";
+  }
+  oss << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
+
+  std::string header_str = oss.str();
+  std::vector<char> full_response(header_str.begin(), header_str.end());
+  full_response.insert(full_response.end(), body.begin(), body.end());
+
+  push_back_response(conn, full_response);
 }
 
-void HttpResponse::generate_chunk_response_body(const std::string &content,
-                                                ConnectionPolicy conn) {
+void HttpResponse::generate_chunk_response_header(
+    int status_code,
+    const std::vector<std::pair<std::string, std::string> > &headers,
+    ConnectionPolicy conn_policy) {
   LOG_DEBUG_FUNC();
-  std::ostringstream response;
-  response << std::hex << content.size() << "\r\n";
-  response << content << "\r\n";
-  push_back_response(conn, response.str(), CHUNK);
+
+  std::ostringstream oss;
+  oss << "HTTP/1.1 " << status_code << " " << get_status_message(status_code)
+      << "\r\n";
+  for (size_t i = 0; i < headers.size(); ++i) {
+    oss << headers[i].first << ": " << headers[i].second << "\r\n";
+  }
+  oss << "Connection: " << to_connection_value(conn_policy) << "\r\n\r\n";
+
+  std::string header_str = oss.str();
+  std::vector<char> header_vec(header_str.begin(), header_str.end());
+  // NOTE: header 送信時点では、接続の終了判断はしない（必ず keep-alive にする）
+  push_back_response(CP_KEEP_ALIVE, header_vec);
 }
 
-void HttpResponse::generate_chunk_response_last(ConnectionPolicy conn) {
+void HttpResponse::generate_chunk_response_body(const std::vector<char> &data) {
   LOG_DEBUG_FUNC();
-  std::ostringstream response;
-  response << "0\r\n\r\n";
-  push_back_response(conn, response.str(), CHUNK_LAST);
+  if (data.empty()) {
+    return;
+  }
+  static const char kCRLF[] = "\r\n";
+  std::ostringstream oss;
+  std::vector<char> chunk;
+
+  oss << std::hex << data.size() << kCRLF;
+  std::string size_line = oss.str();
+
+  chunk.insert(chunk.end(), size_line.begin(), size_line.end());
+  chunk.insert(chunk.end(), data.begin(), data.end());
+  chunk.insert(chunk.end(), kCRLF, kCRLF + 2);
+  // NOTE: last chunk 未送信時点では、接続の終了判断はしない（必ず keep-alive にする）
+  push_back_response(CP_KEEP_ALIVE, chunk);
+}
+
+void HttpResponse::generate_chunk_response_last(ConnectionPolicy conn_policy) {
+  LOG_DEBUG_FUNC();
+  static const char k_chunk_end_marker[] = "0\r\n\r\n";
+  std::vector<char> chunk;
+
+  chunk.insert(chunk.end(), k_chunk_end_marker, k_chunk_end_marker + 5);
+  push_back_response(conn_policy, chunk);
 }
 
 void HttpResponse::generate_custom_error_page(int status_code,
@@ -126,7 +170,8 @@ void HttpResponse::generate_custom_error_page(int status_code,
     response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     response << file_content;
 
-    push_back_response(conn, response.str(), NORMAL);
+    push_back_response(conn, response);
+
   } catch (const std::exception &e) {
     std::ostringstream fallback;
     fallback << "HTTP/1.1 " << status_code << " ";
@@ -141,7 +186,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
     fallback << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     fallback << "Not Found";
 
-    push_back_response(conn, fallback.str(), NORMAL);
+    push_back_response(conn, fallback);
   }
 }
 
@@ -156,7 +201,7 @@ void HttpResponse::generate_error_response(int status_code,
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
-  push_back_response(conn, response.str(), NORMAL);
+  push_back_response(conn, response);
 }
 
 void HttpResponse::generate_error_response(int status_code,
@@ -170,7 +215,7 @@ void HttpResponse::generate_error_response(int status_code,
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
-  push_back_response(conn, response.str(), NORMAL);
+  push_back_response(conn, response);
 }
 
 void HttpResponse::generate_redirect(int status_code,
@@ -184,7 +229,7 @@ void HttpResponse::generate_redirect(int status_code,
   response << "Location: " << new_location << "\r\n";
   response << "Content-Length: 0\r\n";
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
-  push_back_response(conn, response.str(), NORMAL);
+  push_back_response(conn, response);
 }
 
 void HttpResponse::generate_timeout_response() {
@@ -210,7 +255,7 @@ void HttpResponse::generate_timeout_response() {
   response << "Connection: close\r\n\r\n";
   response << content_str;
 
-  push_front_response(CP_MUST_CLOSE, response.str(), NORMAL);
+  push_back_response(CP_MUST_CLOSE, response);
 }
 
 const char *HttpResponse::get_status_message(int status_code) {

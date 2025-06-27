@@ -24,7 +24,6 @@ void SelectMultiplexer::run() {
       throw std::runtime_error("select() fd exceeds FD_SETSIZE");
     }
     handle_timeouts();
-    handle_zombies();
     active_read_fds = read_fds;
     active_write_fds = write_fds;
 
