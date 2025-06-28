@@ -1,4 +1,5 @@
 #include "CgiUtils.hpp"
+#include "Utils.hpp"
 
 namespace CgiUtils {
 bool is_cgi_request(
@@ -20,6 +21,16 @@ bool is_location_has_cgi(ConfigMap best_match_config) {
   if (it == best_match_config.end() || it->second.empty())
     return false;
   return true;
+}
+
+bool is_cgi_like_path(const std::string& path) {
+    static const char* default_exts[] = { ".cgi", ".pl", ".py", ".php", ".rb" };
+    std::string ext = getExtension(path);
+
+    for (size_t i = 0; i < sizeof(default_exts)/sizeof(*default_exts); ++i)
+        if (ext == default_exts[i])
+            return true;
+    return false;
 }
 
 } // namespace CgiUtils

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/27 07:02:04 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/28 15:56:35 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -211,4 +211,26 @@ std::string to_lower(const std::string &s) {
         static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
   }
   return result;
+}
+
+std::string getExtension(const std::string& path)
+{
+    std::string clean_path = path;
+    std::string::size_type qpos = clean_path.find_first_of("?#");
+    if (qpos != std::string::npos)
+        clean_path.erase(qpos);
+
+    std::string::size_type slash = clean_path.find_last_of('/');
+    std::string filename = (slash == std::string::npos)
+                          ? clean_path
+                          : clean_path.substr(slash + 1);
+
+    if (filename.empty())
+        return "";
+
+    std::string::size_type dot = filename.find_last_of('.');
+    if (dot == std::string::npos || dot == 0)
+        return "";
+
+    return filename.substr(dot);
 }

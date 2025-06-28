@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/27 07:23:49 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/28 16:43:02 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,6 +33,7 @@
 class HttpResponse;
 class VirtualHostRouter;
 class CgiSession;
+class CgiParser;
 
 enum ResourceType { File, Directory, NotFound };
 enum RedirStatus { REDIR_NONE, REDIR_SUCCESS, REDIR_FAILED };
@@ -46,6 +47,7 @@ public:
   std::string version_;
   HeaderMap headers_;
   std::vector<char> body_data_;
+
 
   bool is_autoindex_enabled_;
   std::string index_file_name_;
@@ -94,10 +96,12 @@ private:
   HttpResponse &response_;
   const VirtualHostRouter *virtual_host_router_;
   CgiSession *cgi_session_;
+  CgiParser *cgi_parser_;
   ConnectionPolicy connection_policy_;
   int status_code_;
   std::string _root;
   size_t max_body_size_;
+  size_t body_size_;
 
   static const size_t k_default_max_body_;
 
@@ -129,6 +133,10 @@ private:
 
   RedirStatus handle_redirection();
   void launch_cgi(const std::string &cgi_path);
+  
+  void load_body_size();
+  size_t get_body_size();
+  bool validate_client_body_size();
 
   HttpRequest(const HttpRequest &other);
   HttpRequest &operator=(const HttpRequest &other);

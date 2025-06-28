@@ -5,8 +5,8 @@
 #include <sstream>
 
 CgiParser::CgiParser()
-    : state_(CGI_PARSE_HEADER), status_code_(200), out_buf_(), headers_(),
-      body_(), body_size_(0) {}
+    : state_(CGI_PARSE_HEADER), status_code_(200), out_buf_(), headers_(), 
+    body_(), body_size_(0) {}
 
 CgiParser::~CgiParser() {}
 

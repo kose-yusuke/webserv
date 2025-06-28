@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 03:22:31 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/06/28 16:43:14 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -114,10 +114,14 @@ void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
   select_server_by_host();
   conf_init();
+  if (!validate_client_body_size())
+  {
+    handle_error(413);
+    return; 
+  }
   print_best_match_config(best_match_config_);
 
   if (status_code_ != 0) {
-    // TODO: kosekiさんが実装済みの、custom error pageの呼び出しを反映させる
     response_.generate_error_response(status_code_, connection_policy_);
     return;
   }
@@ -229,6 +233,39 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   return (best_config);
 }
 
+size_t HttpRequest::get_body_size() {return body_size_;}
+
+void HttpRequest::load_body_size()
+{
+  if (is_in_headers("Content-Length")) {
+
+    StrVector num_values = get_header_values("Content-Length");
+    if (num_values.empty()) {
+      return;
+    }
+    try {
+      body_size_ = str_to_size(num_values[0]);
+    } catch (const std::exception &e) {
+      return;
+    }
+    for (size_t i = 1; i < num_values.size(); ++i) {
+      if (num_values[i] != num_values[0]) {
+        return;
+      }
+    }
+  }
+}
+
+bool HttpRequest::validate_client_body_size(){
+  // body size の超過;
+  load_max_body_size();
+  load_body_size();
+  if (body_size_ > get_max_body_size()) {
+    set_status_code(413);
+    return false;
+  }
+  return true;
+}
 void HttpRequest::load_max_body_size() {
   ConstConfigIt it = server_config_.find("client_max_body_size");
   if (it != server_config_.end()) {
@@ -363,7 +400,13 @@ void HttpRequest::handle_post_request() {
     launch_cgi(full_path);
     return;
   }
-
+  
+  if (CgiUtils::is_cgi_like_path(path_)) {
+    response_.generate_error_response(
+      403, "CGI execution forbidden for this location", connection_policy_);
+    return;
+  }
+  
   if (!is_location_upload_file(full_path)) {
     handle_get_request(path_); // POSTが許されない場所ならGETにフォールバック
     return;
@@ -414,7 +457,7 @@ void HttpRequest::handle_delete_request(const std::string path) {
   if (type == Directory) {
     status = handle_directory_delete(file_path);
   } else if (type == File) {
-    if (CgiUtils::is_cgi_request(file_path, cgi_extensions_))
+    if (CgiUtils::is_location_has_cgi(best_match_config_) && CgiUtils::is_cgi_request(file_path, cgi_extensions_))
       launch_cgi(file_path);
     else {
       status = handle_file_delete(file_path);
