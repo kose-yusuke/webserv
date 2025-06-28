@@ -4,22 +4,27 @@ CXXFLAGS := -Wall -Wextra -Werror -std=c++98 -MMD -MP
 SRCDIR   := srcs
 OBJDIR   := objs
 SRCS     := $(SRCDIR)/main.cpp \
-            $(SRCDIR)/server/Server.cpp \
-            $(SRCDIR)/server/ServerRegistry.cpp \
-            $(SRCDIR)/server/VirtualHostRouter.cpp \
-            $(SRCDIR)/server/ServerBuilder.cpp \
-            $(SRCDIR)/server/SocketBuilder.cpp \
+            $(SRCDIR)/cgi/CgiParser.cpp \
+            $(SRCDIR)/cgi/CgiRegistry.cpp \
+            $(SRCDIR)/cgi/CgiResponseBuilder.cpp \
+            $(SRCDIR)/cgi/CgiSession.cpp \
+            $(SRCDIR)/cgi/CgiUtils.cpp \
             $(SRCDIR)/client/Client.cpp \
             $(SRCDIR)/client/ClientRegistry.cpp \
             $(SRCDIR)/client/ConnectionManager.cpp \
-            $(SRCDIR)/http/HttpRequest.cpp \
-            $(SRCDIR)/http/HttpResponse.cpp \
-            $(SRCDIR)/http/HttpRequestParser.cpp \
-			$(SRCDIR)/http/CgiHandler.cpp \
             $(SRCDIR)/config/ConfigParse.cpp \
             $(SRCDIR)/event/Multiplexer.cpp \
-            $(SRCDIR)/event/SelectMultiplexer.cpp \
             $(SRCDIR)/event/PollMultiplexer.cpp \
+            $(SRCDIR)/event/SelectMultiplexer.cpp \
+            $(SRCDIR)/http/HttpRequest.cpp \
+            $(SRCDIR)/http/HttpRequestParser.cpp \
+            $(SRCDIR)/http/HttpResponse.cpp \
+            $(SRCDIR)/http/HttpTransaction.cpp \
+            $(SRCDIR)/server/Server.cpp \
+            $(SRCDIR)/server/ServerBuilder.cpp \
+            $(SRCDIR)/server/ServerRegistry.cpp \
+            $(SRCDIR)/server/SocketBuilder.cpp \
+            $(SRCDIR)/server/VirtualHostRouter.cpp \
             $(SRCDIR)/utils/Logger.cpp \
             $(SRCDIR)/utils/Utils.cpp
 

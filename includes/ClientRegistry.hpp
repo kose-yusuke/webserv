@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <map>
+#include <set>
 #include <vector>
 
 class Client;
@@ -15,13 +16,12 @@ public:
   void remove(int fd);
   Client *get(int fd) const;
   bool has(int fd) const;
-  size_t size() const;
 
   std::vector<int> mark_timed_out_clients();
   std::vector<int> detect_unresponsive_clients() const;
 
 private:
-  std::map<int, Client *> clients_;
+  std::map<int, Client *> fd_to_clients_;
 
   typedef std::map<int, Client *>::iterator ClientIt;
   typedef std::map<int, Client *>::const_iterator ConstClientIt;

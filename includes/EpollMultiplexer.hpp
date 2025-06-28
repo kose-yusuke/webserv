@@ -21,6 +21,8 @@ protected:
   void monitor_write(int fd);
   void unmonitor_write(int fd);
   void unmonitor(int fd);
+  void monitor_pipe_read(int fd);
+  void monitor_pipe_write(int fd);
 
 private:
   typedef std::set<int> FdBackup;
@@ -28,14 +30,9 @@ private:
   typedef std::set<int>::const_iterator ConstFdBackupIt;
 
   int epfd_;
-  std::set<int> read_fds_;
-  std::set<int> write_fds_;
 
   bool is_readable(struct epoll_event &ev) const;
   bool is_writable(struct epoll_event &ev) const;
-
-  bool is_in_read_fds(int fd) const;
-  bool is_in_write_fds(int fd) const;
 
   EpollMultiplexer();
   EpollMultiplexer(const EpollMultiplexer &other);

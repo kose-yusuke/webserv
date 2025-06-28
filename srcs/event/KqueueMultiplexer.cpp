@@ -68,7 +68,6 @@ void KqueueMultiplexer::monitor_write(int fd) {
 
 void KqueueMultiplexer::unmonitor_write(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
-
   struct kevent delete_ev;
   EV_SET(&delete_ev, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
   change_list.push_back(delete_ev);
@@ -77,7 +76,13 @@ void KqueueMultiplexer::unmonitor_write(int fd) {
 void KqueueMultiplexer::unmonitor(int fd) {
   LOG_DEBUG_FUNC_FD(fd);
   // do nothing here for kqueue
+  // kqueueはcloseされたfdを、自動で監視対象から除外する
+  // 除外済みのfdにたいして、EV_SET()でEV_DELETEを試みるとエラーとなる
 }
+
+void KqueueMultiplexer::monitor_pipe_read(int fd) { monitor_read(fd); }
+
+void KqueueMultiplexer::monitor_pipe_write(int fd) { monitor_write(fd); }
 
 bool KqueueMultiplexer::is_readable(struct kevent &ev) const {
   return (ev.filter == EVFILT_READ);

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/17 19:08:59 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/06/27 07:02:04 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,8 @@ int print_error_message(const std::string &message) {
 }
 
 void print_best_match_config(ConfigMap best_match_config){
+  (void)best_match_config;
+  return;
   LOG_DEBUG_FUNC();
   std::cout << "=== best_match_config ===" << std::endl;
   for (ConstConfigIt it = best_match_config.begin();
