@@ -25,8 +25,6 @@ public:
   get_parsed_headers() const;
   std::vector<char> take_body();
 
-  size_t body_size_;
-
 private:
   enum CgiParseState {
     CGI_PARSE_HEADER, // header 読み込み中
@@ -46,6 +44,7 @@ private:
   // parsed data (ヘッダとbodyに分離)
   std::vector<std::pair<std::string, std::string> > headers_;
   std::vector<char> body_;
+  size_t body_size_;
 
   // ==== Main parse logic ====
   void parse_headers();

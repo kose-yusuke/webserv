@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 16:19:26 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/06/28 16:43:02 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,6 +101,7 @@ private:
   int status_code_;
   std::string _root;
   size_t max_body_size_;
+  size_t body_size_;
 
   static const size_t k_default_max_body_;
 
@@ -132,7 +133,9 @@ private:
 
   RedirStatus handle_redirection();
   void launch_cgi(const std::string &cgi_path);
-
+  
+  void load_body_size();
+  size_t get_body_size();
   bool validate_client_body_size();
 
   HttpRequest(const HttpRequest &other);

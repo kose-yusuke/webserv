@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 16:19:23 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/06/28 16:43:14 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -233,16 +233,39 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   return (best_config);
 }
 
+size_t HttpRequest::get_body_size() {return body_size_;}
+
+void HttpRequest::load_body_size()
+{
+  if (is_in_headers("Content-Length")) {
+
+    StrVector num_values = get_header_values("Content-Length");
+    if (num_values.empty()) {
+      return;
+    }
+    try {
+      body_size_ = str_to_size(num_values[0]);
+    } catch (const std::exception &e) {
+      return;
+    }
+    for (size_t i = 1; i < num_values.size(); ++i) {
+      if (num_values[i] != num_values[0]) {
+        return;
+      }
+    }
+  }
+}
+
 bool HttpRequest::validate_client_body_size(){
   // body size の超過;
   load_max_body_size();
-  if (cgi_parser_->body_size_ > get_max_body_size()) {
+  load_body_size();
+  if (body_size_ > get_max_body_size()) {
     set_status_code(413);
     return false;
   }
   return true;
 }
-
 void HttpRequest::load_max_body_size() {
   ConstConfigIt it = server_config_.find("client_max_body_size");
   if (it != server_config_.end()) {
