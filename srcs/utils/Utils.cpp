@@ -6,7 +6,7 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/01 10:49:59 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/06/28 15:56:35 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,8 @@ int print_error_message(const std::string &message) {
 }
 
 void print_best_match_config(ConfigMap best_match_config){
+  (void)best_match_config;
+  return;
   LOG_DEBUG_FUNC();
   std::cout << "=== best_match_config ===" << std::endl;
   for (ConstConfigIt it = best_match_config.begin();

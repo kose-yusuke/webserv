@@ -18,6 +18,9 @@ protected:
   void unmonitor_write(int fd);
   void unmonitor(int fd);
 
+  void monitor_pipe_read(int fd);
+  void monitor_pipe_write(int fd);
+
 private:
   fd_set read_fds;  // 常時監視
   fd_set write_fds; // 必要時監視

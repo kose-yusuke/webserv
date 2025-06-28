@@ -116,8 +116,8 @@ void HttpRequestParser::parse_body() {
   if (recv_buffer.size() < body_size) {
     return; // body未受信
   }
-  request.body_data.insert(request.body_data.end(), recv_buffer.begin(),
-                           recv_buffer.begin() + body_size);
+  request.body_data_.insert(request.body_data_.end(), recv_buffer.begin(),
+                            recv_buffer.begin() + body_size);
   recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + body_size);
   parse_state = PARSE_DONE; // body受信完了
 }
@@ -156,8 +156,8 @@ void HttpRequestParser::parse_chunked_body() {
 
     std::vector<char> chunk(recv_buffer.begin() + data_start,
                             recv_buffer.begin() + data_end);
-    request.body_data.insert(request.body_data.end(), chunk.begin(),
-                             chunk.end());
+    request.body_data_.insert(request.body_data_.end(), chunk.begin(),
+                              chunk.end());
     recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + data_end + 2);
   }
 
@@ -179,7 +179,7 @@ bool HttpRequestParser::parse_request_line(std::string &line) {
   }
 
   std::istringstream request_iss(line);
-  if (!(request_iss >> request.method >> request.path >> request.version)) {
+  if (!(request_iss >> request.method_ >> request.path_ >> request.version_)) {
     log(LOG_ERROR, "Failed to parse request line: " + line);
     return false;
   }
@@ -190,14 +190,14 @@ bool HttpRequestParser::parse_request_line(std::string &line) {
     return false;
   }
 
-  if (request.method.empty() || request.path.empty() ||
-      request.version.empty()) {
+  if (request.method_.empty() || request.path_.empty() ||
+      request.version_.empty()) {
     log(LOG_DEBUG, "Failed to parse request line (empty value)");
     return false;
   }
 
-  for (size_t i = 0; i < request.path.size(); ++i) {
-    char c = request.path.at(i);
+  for (size_t i = 0; i < request.path_.size(); ++i) {
+    char c = request.path_.at(i);
     if (!std::isdigit(c) && !std::isalpha(c) &&
         !std::strchr(unreserved_chars, c) && !std::strchr(reserved_chars, c)) {
       log(LOG_DEBUG, std::string("Invalid character in target: '") + c + "'");
@@ -205,8 +205,8 @@ bool HttpRequestParser::parse_request_line(std::string &line) {
     }
   }
 
-  log(LOG_DEBUG, "Parsed Request - Method: " + request.method + ", Path: " +
-                     request.path + ", Version: " + request.version);
+  log(LOG_DEBUG, "Parsed Request - Method: " + request.method_ + ", Path: " +
+                     request.path_ + ", Version: " + request.version_);
   return true;
 }
 
@@ -246,22 +246,22 @@ void HttpRequestParser::validate_request_content() {
   }
 
   // path が長すぎる
-  if (request.path.size() > k_max_request_target) {
+  if (request.path_.size() > k_max_request_target) {
     log(LOG_DEBUG, "Request-target is too long");
     request.set_status_code(414);
     return;
   }
 
   // method 不正
-  if (supported_methods.find(request.method) == supported_methods.end()) {
-    log(LOG_DEBUG, "Unsupported HTTP method: " + request.method);
+  if (supported_methods.find(request.method_) == supported_methods.end()) {
+    log(LOG_DEBUG, "Unsupported HTTP method: " + request.method_);
     request.set_status_code(501);
     return;
   }
 
   // HTTP version 不正
-  if (request.version != "HTTP/1.1") {
-    log(LOG_ERROR, "Unsupported HTTP version: " + request.version);
+  if (request.version_ != "HTTP/1.1") {
+    log(LOG_ERROR, "Unsupported HTTP version: " + request.version_);
     request.set_status_code(505);
   }
 }
@@ -285,7 +285,7 @@ bool HttpRequestParser::check_framing_error() {
 
   // HTTP/1.0 かつ Transfer-Encoding ヘッダーあり
   // 現在 HTTP/1.0 対応はないが 後方互換性が必要になる可能性を考慮して記述
-  if (request.version == "HTTP/1.0" &&
+  if (request.version_ == "HTTP/1.0" &&
       request.is_in_headers("Transfer-Encoding")) {
     return false;
   }
@@ -324,7 +324,8 @@ void HttpRequestParser::validate_headers_content() {
   LOG_DEBUG_FUNC();
 
   // Transfer-Encoding も Content-length もない POST
-  if (request.method == "POST" && !request.is_in_headers("Transfer-Encoding") &&
+  if (request.method_ == "POST" &&
+      !request.is_in_headers("Transfer-Encoding") &&
       !request.is_in_headers("Content-Length")) {
     request.set_status_code(400);
   }
@@ -337,9 +338,9 @@ void HttpRequestParser::determine_connection_policy() {
   const std::string conn_header = request.get_header_value("Connection");
   if (conn_header == "close") {
     request.set_connection_policy(CP_WILL_CLOSE);
-  } else if (request.version == "HTTP/1.1") {
+  } else if (request.version_ == "HTTP/1.1") {
     request.set_connection_policy(CP_KEEP_ALIVE);
-  } else if (request.version == "HTTP/1.0" && conn_header == "keep-alive") {
+  } else if (request.version_ == "HTTP/1.0" && conn_header == "keep-alive") {
     request.set_connection_policy(CP_KEEP_ALIVE);
   } else {
     request.set_connection_policy(CP_WILL_CLOSE);

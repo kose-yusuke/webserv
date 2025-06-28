@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 19:42:07 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/05/17 19:42:09 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/06/27 22:37:50 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,6 @@
 #include "ConfigParse.hpp"
 #include <algorithm>
 
-// TODO: 確認
 Server::Server(const ConfigMap &config, const LocationMap &locations)
     : server_config_(config), location_configs_(locations) {
 
@@ -30,7 +29,6 @@ Server::Server(const ConfigMap &config, const LocationMap &locations)
   }
 }
 
-// TODO: 確認
 Server::Server(const Server &src) {
   server_config_ = src.server_config_;
   location_configs_ = src.location_configs_;

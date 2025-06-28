@@ -6,26 +6,28 @@
 /*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/01 10:51:11 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/06/28 16:19:23 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpRequest.hpp"
+#include "CgiSession.hpp"
+#include "CgiUtils.hpp"
 #include "HttpResponse.hpp"
 #include "Logger.hpp"
 #include "Multiplexer.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
 #include "VirtualHostRouter.hpp"
-#include "CgiHandler.hpp"
 
-const size_t HttpRequest::k_default_max_body = 104857600;
+const size_t HttpRequest::k_default_max_body_ = 104857600;
 
-HttpRequest::HttpRequest(const VirtualHostRouter *router,
+HttpRequest::HttpRequest(int fd, const VirtualHostRouter *router,
                          HttpResponse &httpResponse)
-    : is_autoindex_enabled(false), response(httpResponse),
-      virtual_host_router(router), cgi(NULL), connection_policy(CP_KEEP_ALIVE),
-      status_code(0), max_body_size(k_default_max_body) {}
+    : is_autoindex_enabled_(false), client_fd_(fd), response_(httpResponse),
+      virtual_host_router_(router), cgi_session_(NULL),
+      connection_policy_(CP_KEEP_ALIVE), status_code_(0),
+      max_body_size_(k_default_max_body_) {}
 
 HttpRequest::~HttpRequest() {}
 
@@ -33,52 +35,51 @@ void HttpRequest::select_server_by_host() {
   LOG_DEBUG_FUNC();
 
   const std::string host_name = get_header_value("Host");
-  Server *server = virtual_host_router->route_by_host(host_name);
-  this->server_config = server->get_config();
-  this->location_configs = server->get_locations();
+  Server *server = virtual_host_router_->route_by_host(host_name);
+  this->server_config_ = server->get_config();
+  this->location_configs_ = server->get_locations();
 }
 
 void HttpRequest::init_cgi_extensions() {
-  ConstConfigIt it = best_match_config.find("cgi_extensions");
-  if (it != best_match_config.end() && !it->second.empty()) {
-    cgi_extensions = it->second;
+  ConstConfigIt it = best_match_config_.find("cgi_extensions");
+  if (it != best_match_config_.end() && !it->second.empty()) {
+    cgi_extensions_ = it->second;
   }
 }
 
 void HttpRequest::init_autoindex() {
-  ConstConfigIt it = best_match_config.find("autoindex");
-  if (it != best_match_config.end() && !it->second.empty()) {
-    is_autoindex_enabled = (it->second[0] == "on");
+  ConstConfigIt it = best_match_config_.find("autoindex");
+  if (it != best_match_config_.end() && !it->second.empty()) {
+    is_autoindex_enabled_ = (it->second[0] == "on");
   } else {
-    is_autoindex_enabled = false;
+    is_autoindex_enabled_ = false;
   }
 }
 
 void HttpRequest::init_file_index() {
-  ConstConfigIt index_it = best_match_config.find("index");
-  if (index_it != best_match_config.end() && !index_it->second.empty()) {
-    index_file_name = index_it->second[0];
+  ConstConfigIt index_it = best_match_config_.find("index");
+  if (index_it != best_match_config_.end() && !index_it->second.empty()) {
+    index_file_name_ = index_it->second[0];
   } else {
-    index_file_name = "index.html";
+    index_file_name_ = "index.html";
   }
 }
 
 void HttpRequest::conf_init() {
   LOG_DEBUG_FUNC();
-  this->best_match_config = get_best_match_config(path);
+  this->best_match_config_ = get_best_match_config(path_);
 
-  if (!best_match_config["root"].empty())
-    _root = best_match_config["root"][0];
-  else if (!server_config["root"].empty())
-    _root = server_config["root"][0];
+  if (!best_match_config_["root"].empty())
+    _root = best_match_config_["root"][0];
+  else if (!server_config_["root"].empty())
+    _root = server_config_["root"][0];
   else
     print_error_message("No root found in config file.");
-  set_cgi_handler(cgi);
   init_cgi_extensions();
   init_autoindex();
   init_file_index();
-  if (best_match_config.count("error_page")) {
-    error_page_map = extract_error_page_map(best_match_config["error_page"]);
+  if (best_match_config_.count("error_page")) {
+    error_page_map_ = extract_error_page_map(best_match_config_["error_page"]);
   }
 }
 
@@ -118,11 +119,10 @@ void HttpRequest::handle_http_request() {
     handle_error(413);
     return; 
   }
-  print_best_match_config(best_match_config);
+  print_best_match_config(best_match_config_);
 
-  if (status_code != 0) {
-    // TODO: kosekiさんが実装済みの、custom error pageの呼び出しを反映させる
-    response.generate_error_response(status_code, connection_policy);
+  if (status_code_ != 0) {
+    response_.generate_error_response(status_code_, connection_policy_);
     return;
   }
 
@@ -130,39 +130,29 @@ void HttpRequest::handle_http_request() {
     return;
   }
 
-  ConstConfigIt method_it = best_match_config.find("allow_methods");
-  if (method_it != best_match_config.end()) {
-    allow_methods = method_it->second;
+  ConstConfigIt method_it = best_match_config_.find("allow_methods");
+  if (method_it != best_match_config_.end()) {
+    allow_methods_ = method_it->second;
   } else {
-    allow_methods.push_back("GET");
-    allow_methods.push_back("POST");
-    allow_methods.push_back("DELETE");
+    allow_methods_.push_back("GET");
+    allow_methods_.push_back("POST");
+    allow_methods_.push_back("DELETE");
   }
 
   std::vector<std::string>::const_iterator it =
-      std::find(allow_methods.begin(), allow_methods.end(), method);
-  if (it != allow_methods.end()) {
-    if (method == "GET") {
-      handle_get_request(path);
-    } else if (method == "POST") {
+      std::find(allow_methods_.begin(), allow_methods_.end(), method_);
+  if (it != allow_methods_.end()) {
+    if (method_ == "GET") {
+      handle_get_request(path_);
+    } else if (method_ == "POST") {
       handle_post_request();
-    } else if (method == "DELETE") {
-      handle_delete_request(path);
+    } else if (method_ == "DELETE") {
+      handle_delete_request(path_);
     }
   } else {
-    response.generate_error_response(405, "Method Not Allowed",
-                                     connection_policy);
+    response_.generate_error_response(405, "Method Not Allowed",
+                                      connection_policy_);
   }
-}
-
-bool HttpRequest::parse_http_request(const std::string &request,
-                                     std::string &method, std::string &path,
-                                     std::string &version) {
-  std::istringstream request_stream(request);
-  if (!(request_stream >> method >> path >> version)) {
-    return false;
-  }
-  return true;
 }
 
 void HttpRequest::merge_config(ConfigMap &base, const ConfigMap &override) {
@@ -176,14 +166,14 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   ConfigMap best_config;
 
   // まず, best_configにserverconfigのdirectiveを代入
-  best_config = server_config;
+  best_config = server_config_;
 
   // 最もマッチする `location` を探す旅にでます
   std::string best_match = "/";
 
   // 1. 完全一致(= /path) を評価
-  for (ConstLocationIt it = location_configs.begin();
-      it != location_configs.end(); ++it) {
+  for (ConstLocationIt it = location_configs_.begin();
+       it != location_configs_.end(); ++it) {
     const std::string &loc = it->first;
     if (loc.substr(0, 2) == "= ") {
       if (loc.substr(2) == path) {
@@ -196,10 +186,10 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   // 2. 最長前方一致を記録（^~ の有無も記録）
   std::string longest_prefix = "/";
   bool has_caret_tilde = false;
-  ConstLocationIt longest_prefix_it = location_configs.find("/");
+  ConstLocationIt longest_prefix_it = location_configs_.find("/");
 
-  for (ConstLocationIt it = location_configs.begin();
-      it != location_configs.end(); ++it) {
+  for (ConstLocationIt it = location_configs_.begin();
+       it != location_configs_.end(); ++it) {
     const std::string &loc = it->first;
     if (loc.substr(0, 3) == "^~ ") {
       std::string clean_loc = loc.substr(3);
@@ -222,8 +212,8 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   }
 
   // 3. 正規表現マッチを探す
-  for (ConstLocationIt it = location_configs.begin();
-       it != location_configs.end(); ++it) {
+  for (ConstLocationIt it = location_configs_.begin();
+       it != location_configs_.end(); ++it) {
     const std::string &loc = it->first;
     if (loc.substr(0, 2) == "~ " || loc.substr(0, 3) == "~* ") {
       std::string pattern = loc.substr(loc[1] == '*' ? 3 : 2);
@@ -236,41 +226,17 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   }
 
   // 4. 正規表現マッチがなければ、記録した最長prefixマッチ（^~なし）を使う
-  if (longest_prefix_it != location_configs.end()) {
+  if (longest_prefix_it != location_configs_.end()) {
     merge_config(best_config, longest_prefix_it->second);
   }
 
   return (best_config);
 }
 
-size_t HttpRequest::get_body_size() {return body_size;}
-
-void HttpRequest::load_body_size()
-{
-  if (is_in_headers("Content-Length")) {
-
-    StrVector num_values = get_header_values("Content-Length");
-    if (num_values.empty()) {
-      return;
-    }
-    try {
-      body_size = str_to_size(num_values[0]);
-    } catch (const std::exception &e) {
-      return;
-    }
-    for (size_t i = 1; i < num_values.size(); ++i) {
-      if (num_values[i] != num_values[0]) {
-        return;
-      }
-    }
-  }
-}
-
 bool HttpRequest::validate_client_body_size(){
   // body size の超過;
   load_max_body_size();
-  load_body_size();
-  if (body_size > get_max_body_size()) {
+  if (cgi_parser_->body_size_ > get_max_body_size()) {
     set_status_code(413);
     return false;
   }
@@ -278,12 +244,12 @@ bool HttpRequest::validate_client_body_size(){
 }
 
 void HttpRequest::load_max_body_size() {
-  ConstConfigIt it = server_config.find("client_max_body_size");
-  if (it != server_config.end()) {
+  ConstConfigIt it = server_config_.find("client_max_body_size");
+  if (it != server_config_.end()) {
     std::string max_size_str = it->second.front();
-    max_body_size = str_to_size(max_size_str);
+    max_body_size_ = str_to_size(max_size_str);
   }
-  logfd(LOG_DEBUG, "client_max_body_size loaded: ", max_body_size);
+  logfd(LOG_DEBUG, "client_max_body_size loaded: ", max_body_size_);
 }
 
 /*GET Request*/
@@ -300,8 +266,9 @@ void HttpRequest::handle_get_request(std::string path) {
   if (type == Directory) {
     handle_directory_request(path);
   } else if (type == File) {
-    if (cgi && cgi->is_location_has_cgi(best_match_config) && cgi->is_cgi_request(path, cgi_extensions))
-      cgi->handle_cgi_request(file_path, body_data, path, method);
+    if (CgiUtils::is_location_has_cgi(best_match_config_) &&
+        CgiUtils::is_cgi_request(path, cgi_extensions_))
+      launch_cgi(file_path);
     else
       handle_file_request(file_path);
   } else {
@@ -339,27 +306,28 @@ void HttpRequest::handle_file_request(const std::string &file_path) {
   std::ostringstream buffer;
   buffer << file.rdbuf();
   std::string file_content = buffer.str();
-  response.generate_response(200, file_content, "text/html", connection_policy);
+  response_.generate_response(200, file_content, "text/html",
+                              connection_policy_);
 }
 
 void HttpRequest::handle_directory_request(std::string path) {
   // URLの末尾に `/` がない場合、リダイレクト（301）
   if (!ends_with(path, "/")) {
     std::string new_location = path + "/";
-    response.generate_redirect(301, new_location, connection_policy);
+    response_.generate_redirect(301, new_location, connection_policy_);
     return;
   }
 
   // `index.html` が存在するか確認 - 本当はこの辺の　public
   // になっているところはrootとかで置き換える必要あり
-  if (has_index_file(_root + path, index_file_name)) {
-    handle_file_request(_root + path + index_file_name);
+  if (has_index_file(_root + path, index_file_name_)) {
+    handle_file_request(_root + path + index_file_name_);
   } else {
     // autoindexがONの場合、ディレクトリリストを生成する
-    if (is_autoindex_enabled) {
+    if (is_autoindex_enabled_) {
       std::string dir_listing = generate_directory_listing(_root + path);
-      response.generate_response(200, dir_listing, "text/html",
-                                 connection_policy);
+      response_.generate_response(200, dir_listing, "text/html",
+                                  connection_policy_);
     } else {
       handle_error(403);
     }
@@ -373,7 +341,7 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
     std::cerr << "Invalid file path: " << file_path << std::endl;
 
     // HttpResponse::send_error_response(client_socket, 400, "Bad Request");
-    response.generate_error_response(400, "Bad Request", connection_policy);
+    response_.generate_error_response(400, "Bad Request", connection_policy_);
     return false;
   }
   std::string parent_dir = file_path.substr(0, last_slash);
@@ -381,19 +349,19 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
     std::cerr << "Parent directory does not exist: " << parent_dir << std::endl;
     // HttpResponse::send_error_response(client_socket, 404, "Parent Directory
     // Not Found");
-    response.generate_error_response(404, "Parent Directory Not Found",
-                                     connection_policy);
+    response_.generate_error_response(404, "Parent Directory Not Found",
+                                      connection_policy_);
     return false;
   }
   // 書き込み権限
   if (access(parent_dir.c_str(), W_OK) != 0) {
-    response.generate_error_response(403, "Forbidden", connection_policy);
+    response_.generate_error_response(403, "Forbidden", connection_policy_);
     return false;
   }
 
   if (file_exists(file_path)) {
     if (access(file_path.c_str(), W_OK) != 0) {
-      response.generate_error_response(403, "Forbidden", connection_policy);
+      response_.generate_error_response(403, "Forbidden", connection_policy_);
       return false;
     }
   }
@@ -402,46 +370,47 @@ bool HttpRequest::is_location_upload_file(const std::string file_path) {
 }
 
 void HttpRequest::handle_post_request() {
-  std::string full_path = _root + path;
+  std::string full_path = _root + path_;
 
-  if (cgi && cgi->is_location_has_cgi(best_match_config) && cgi->is_cgi_request(path, cgi_extensions)) {
-    cgi->handle_cgi_request(full_path, body_data, path, method);
+  if (CgiUtils::is_location_has_cgi(best_match_config_) &&
+      CgiUtils::is_cgi_request(path_, cgi_extensions_)) {
+    launch_cgi(full_path);
     return;
   }
   
-  if (cgi->is_cgi_like_path(path)) {
-    response.generate_error_response(
-      403, "CGI execution forbidden for this location", connection_policy);
+  if (CgiUtils::is_cgi_like_path(path_)) {
+    response_.generate_error_response(
+      403, "CGI execution forbidden for this location", connection_policy_);
     return;
   }
-
+  
   if (!is_location_upload_file(full_path)) {
-    handle_get_request(path);
+    handle_get_request(path_); // POSTが許されない場所ならGETにフォールバック
     return;
   }
 
-  std::string body(body_data.begin(), body_data.end());
+  std::string body(body_data_.begin(), body_data_.end());
   std::cout << "Received POST body: " << body << std::endl;
 
   if (body.empty()) {
-    response.generate_response(204, "", "text/plain", connection_policy);
+    response_.generate_response(204, "", "text/plain", connection_policy_);
     return;
   }
 
-  std::string upload_path = _root + path;
+  std::string upload_path = _root + path_;
   std::ofstream ofs(upload_path.c_str());
   if (!ofs) {
     std::cerr << "Failed to open file: " << upload_path << std::endl;
-    response.generate_error_response(
-        500, "Internal Server Error: Failed to open file", connection_policy);
+    response_.generate_error_response(
+        500, "Internal Server Error: Failed to open file", connection_policy_);
     return;
   }
 
   ofs << body;
   ofs.close();
 
-  std::cout << "File written successfully: " << path << std::endl;
-  response.generate_response(201, body, "text/plain", connection_policy);
+  std::cout << "File written successfully: " << path_ << std::endl;
+  response_.generate_response(201, body, "text/plain", connection_policy_);
 }
 
 void HttpRequest::handle_delete_request(const std::string path) {
@@ -457,7 +426,7 @@ void HttpRequest::handle_delete_request(const std::string path) {
 
   // 書き込み権限
   if (access(file_path.c_str(), W_OK) != 0) {
-    response.generate_error_response(403, "Forbidden", connection_policy);
+    response_.generate_error_response(403, "Forbidden", connection_policy_);
     return;
   }
 
@@ -465,8 +434,8 @@ void HttpRequest::handle_delete_request(const std::string path) {
   if (type == Directory) {
     status = handle_directory_delete(file_path);
   } else if (type == File) {
-    if (cgi && cgi->is_location_has_cgi(best_match_config) && cgi->is_cgi_request(file_path, cgi_extensions))
-      cgi->handle_cgi_request(file_path, body_data, path, method);
+    if (CgiUtils::is_location_has_cgi(best_match_config_) && CgiUtils::is_cgi_request(file_path, cgi_extensions_))
+      launch_cgi(file_path);
     else {
       status = handle_file_delete(file_path);
       if (status == -1)
@@ -477,10 +446,10 @@ void HttpRequest::handle_delete_request(const std::string path) {
   }
 
   if (status == 0) {
-    response.generate_response(204, "", "text/plain", connection_policy);
+    response_.generate_response(204, "", "text/plain", connection_policy_);
   } else {
-    response.generate_error_response(500, "Internal Server Error",
-                                     connection_policy);
+    response_.generate_error_response(500, "Internal Server Error",
+                                      connection_policy_);
   }
 }
 
@@ -497,18 +466,18 @@ int HttpRequest::handle_file_delete(const std::string &file_path) {
 
 int HttpRequest::handle_directory_delete(const std::string &dir_path) {
   if (!ends_with(dir_path, "/")) {
-    response.generate_error_response(409, "Conflict", connection_policy);
+    response_.generate_error_response(409, "Conflict", connection_policy_);
     return -1;
   }
 
-  if (has_index_file(dir_path, index_file_name)) {
-    response.generate_error_response(403, "Forbidden", connection_policy);
+  if (has_index_file(dir_path, index_file_name_)) {
+    response_.generate_error_response(403, "Forbidden", connection_policy_);
     return -1;
   }
 
   if (delete_all_directory_content(dir_path) != 0) {
-    response.generate_error_response(500, "Internal Server Error",
-                                     connection_policy);
+    response_.generate_error_response(500, "Internal Server Error",
+                                      connection_policy_);
     return -1;
   }
 
@@ -585,28 +554,28 @@ HttpRequest::generate_directory_listing(const std::string &dir_path) {
 }
 
 ConnectionPolicy HttpRequest::get_connection_policy() const {
-  return connection_policy;
+  return connection_policy_;
 }
 
 void HttpRequest::set_connection_policy(ConnectionPolicy policy) {
-  connection_policy = policy;
+  connection_policy_ = policy;
 }
 
 void HttpRequest::set_status_code(int status) {
-  if (status_code != 0 && status != 400) {
+  if (status_code_ != 0 && status != 400) {
     return;
   }
-  status_code = status;
+  status_code_ = status;
 }
 
-int HttpRequest::get_status_code() const { return status_code; }
+int HttpRequest::get_status_code() const { return status_code_; }
 
-size_t HttpRequest::get_max_body_size() const { return max_body_size; }
+size_t HttpRequest::get_max_body_size() const { return max_body_size_; }
 
 const std::string &HttpRequest::get_header_value(const std::string &key) const {
   static const std::string k_empty_string;
-  ConstHeaderMapIt it = headers.find(key);
-  if (it != headers.end() && !it->second.empty()) {
+  ConstHeaderMapIt it = headers_.find(key);
+  if (it != headers_.end() && !it->second.empty()) {
     return it->second.at(0);
   }
   return k_empty_string;
@@ -615,8 +584,8 @@ const std::string &HttpRequest::get_header_value(const std::string &key) const {
 const std::vector<std::string> &
 HttpRequest::get_header_values(const std::string &key) const {
   static const std::vector<std::string> k_empty_vector;
-  ConstHeaderMapIt it = headers.find(key);
-  if (it != headers.end()) {
+  ConstHeaderMapIt it = headers_.find(key);
+  if (it != headers_.end()) {
     return it->second;
   }
   return k_empty_vector;
@@ -631,40 +600,40 @@ void HttpRequest::add_header(const std::string &key, const std::string &value) {
   std::string lower_key = to_lower(key);
 
   if (lower_key == "date" || key == "set-cookie") {
-    headers[lower_key].push_back(trim(value));
+    headers_[lower_key].push_back(trim(value));
     return;
   }
 
   std::vector<std::string> values = split_csv(value);
   for (size_t i = 0; i < values.size(); ++i) {
-    headers[lower_key].push_back(trim(values[i]));
+    headers_[lower_key].push_back(trim(values[i]));
   }
 }
 
 bool HttpRequest::is_in_headers(const std::string &key) const {
-  return (headers.find(key) != headers.end());
+  return (headers_.find(key) != headers_.end());
 }
 
 void HttpRequest::clear() {
-  method.clear();
-  path.clear();
-  version.clear();
-  body_data.clear();
-  headers.clear();
+  method_.clear();
+  path_.clear();
+  version_.clear();
+  body_data_.clear();
+  headers_.clear();
 
-  is_autoindex_enabled = false;
-  index_file_name.clear();
-  cgi_extensions.clear();
-  allow_methods.clear();
-  error_page_map.clear();
+  is_autoindex_enabled_ = false;
+  index_file_name_.clear();
+  cgi_extensions_.clear();
+  allow_methods_.clear();
+  error_page_map_.clear();
 
-  server_config.clear();
-  location_configs.clear();
-  best_match_config.clear();
+  server_config_.clear();
+  location_configs_.clear();
+  best_match_config_.clear();
   _root.clear();
 
-  connection_policy = CP_KEEP_ALIVE;
-  status_code = 0;
+  connection_policy_ = CP_KEEP_ALIVE;
+  status_code_ = 0;
 }
 
 HttpRequest &HttpRequest::operator=(const HttpRequest &other) {
@@ -674,13 +643,13 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &other) {
 
 RedirStatus HttpRequest::handle_redirection() {
 
-  ConstConfigIt return_it = best_match_config.find("return");
-  if (return_it == best_match_config.end()) {
+  ConstConfigIt return_it = best_match_config_.find("return");
+  if (return_it == best_match_config_.end()) {
     return REDIR_NONE;
   }
   // return があるが、empty() または `status_code path` 形式でない
   if (return_it->second.empty() || return_it->second.size() != 2) {
-    handle_error(400); // TODO: status 要確認
+    handle_error(400);
     return REDIR_FAILED;
   }
   int redir_status_code;
@@ -688,29 +657,52 @@ RedirStatus HttpRequest::handle_redirection() {
     redir_status_code = str_to_int(return_it->second.at(0));
   } catch (const std::exception &e) {
     log(LOG_ERROR, e.what());
-    handle_error(400); // TODO: status 要確認
+    handle_error(400);
     return REDIR_FAILED;
   }
   std::string new_location = return_it->second.at(1);
   if (new_location.size() == 0) {
-    handle_error(400); // TODO: status 要確認
+    handle_error(400);
     return REDIR_FAILED;
   }
-  response.generate_redirect(redir_status_code, new_location,
-                             connection_policy);
+  response_.generate_redirect(redir_status_code, new_location,
+                              connection_policy_);
   return REDIR_SUCCESS;
 }
 
 void HttpRequest::handle_error(int status_code) {
-  if (error_page_map.count(status_code)) {
-    const std::string &path = error_page_map[status_code];
-    response.generate_custom_error_page(status_code, path, _root,
-                                        connection_policy);
+  if (error_page_map_.count(status_code)) {
+    const std::string &path = error_page_map_[status_code];
+    response_.generate_custom_error_page(status_code, path, _root,
+                                         connection_policy_);
   } else {
-    response.generate_error_response(status_code, connection_policy);
+    response_.generate_error_response(status_code, connection_policy_);
   }
 }
 
-void HttpRequest::set_cgi_handler(CgiHandler* handler) {
-  this->cgi = handler;
+void HttpRequest::launch_cgi(const std::string &cgi_path) {
+  if (cgi_session_) {
+    log(LOG_WARNING, "cgi_session_ has already created");
+    return; // 呼ばれないはず debug 用
+  }
+  try {
+    cgi_session_ = new CgiSession(client_fd_);
+    cgi_session_->handle_cgi_request(*this, cgi_path);
+  } catch (const std::exception &e) {
+    // CGI初期化中に例外が発生した場合、セッションを解放してエラー応答
+    if (cgi_session_) {
+      delete cgi_session_;
+      cgi_session_ = NULL;
+    }
+    handle_error(500);
+  }
+}
+
+bool HttpRequest::has_cgi_session() const { return cgi_session_ != NULL; }
+
+CgiSession *HttpRequest::get_cgi_session() const { return cgi_session_; }
+
+void HttpRequest::clear_cgi_session() {
+  delete cgi_session_;
+  cgi_session_ = NULL;
 }
