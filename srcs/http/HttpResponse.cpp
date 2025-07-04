@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 15:56:03 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/07/05 03:57:41 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,18 +56,18 @@ void HttpResponse::pop_front_response() {
   response_queue_.pop();
 }
 
-// TODO: HttpResponse::generate_response() の content を vector<char> に変更
-// - CGI, static file でバイナリ対応を安全に行うため
 void HttpResponse::generate_response(int status_code,
-                                     const std::string &content,
+                                     const std::vector<char> &content,
                                      const std::string &content_type,
                                      ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
 
   std::ostringstream oss;
   oss << "HTTP/1.1 " << status_code << " OK\r\n";
-  oss << "Content-Length: " << content.size() << "\r\n";
-  oss << "Content-Type: " << content_type << "\r\n";
+  if (status_code != 204) {
+    oss << "Content-Length: " << content.size() << "\r\n";
+    oss << "Content-Type: " << content_type << "\r\n";
+  }
   oss << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   std::string header = oss.str();
 
@@ -134,7 +134,7 @@ void HttpResponse::generate_chunk_response_body(const std::vector<char> &data) {
   chunk.insert(chunk.end(), size_line.begin(), size_line.end());
   chunk.insert(chunk.end(), data.begin(), data.end());
   chunk.insert(chunk.end(), kCRLF, kCRLF + 2);
-  // NOTE: last chunk 未送信時点では、接続の終了判断はしない（必ず keep-alive にする）
+  // NOTE: last chunk 未送信時点では、接続の終了判断はしない（必ず keep-alive）
   push_back_response(CP_KEEP_ALIVE, chunk);
 }
 
