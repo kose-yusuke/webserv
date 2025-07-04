@@ -55,8 +55,6 @@ bool CgiSession::is_cgi_timeout(time_t now) const {
   return (state_ == CGI_TIMED_OUT || now - cgi_last_activity_ > k_timeout_sec);
 }
 
-// TODO: 失敗時のハンドリングはexitでいいのかな？ throw std::runtime_error()
-// を検討
 void CgiSession::handle_cgi_request(HttpRequest &request,
                                     const std::string &cgi_path) {
   LOG_DEBUG_FUNC();
@@ -70,14 +68,12 @@ void CgiSession::handle_cgi_request(HttpRequest &request,
   in_off_ = 0;
 
   if (pipe(input_pipe) == -1) {
-    log(LOG_ERROR, "pipe (stdin) failed"); // この中でstrerrorを使用
-    std::exit(1);
+    throw std::runtime_error("pipe failed: " + std::string(strerror(errno)));
   }
   if (pipe(output_pipe) == -1) {
     close(input_pipe[0]);
     close(input_pipe[1]);
-    log(LOG_ERROR, "pipe (stdout) failed");
-    std::exit(1);
+    throw std::runtime_error("pipe failed: " + std::string(strerror(errno)));
   }
 
   pid_ = fork();
@@ -86,8 +82,7 @@ void CgiSession::handle_cgi_request(HttpRequest &request,
     close(input_pipe[1]);
     close(output_pipe[0]);
     close(output_pipe[1]);
-    log(LOG_ERROR, "fork failed");
-    std::exit(1);
+    throw std::runtime_error("fork failed: " + std::string(strerror(errno)));
   }
 
   if (pid_ == 0) {
@@ -110,11 +105,7 @@ void CgiSession::handle_cgi_request(HttpRequest &request,
         "CONTENT_TYPE=" + request.get_header_value("Content-Type");
     std::string queryString = "QUERY_STRING=";
 
-    // TODO: 確認: QUERY_STRING += body;でPOSTがbodyを再び渡している
-    if (method == "POST") {
-      std::string body(in_buf_.begin(), in_buf_.end());
-      queryString += body;
-    } else if (method == "GET") {
+    if (method == "GET") {
       size_t pos = target.find('?');
       if (pos != std::string::npos) {
         queryString += target.substr(pos + 1);
@@ -145,10 +136,9 @@ void CgiSession::handle_cgi_request(HttpRequest &request,
             -1 ||
         fcntl(stdout_fd_, F_SETFL, fcntl(stdout_fd_, F_GETFL) | O_NONBLOCK) ==
             -1) {
-      log(LOG_ERROR, "fcntl to cgi fd failed");
       close(stdin_fd_);
       close(stdout_fd_);
-      std::exit(1);
+      throw std::runtime_error("fcntl failed: " + std::string(strerror(errno)));
     }
 
     // ClientRegistryに登録し、stdin_fd_の監視を開始する
