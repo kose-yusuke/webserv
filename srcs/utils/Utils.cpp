@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/07/05 03:56:54 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/07/05 04:18:59 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -204,4 +204,11 @@ std::string getExtension(const std::string& path)
         return "";
 
     return filename.substr(dot);
+}
+
+std::string get_date() {
+  char buf[100];
+  std::time_t now = std::time(NULL);
+  std::strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", std::gmtime(&now));
+  return std::string(buf);
 }

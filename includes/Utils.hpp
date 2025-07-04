@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
+#include <ctime>
 
 std::string read_file(const std::string &file_path);
 int print_error_message(const std::string &message);
@@ -55,3 +56,4 @@ bool regex_match_posix(const std::string &text, const std::string &pattern, bool
 
 bool is_all_digits(const std::string &str);
 std::string getExtension(const std::string& path);
+std::string get_date();
