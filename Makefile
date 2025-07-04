@@ -26,6 +26,7 @@ SRCS     := $(SRCDIR)/main.cpp \
             $(SRCDIR)/server/SocketBuilder.cpp \
             $(SRCDIR)/server/VirtualHostRouter.cpp \
             $(SRCDIR)/utils/Logger.cpp \
+            $(SRCDIR)/utils/MimeTypes.cpp \
             $(SRCDIR)/utils/Utils.cpp
 
 UNAME_S := $(shell uname -s)
@@ -71,7 +72,7 @@ re: fclean all
 
 run: $(NAME)
 	@echo "== Running Tests  =="
-	./$(NAME) config/valid/multiple_servers.conf
+	./$(NAME) config/valid/server.conf
 	@echo "== Tests Completed =="
 
 redir: $(NAME)
@@ -81,7 +82,7 @@ redir: $(NAME)
 
 multiserver: $(NAME)
 	@echo "== Running Tests  =="
-	./$(NAME) config/valid/multiple_servers3.conf
+	./$(NAME) config/valid/multiple_servers.conf
 	@echo "== Tests Completed =="
 
 func: fclean
