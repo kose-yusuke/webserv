@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:51 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/07/05 01:26:16 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/07/05 13:39:24 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,6 +47,11 @@ public:
       int status_code,
       const std::vector<std::pair<std::string, std::string> > &headers,
       const std::vector<char> &body, ConnectionPolicy connnection_policy);
+
+  void generate_created_response(const std::string &location,
+                                 const std::vector<char> &content,
+                                 const std::string &content_type,
+                                 ConnectionPolicy conn);
 
   void generate_chunk_response_header(
       int status_code,

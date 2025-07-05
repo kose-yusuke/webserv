@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/07/05 04:17:18 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/07/05 13:38:50 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,6 +99,30 @@ void HttpResponse::generate_response(
   full_response.insert(full_response.end(), body.begin(), body.end());
 
   push_back_response(conn, full_response);
+}
+
+void HttpResponse::generate_created_response(const std::string &location,
+                                             const std::vector<char> &content,
+                                             const std::string &content_type,
+                                             ConnectionPolicy conn) {
+  LOG_DEBUG_FUNC();
+
+  std::ostringstream oss;
+  oss << "HTTP/1.1 201 Created\r\n";
+  oss << "Content-Length: " << content.size() << "\r\n";
+  if (!content.empty()) {
+    oss << "Content-Type: " << content_type << "\r\n";
+  }
+  oss << "Date: " << get_date() << "\r\n";
+  oss << "Location: " << location << "\r\n";
+  oss << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
+  std::string header = oss.str();
+
+  std::vector<char> response;
+  response.insert(response.end(), header.begin(), header.end());
+  response.insert(response.end(), content.begin(), content.end());
+
+  push_back_response(conn, response);
 }
 
 void HttpResponse::generate_chunk_response_header(
