@@ -376,12 +376,6 @@ void Parse::handle_server_block(const std::string& line, std::map<std::string, s
             current_config[key] = values;
         }
     }
-    std::cout << "Parsed config: key='" << key << "', values=[";
-    for (size_t i = 0; i < values.size(); ++i) {
-        std::cout << values[i];
-        if (i < values.size() - 1) std::cout << ", ";
-    }
-    std::cout << "]\n";
 }
 
 /* parser utils */

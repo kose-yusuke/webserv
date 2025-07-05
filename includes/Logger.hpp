@@ -7,7 +7,6 @@
 enum LogLevel { LOG_FUNC, LOG_INFO, LOG_DEBUG, LOG_WARNING, LOG_ERROR };
 
 extern LogLevel current_log_level;
-extern std::ofstream debug_log;
 
 void log(LogLevel level, const std::string &message);
 void logfd(LogLevel level, const std::string &prefix, int fd);
