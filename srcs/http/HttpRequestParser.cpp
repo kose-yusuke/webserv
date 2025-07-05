@@ -245,7 +245,6 @@ void HttpRequestParser::validate_request_content() {
     return;
   }
 
-  // path が長すぎる
   if (request.path_.size() > k_max_request_target) {
     log(LOG_DEBUG, "Request-target is too long");
     request.set_status_code(414);
