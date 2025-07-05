@@ -108,6 +108,7 @@ void HttpRequestParser::next_parse_state() {
 
 void HttpRequestParser::parse_body() {
   LOG_DEBUG_FUNC();
+  size_t body_size = request.get_body_size();
   if (body_size == 0) {
     parse_state = PARSE_DONE;
     return;
@@ -306,7 +307,8 @@ bool HttpRequestParser::check_framing_error() {
       return false;
     }
     try {
-      body_size = str_to_size(num_values[0]);
+      size_t body_size = str_to_size(num_values[0]);
+      request.set_body_size(body_size);
     } catch (const std::exception &e) {
       return false;
     }

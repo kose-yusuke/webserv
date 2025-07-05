@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/07/05 13:46:52 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/07/05 15:34:52 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -233,32 +233,9 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   return (best_config);
 }
 
-size_t HttpRequest::get_body_size() { return body_size_; }
-
-void HttpRequest::load_body_size() {
-  if (is_in_headers("Content-Length")) {
-
-    StrVector num_values = get_header_values("Content-Length");
-    if (num_values.empty()) {
-      return;
-    }
-    try {
-      body_size_ = str_to_size(num_values[0]);
-    } catch (const std::exception &e) {
-      return;
-    }
-    for (size_t i = 1; i < num_values.size(); ++i) {
-      if (num_values[i] != num_values[0]) {
-        return;
-      }
-    }
-  }
-}
-
 bool HttpRequest::validate_client_body_size() {
   // body size の超過;
   load_max_body_size();
-  load_body_size();
   if (body_size_ > get_max_body_size()) {
     set_status_code(413);
     return false;
@@ -644,8 +621,9 @@ void HttpRequest::clear() {
   method_.clear();
   path_.clear();
   version_.clear();
-  body_data_.clear();
   headers_.clear();
+  body_data_.clear();
+  body_size_ = 0;
 
   is_autoindex_enabled_ = false;
   index_file_name_.clear();
@@ -657,6 +635,7 @@ void HttpRequest::clear() {
   location_configs_.clear();
   best_match_config_.clear();
   _root.clear();
+  max_body_size_ = k_default_max_body_;
 
   connection_policy_ = CP_KEEP_ALIVE;
   status_code_ = 0;

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 16:43:02 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/07/05 15:32:40 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -137,8 +137,6 @@ private:
   RedirStatus handle_redirection();
   void launch_cgi(const std::string &cgi_path);
 
-  void load_body_size();
-  size_t get_body_size();
   bool validate_client_body_size();
 
   HttpRequest(const HttpRequest &other);
