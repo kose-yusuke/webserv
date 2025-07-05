@@ -10,7 +10,6 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-// #include "../../includes/webserv.hpp"
 #include "ConfigParse.hpp"
 
 Parse::Parse(){}
@@ -42,7 +41,6 @@ const char* Parse::valid_keys[] = {
 };
 
 
-// rootはlocationにあればよさそう
 const char* Parse::required_keys[] = {
     "listen"
 };
@@ -354,7 +352,6 @@ void Parse::handle_server_block(const std::string& line, std::map<std::string, s
     parse_key_value(line, key, values);
 
     key = space_outer_trim(key);
-    // values = space_outer_trim(value);
 
     if (in_location_block) {
         if (key == "error_page") 
@@ -391,7 +388,6 @@ void Parse::parse_key_value(const std::string& line, std::string& key, std::vect
         throw std::runtime_error("Invalid config line: " + line);
 
     key = space_outer_trim(key_value.substr(0, space_pos));
-    // value = space_outer_trim(key_value.substr(space_pos + 1));
     std::string value_part = space_outer_trim(key_value.substr(space_pos + 1));
 
     if (key == "listen") {

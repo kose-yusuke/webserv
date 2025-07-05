@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/07/05 15:34:52 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/07/05 16:08:36 by koseki.yusu      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -165,10 +165,8 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
 
   ConfigMap best_config;
 
-  // まず, best_configにserverconfigのdirectiveを代入
   best_config = server_config_;
 
-  // 最もマッチする `location` を探す旅にでます
   std::string best_match = "/";
 
   // 1. 完全一致(= /path) を評価
@@ -318,12 +316,9 @@ void HttpRequest::handle_directory_request(std::string path) {
     return;
   }
 
-  // `index.html` が存在するか確認 - 本当はこの辺の　public
-  // になっているところはrootとかで置き換える必要あり
   if (has_index_file(_root + path, index_file_name_)) {
     handle_file_request(_root + path + index_file_name_);
   } else {
-    // autoindexがONの場合、ディレクトリリストを生成する
     if (is_autoindex_enabled_) {
       std::string dir_listing = generate_directory_listing(_root + path);
       std::vector<char> content(dir_listing.begin(), dir_listing.end());
@@ -336,20 +331,17 @@ void HttpRequest::handle_directory_request(std::string path) {
 }
 
 bool HttpRequest::is_location_upload_file(const std::string file_path) {
-  // 親ディレクトリ取得
+
   size_t last_slash = file_path.find_last_of('/');
   if (last_slash == std::string::npos) {
     std::cerr << "Invalid file path: " << file_path << std::endl;
 
-    // HttpResponse::send_error_response(client_socket, 400, "Bad Request");
     response_.generate_error_response(400, "Bad Request", connection_policy_);
     return false;
   }
   std::string parent_dir = file_path.substr(0, last_slash);
   if (!is_directory(parent_dir)) {
     std::cerr << "Parent directory does not exist: " << parent_dir << std::endl;
-    // HttpResponse::send_error_response(client_socket, 404, "Parent Directory
-    // Not Found");
     response_.generate_error_response(404, "Parent Directory Not Found",
                                       connection_policy_);
     return false;
@@ -386,7 +378,7 @@ void HttpRequest::handle_post_request() {
   }
 
   if (!is_location_upload_file(full_path)) {
-    handle_get_request(path_); // POSTが許されない場所ならGETにフォールバック
+    handle_get_request(path_); 
     return;
   }
 
@@ -688,13 +680,12 @@ void HttpRequest::handle_error(int status_code) {
 void HttpRequest::launch_cgi(const std::string &cgi_path) {
   if (cgi_session_) {
     log(LOG_WARNING, "cgi_session_ has already created");
-    return; // 呼ばれないはず debug 用
+    return;
   }
   try {
     cgi_session_ = new CgiSession(client_fd_);
     cgi_session_->handle_cgi_request(*this, cgi_path);
   } catch (const std::exception &e) {
-    // CGI初期化中に例外が発生した場合、セッションを解放してエラー応答
     if (cgi_session_) {
       delete cgi_session_;
       cgi_session_ = NULL;
