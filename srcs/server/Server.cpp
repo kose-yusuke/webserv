@@ -15,7 +15,7 @@
 #include <algorithm>
 
 Server::Server(const ConfigMap &config, const LocationMap &locations)
-    : server_config_(config), location_configs_(locations) {
+    : server_config_(config), location_configs_(locations), _is_default(false) {
 
   ConstConfigIt listen_it = config.find("listen");
   if (listen_it != config.end()) {
