@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:08 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 15:56:03 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/07/05 04:17:18 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,18 +56,19 @@ void HttpResponse::pop_front_response() {
   response_queue_.pop();
 }
 
-// TODO: HttpResponse::generate_response() の content を vector<char> に変更
-// - CGI, static file でバイナリ対応を安全に行うため
 void HttpResponse::generate_response(int status_code,
-                                     const std::string &content,
+                                     const std::vector<char> &content,
                                      const std::string &content_type,
                                      ConnectionPolicy conn) {
   LOG_DEBUG_FUNC();
 
   std::ostringstream oss;
   oss << "HTTP/1.1 " << status_code << " OK\r\n";
-  oss << "Content-Length: " << content.size() << "\r\n";
-  oss << "Content-Type: " << content_type << "\r\n";
+  if (status_code != 204) {
+    oss << "Content-Length: " << content.size() << "\r\n";
+    oss << "Content-Type: " << content_type << "\r\n";
+  }
+  oss << "Date: " << get_date() << "\r\n";
   oss << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   std::string header = oss.str();
 
@@ -90,6 +91,7 @@ void HttpResponse::generate_response(
   for (size_t i = 0; i < headers.size(); ++i) {
     oss << headers[i].first << ": " << headers[i].second << "\r\n";
   }
+  oss << "Date: " << get_date() << "\r\n";
   oss << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
 
   std::string header_str = oss.str();
@@ -111,6 +113,7 @@ void HttpResponse::generate_chunk_response_header(
   for (size_t i = 0; i < headers.size(); ++i) {
     oss << headers[i].first << ": " << headers[i].second << "\r\n";
   }
+  oss << "Date: " << get_date() << "\r\n";
   oss << "Connection: " << to_connection_value(conn_policy) << "\r\n\r\n";
 
   std::string header_str = oss.str();
@@ -134,7 +137,7 @@ void HttpResponse::generate_chunk_response_body(const std::vector<char> &data) {
   chunk.insert(chunk.end(), size_line.begin(), size_line.end());
   chunk.insert(chunk.end(), data.begin(), data.end());
   chunk.insert(chunk.end(), kCRLF, kCRLF + 2);
-  // NOTE: last chunk 未送信時点では、接続の終了判断はしない（必ず keep-alive にする）
+  // NOTE: last chunk 未送信時点では、接続の終了判断はしない（必ず keep-alive）
   push_back_response(CP_KEEP_ALIVE, chunk);
 }
 
@@ -167,6 +170,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
     response << "\r\n";
     response << "Content-Length: " << file_content.size() << "\r\n";
     response << "Content-Type: text/html\r\n";
+    response << "Date: " << get_date() << "\r\n";
     response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     response << file_content;
 
@@ -183,6 +187,7 @@ void HttpResponse::generate_custom_error_page(int status_code,
     fallback << "\r\n";
     fallback << "Content-Length: 9\r\n";
     fallback << "Content-Type: text/plain\r\n";
+    fallback << "Date: " << get_date() << "\r\n";
     fallback << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
     fallback << "Not Found";
 
@@ -198,6 +203,7 @@ void HttpResponse::generate_error_response(int status_code,
   response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
   response << "Content-Length: " << message.size() << "\r\n";
   response << "Content-Type: text/plain\r\n";
+  response << "Date: " << get_date() << "\r\n";
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
@@ -212,6 +218,7 @@ void HttpResponse::generate_error_response(int status_code,
   response << "HTTP/1.1 " << status_code << " " << message << "\r\n";
   response << "Content-Length: " << message.size() << "\r\n";
   response << "Content-Type: text/plain\r\n";
+  response << "Date: " << get_date() << "\r\n";
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   response << message;
 
@@ -228,6 +235,7 @@ void HttpResponse::generate_redirect(int status_code,
   response << HttpResponse::get_status_message(status_code) << "\r\n";
   response << "Location: " << new_location << "\r\n";
   response << "Content-Length: 0\r\n";
+  response << "Date: " << get_date() << "\r\n";
   response << "Connection: " << to_connection_value(conn) << "\r\n\r\n";
   push_back_response(conn, response);
 }
@@ -252,6 +260,7 @@ void HttpResponse::generate_timeout_response() {
   response << "HTTP/1.1 408 Request Timeout\r\n";
   response << "Content-Type: text/html\r\n";
   response << "Content-Length: " << content_str.size() << "\r\n";
+  response << "Date: " << get_date() << "\r\n";
   response << "Connection: close\r\n\r\n";
   response << content_str;
 

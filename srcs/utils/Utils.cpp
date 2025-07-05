@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/18 15:47:21 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 15:56:35 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/07/05 04:18:59 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -100,35 +100,6 @@ bool regex_match_posix(const std::string &text, const std::string &pattern, bool
   return result == 0;
 }
 
-
-// 拡張子に基づいてMIMEタイプを返す関数
-// std::string get_mime_type(const std::string& file_path) {
-//     // 拡張子とMIMEタイプのマッピング
-//     static const std::map<std::string, std::string> mime_types = {
-//         {".html", "text/html"},
-//         {".css", "text/css"},
-//         {".js", "application/javascript"},
-//         {".png", "image/png"},
-//         {".jpg", "image/jpeg"},
-//         {".jpeg", "image/jpeg"},
-//         {".gif", "image/gif"},
-//         {".svg", "image/svg+xml"},
-//         {".json", "application/json"},
-//         {".txt", "text/plain"}
-//     };
-
-//     // ファイルパスから拡張子を抽出
-//     size_t dot_pos = file_path.find_last_of('.');
-//     if (dot_pos != std::string::npos) {
-//         std::string extension = file_path.substr(dot_pos);
-//         if (mime_types.find(extension) != mime_types.end()) {
-//             return mime_types.at(extension);
-//         }
-//     }
-
-//     // デフォルトのMIMEタイプ
-//     return "application/octet-stream";
-// }
 
 std::string trim_left(const std::string &s) {
   size_t start = s.find_first_not_of(" \t\r\n");
@@ -233,4 +204,11 @@ std::string getExtension(const std::string& path)
         return "";
 
     return filename.substr(dot);
+}
+
+std::string get_date() {
+  char buf[100];
+  std::time_t now = std::time(NULL);
+  std::strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", std::gmtime(&now));
+  return std::string(buf);
 }

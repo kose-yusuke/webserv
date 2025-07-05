@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ServerRegistry.cpp                                 :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/07/05 03:36:35 by sakitaha          #+#    #+#             */
+/*   Updated: 2025/07/05 03:36:36 by sakitaha         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "ServerRegistry.hpp"
 #include "Logger.hpp"
 #include "Multiplexer.hpp"
@@ -18,8 +30,6 @@ ServerRegistry::~ServerRegistry() {
   }
 }
 
-// XXX: listen が必ず最低でも1つあることは、config parse時にチェックする
-// XXX: 重複についての検証はどこでするか確認する
 void ServerRegistry::add(const Server &s) {
   std::vector<std::string> ip_ports = s.get_config().find("listen")->second;
   std::string ip, port;

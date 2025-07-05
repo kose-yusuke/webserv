@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:51 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/27 03:57:10 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/07/05 01:26:16 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ public:
   void push_back_response(ConnectionPolicy conn, std::ostringstream &oss);
   void pop_front_response();
 
-  void generate_response(int status_code, const std::string &content,
+  void generate_response(int status_code, const std::vector<char> &content,
                          const std::string &content_type,
                          ConnectionPolicy connection_policy);
 

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 16:43:14 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/07/05 03:53:16 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 #include "CgiUtils.hpp"
 #include "HttpResponse.hpp"
 #include "Logger.hpp"
+#include "MimeTypes.hpp"
 #include "Multiplexer.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
@@ -114,10 +115,9 @@ void HttpRequest::handle_http_request() {
   LOG_DEBUG_FUNC();
   select_server_by_host();
   conf_init();
-  if (!validate_client_body_size())
-  {
+  if (!validate_client_body_size()) {
     handle_error(413);
-    return; 
+    return;
   }
   print_best_match_config(best_match_config_);
 
@@ -233,10 +233,9 @@ ConfigMap HttpRequest::get_best_match_config(const std::string &path) {
   return (best_config);
 }
 
-size_t HttpRequest::get_body_size() {return body_size_;}
+size_t HttpRequest::get_body_size() { return body_size_; }
 
-void HttpRequest::load_body_size()
-{
+void HttpRequest::load_body_size() {
   if (is_in_headers("Content-Length")) {
 
     StrVector num_values = get_header_values("Content-Length");
@@ -256,7 +255,7 @@ void HttpRequest::load_body_size()
   }
 }
 
-bool HttpRequest::validate_client_body_size(){
+bool HttpRequest::validate_client_body_size() {
   // body size の超過;
   load_max_body_size();
   load_body_size();
@@ -320,17 +319,18 @@ ResourceType HttpRequest::get_resource_type(const std::string &path) {
 /*Requestがディレクトリかファイルかの分岐処理*/
 void HttpRequest::handle_file_request(const std::string &file_path) {
   LOG_DEBUG_FUNC();
-
-  std::ifstream file(file_path.c_str(), std::ios::in);
+  std::ifstream file(file_path.c_str(), std::ios::in | std::ios::binary);
   if (!file.is_open()) {
     handle_error(404);
     return;
   }
-  std::ostringstream buffer;
-  buffer << file.rdbuf();
-  std::string file_content = buffer.str();
-  response_.generate_response(200, file_content, "text/html",
-                              connection_policy_);
+  std::istreambuf_iterator<char> begin(file); // fileの先頭
+  std::istreambuf_iterator<char> end;         // EOF
+  std::vector<char> content(begin, end);      // vectorに変換
+
+  std::string mime_type = MimeTypes::get_mime_type(file_path);
+
+  response_.generate_response(200, content, mime_type, connection_policy_);
 }
 
 void HttpRequest::handle_directory_request(std::string path) {
@@ -349,7 +349,8 @@ void HttpRequest::handle_directory_request(std::string path) {
     // autoindexがONの場合、ディレクトリリストを生成する
     if (is_autoindex_enabled_) {
       std::string dir_listing = generate_directory_listing(_root + path);
-      response_.generate_response(200, dir_listing, "text/html",
+      std::vector<char> content(dir_listing.begin(), dir_listing.end());
+      response_.generate_response(200, content, "text/html",
                                   connection_policy_);
     } else {
       handle_error(403);
@@ -400,28 +401,26 @@ void HttpRequest::handle_post_request() {
     launch_cgi(full_path);
     return;
   }
-  
+
   if (CgiUtils::is_cgi_like_path(path_)) {
     response_.generate_error_response(
-      403, "CGI execution forbidden for this location", connection_policy_);
+        403, "CGI execution forbidden for this location", connection_policy_);
     return;
   }
-  
+
   if (!is_location_upload_file(full_path)) {
     handle_get_request(path_); // POSTが許されない場所ならGETにフォールバック
     return;
   }
 
-  std::string body(body_data_.begin(), body_data_.end());
-  std::cout << "Received POST body: " << body << std::endl;
-
-  if (body.empty()) {
-    response_.generate_response(204, "", "text/plain", connection_policy_);
+  if (body_data_.empty()) {
+    response_.generate_response(204, std::vector<char>(), "",
+                                connection_policy_);
     return;
   }
 
   std::string upload_path = _root + path_;
-  std::ofstream ofs(upload_path.c_str());
+  std::ofstream ofs(upload_path.c_str(), std::ios::binary);
   if (!ofs) {
     std::cerr << "Failed to open file: " << upload_path << std::endl;
     response_.generate_error_response(
@@ -429,11 +428,12 @@ void HttpRequest::handle_post_request() {
     return;
   }
 
-  ofs << body;
+  ofs.write(&body_data_[0], body_data_.size());
   ofs.close();
 
   std::cout << "File written successfully: " << path_ << std::endl;
-  response_.generate_response(201, body, "text/plain", connection_policy_);
+  std::string mime_type = MimeTypes::get_mime_type(path_);
+  response_.generate_response(201, body_data_, mime_type, connection_policy_);
 }
 
 void HttpRequest::handle_delete_request(const std::string path) {
@@ -457,7 +457,8 @@ void HttpRequest::handle_delete_request(const std::string path) {
   if (type == Directory) {
     status = handle_directory_delete(file_path);
   } else if (type == File) {
-    if (CgiUtils::is_location_has_cgi(best_match_config_) && CgiUtils::is_cgi_request(file_path, cgi_extensions_))
+    if (CgiUtils::is_location_has_cgi(best_match_config_) &&
+        CgiUtils::is_cgi_request(file_path, cgi_extensions_))
       launch_cgi(file_path);
     else {
       status = handle_file_delete(file_path);
@@ -469,7 +470,8 @@ void HttpRequest::handle_delete_request(const std::string path) {
   }
 
   if (status == 0) {
-    response_.generate_response(204, "", "text/plain", connection_policy_);
+    response_.generate_response(204, std::vector<char>(), "",
+                                connection_policy_);
   } else {
     response_.generate_error_response(500, "Internal Server Error",
                                       connection_policy_);
