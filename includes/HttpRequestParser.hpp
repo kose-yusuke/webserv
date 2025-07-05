@@ -29,7 +29,6 @@ private:
 
   HttpRequest &request;
   ParseState parse_state;
-  size_t body_size;
   std::vector<char> recv_buffer;
 
   void parse_header();

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: koseki.yusuke <koseki.yusuke@student.42    +#+  +:+       +#+        */
+/*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:44:38 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/06/28 16:43:02 by koseki.yusu      ###   ########.fr       */
+/*   Updated: 2025/07/05 15:32:40 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,7 @@ public:
   std::string version_;
   HeaderMap headers_;
   std::vector<char> body_data_;
-
+  size_t body_size_;
 
   bool is_autoindex_enabled_;
   std::string index_file_name_;
@@ -59,7 +59,8 @@ public:
   LocationMap location_configs_;
   ConfigMap best_match_config_;
 
-  HttpRequest(int fd, const VirtualHostRouter *router, HttpResponse &httpResponse);
+  HttpRequest(int fd, const VirtualHostRouter *router,
+              HttpResponse &httpResponse);
   ~HttpRequest();
 
   void handle_http_request();
@@ -70,6 +71,9 @@ public:
   const std::string &get_method() const { return method_; }
   const std::string &get_path() const { return path_; }
   const std::vector<char> &get_body() const { return body_data_; }
+
+  size_t get_body_size() const { return body_size_; }
+  void set_body_size(size_t size) { body_size_ = size; }
 
   void set_status_code(int status);
   int get_status_code() const;
@@ -101,7 +105,6 @@ private:
   int status_code_;
   std::string _root;
   size_t max_body_size_;
-  size_t body_size_;
 
   static const size_t k_default_max_body_;
 
@@ -133,9 +136,7 @@ private:
 
   RedirStatus handle_redirection();
   void launch_cgi(const std::string &cgi_path);
-  
-  void load_body_size();
-  size_t get_body_size();
+
   bool validate_client_body_size();
 
   HttpRequest(const HttpRequest &other);

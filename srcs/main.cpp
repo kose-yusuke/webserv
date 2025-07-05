@@ -23,10 +23,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-static void free_resources() {
-  Multiplexer::delete_instance();
-  debug_log.close();
-}
+static void free_resources() { Multiplexer::delete_instance(); }
 
 static void handle_sigchld(int sig) {
   const int saved_errno = errno;

@@ -147,6 +147,9 @@ void Multiplexer::accept_client(int serverfd) {
 void Multiplexer::read_from_client(int clientfd) {
   LOG_DEBUG_FUNC_FD(clientfd);
   Client *client = client_registry_->get(clientfd);
+  if (!client) {
+    return;
+  }
 
   switch (client->on_read()) {
 
@@ -167,6 +170,9 @@ void Multiplexer::read_from_client(int clientfd) {
 void Multiplexer::write_to_client(int clientfd) {
   LOG_DEBUG_FUNC_FD(clientfd);
   Client *client = client_registry_->get(clientfd);
+  if (!client) {
+    return;
+  }
 
   switch (client->on_write()) {
   case IO_CONTINUE:
@@ -205,6 +211,9 @@ void Multiplexer::cleanup_client(int clientfd) {
 void Multiplexer::read_from_cgi(int cgi_stdout) {
   LOG_DEBUG_FUNC_FD(cgi_stdout);
   CgiSession *session = cgi_registry_->get(cgi_stdout);
+  if (!session) {
+    return;
+  }
 
   switch (session->on_cgi_read()) {
   case CGI_IO_CONTINUE:
@@ -226,6 +235,9 @@ void Multiplexer::read_from_cgi(int cgi_stdout) {
 void Multiplexer::write_to_cgi(int cgi_stdin) {
   LOG_DEBUG_FUNC_FD(cgi_stdin);
   CgiSession *session = cgi_registry_->get(cgi_stdin);
+  if (!session) {
+    return;
+  }
 
   switch (session->on_cgi_write()) {
   case CGI_IO_CONTINUE:

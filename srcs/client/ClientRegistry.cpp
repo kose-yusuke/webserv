@@ -32,7 +32,6 @@ void ClientRegistry::remove(int fd) {
 Client *ClientRegistry::get(int fd) const {
   ConstClientIt it = fd_to_clients_.find(fd);
   if (it == fd_to_clients_.end()) {
-    logfd(LOG_ERROR, "Failed to find client fd: ", fd);
     return NULL;
   }
   return it->second;
