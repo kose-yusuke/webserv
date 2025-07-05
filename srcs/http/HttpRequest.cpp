@@ -6,7 +6,7 @@
 /*   By: sakitaha <sakitaha@student.42tokyo.jp>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/02 16:37:05 by koseki.yusu       #+#    #+#             */
-/*   Updated: 2025/07/05 03:53:16 by sakitaha         ###   ########.fr       */
+/*   Updated: 2025/07/05 13:46:52 by sakitaha         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -433,7 +433,8 @@ void HttpRequest::handle_post_request() {
 
   std::cout << "File written successfully: " << path_ << std::endl;
   std::string mime_type = MimeTypes::get_mime_type(path_);
-  response_.generate_response(201, body_data_, mime_type, connection_policy_);
+  response_.generate_created_response(path_, body_data_, mime_type,
+                                      connection_policy_);
 }
 
 void HttpRequest::handle_delete_request(const std::string path) {
