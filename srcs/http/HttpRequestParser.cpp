@@ -43,7 +43,6 @@ void HttpRequestParser::clear() {
   LOG_DEBUG_FUNC();
   request.clear();
   parse_state = PARSE_HEADER;
-  body_size = 0;
 }
 
 void HttpRequestParser::append_data(const char *data, size_t length) {
